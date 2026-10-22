@@ -458,6 +458,9 @@ allow if {
 	not depots_fragmentes
 	not apercus
 	not mes_operations
+
+	# D-120 : /bff/des/sbx-espace n'est jamais ouvert par cette règle de repli (règles de la sandbox seulement).
+	not sbx_chemin
 	startswith(input.path, "/bff/des/")
 	input.authentifie == true
 	double_facteur
@@ -519,4 +522,77 @@ allow if {
 	double_facteur
 	some p in input.permissions
 	p in permissions_mes_operations
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# D-120 (docs/lot1/sandbox-existant-adapte.md §6, US-EXI-07) : routes de la Sandbox GIMAC.
+# /bff/console/sbx-<service>/** et /bff/portail/sbx-<service>/** des onze services ; /bff/des/sbx-espace/** seul dans
+# le département (D-118). Lecture (GET, HEAD, OPTIONS) : SBX_<MODULE>_CONSULTATION. Écriture : une fonction d'action du
+# module (ADMINISTRATION, SIMULATION, EXECUTION, VALIDATION), ADMINISTRATION seule pour sbx-espace
+# (SBX_HAB_ADMINISTRATION) ; le service revérifie la fonction exacte du geste. Portail : institution exigée ; console
+# et département : comptes du GIMAC seulement. Le cloisonnement par mandat et le quota sont appliqués ensuite par le
+# filtre CloisonnementSandbox de la passerelle.
+sbx_modules := {
+	"espace": "HAB",
+	"raccordement": "RAC",
+	"referentiel": "REF",
+	"donnees": "DON",
+	"simulation": "SIM",
+	"mobile": "MOB",
+	"iso20022": "ISO",
+	"carte": "CAR",
+	"campagne": "CER",
+	"trace": "TRA",
+	"lecture": "LEC",
+}
+
+# Tout chemin /bff/des/sbx-* (service connu ou non) : jamais ouvert par la règle de repli du département.
+sbx_chemin if regex.match(`^/bff/des/sbx-`, input.path)
+
+sbx_route := {"couche": m[1], "service": m[2]} if {
+	m := regex.find_all_string_submatch_n(`^/bff/(portail|console|des)/sbx-([a-z0-9]+)(/.*)?$`, input.path, 1)[0]
+	sbx_modules[m[2]]
+}
+
+sbx_lecture if input.method in {"GET", "HEAD", "OPTIONS"}
+
+sbx_fonctions_ecriture := {"ADMINISTRATION", "SIMULATION", "EXECUTION", "VALIDATION"}
+
+sbx_permissions contains sprintf("SBX_%s_CONSULTATION", [sbx_modules[sbx_route.service]]) if sbx_lecture
+
+sbx_permissions contains sprintf("SBX_%s_%s", [sbx_modules[sbx_route.service], f]) if {
+	not sbx_lecture
+	sbx_route.service != "espace"
+	some f in sbx_fonctions_ecriture
+}
+
+sbx_permissions contains "SBX_HAB_ADMINISTRATION" if {
+	not sbx_lecture
+	sbx_route.service == "espace"
+}
+
+sbx_couche_admise if {
+	sbx_route.couche == "portail"
+	compte_externe
+}
+
+sbx_couche_admise if {
+	sbx_route.couche == "console"
+	not compte_externe
+}
+
+sbx_couche_admise if {
+	sbx_route.couche == "des"
+	sbx_route.service == "espace"
+	not compte_externe
+}
+
+allow if {
+	not restreinte
+	not interne
+	sbx_route
+	sbx_couche_admise
+	double_facteur
+	some p in input.permissions
+	p in sbx_permissions
 }

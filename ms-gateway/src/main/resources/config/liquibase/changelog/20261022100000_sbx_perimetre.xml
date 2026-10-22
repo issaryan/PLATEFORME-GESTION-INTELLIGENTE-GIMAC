@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MS-GATEWAY : projection des périmètres de visibilité de SBX-ESPACE (D-120, US-EXI-07,
+     docs/lot1/sandbox-existant-adapte.md §6) ; une ligne par compte, remplacée par une version supérieure
+     (sbx-espace.scope-changed.v1). Codes et dates seulement : aucune donnée personnelle. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="gateway-sbx-perimetre" author="lot1">
+        <createTable tableName="sbx_perimetre">
+            <column name="compte" type="varchar(64)"><constraints primaryKey="true" nullable="false" primaryKeyName="pk_sbx_perimetre"/></column>
+            <column name="institution_propre" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="mandantes" type="text"><constraints nullable="false"/></column>
+            <column name="version" type="bigint"><constraints nullable="false"/></column>
+            <column name="recu_le" type="timestamptz"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

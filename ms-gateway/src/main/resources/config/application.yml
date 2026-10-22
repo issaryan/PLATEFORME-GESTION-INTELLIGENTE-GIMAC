@@ -367,6 +367,265 @@ spring:
                   args:
                     maxSize: 101MB
                 - RewritePath=/bff/(?<couche>des|console)/collaboration/messagerie/(?<p>.*), /api/v1/messagerie/${p}
+            # Sandbox GIMAC (D-120, docs/lot1/sandbox-existant-adapte.md §6, US-EXI-07) : routes console et portail des onze
+            # services de la sandbox, et la seule route du département /bff/des/sbx-espace (D-118, administration des espaces
+            # depuis la plateforme, API console de SBX-ESPACE). OPA d'abord (permissions SBX_<MODULE>_<FONCTION>), puis
+            # CloisonnementSandbox (institution propre ou mandante d'un mandat actif, jeton interne réduit, quota par couche,
+            # institution et route, décision journalisée vers MS-AUDIT). Adresses : gimac.services.sbx-* seulement, jamais un
+            # système de production (GW-21, RoutesSandboxTest).
+            - id: console-sbx-espace
+              uri: ${gimac.services.sbx-espace}
+              predicates:
+                - Path=/bff/console/sbx-espace/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/console/sbx-espace/(?<p>.*), /api/v1/console/${p}
+            - id: portail-sbx-espace
+              uri: ${gimac.services.sbx-espace}
+              predicates:
+                - Path=/bff/portail/sbx-espace/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/portail/sbx-espace/(?<p>.*), /api/v1/portail/${p}
+            - id: console-sbx-raccordement
+              uri: ${gimac.services.sbx-raccordement}
+              predicates:
+                - Path=/bff/console/sbx-raccordement/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/console/sbx-raccordement/(?<p>.*), /api/v1/console/${p}
+            - id: portail-sbx-raccordement
+              uri: ${gimac.services.sbx-raccordement}
+              predicates:
+                - Path=/bff/portail/sbx-raccordement/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/portail/sbx-raccordement/(?<p>.*), /api/v1/portail/${p}
+            - id: console-sbx-referentiel
+              uri: ${gimac.services.sbx-referentiel}
+              predicates:
+                - Path=/bff/console/sbx-referentiel/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/console/sbx-referentiel/(?<p>.*), /api/v1/console/${p}
+            - id: portail-sbx-referentiel
+              uri: ${gimac.services.sbx-referentiel}
+              predicates:
+                - Path=/bff/portail/sbx-referentiel/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/portail/sbx-referentiel/(?<p>.*), /api/v1/portail/${p}
+            - id: console-sbx-donnees
+              uri: ${gimac.services.sbx-donnees}
+              predicates:
+                - Path=/bff/console/sbx-donnees/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/console/sbx-donnees/(?<p>.*), /api/v1/console/${p}
+            - id: portail-sbx-donnees
+              uri: ${gimac.services.sbx-donnees}
+              predicates:
+                - Path=/bff/portail/sbx-donnees/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/portail/sbx-donnees/(?<p>.*), /api/v1/portail/${p}
+            - id: console-sbx-simulation
+              uri: ${gimac.services.sbx-simulation}
+              predicates:
+                - Path=/bff/console/sbx-simulation/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/console/sbx-simulation/(?<p>.*), /api/v1/console/${p}
+            - id: portail-sbx-simulation
+              uri: ${gimac.services.sbx-simulation}
+              predicates:
+                - Path=/bff/portail/sbx-simulation/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/portail/sbx-simulation/(?<p>.*), /api/v1/portail/${p}
+            - id: console-sbx-mobile
+              uri: ${gimac.services.sbx-mobile}
+              predicates:
+                - Path=/bff/console/sbx-mobile/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/console/sbx-mobile/(?<p>.*), /api/v1/console/${p}
+            - id: portail-sbx-mobile
+              uri: ${gimac.services.sbx-mobile}
+              predicates:
+                - Path=/bff/portail/sbx-mobile/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/portail/sbx-mobile/(?<p>.*), /api/v1/portail/${p}
+            - id: console-sbx-iso20022
+              uri: ${gimac.services.sbx-iso20022}
+              predicates:
+                - Path=/bff/console/sbx-iso20022/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/console/sbx-iso20022/(?<p>.*), /api/v1/console/${p}
+            - id: portail-sbx-iso20022
+              uri: ${gimac.services.sbx-iso20022}
+              predicates:
+                - Path=/bff/portail/sbx-iso20022/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/portail/sbx-iso20022/(?<p>.*), /api/v1/portail/${p}
+            - id: console-sbx-carte
+              uri: ${gimac.services.sbx-carte}
+              predicates:
+                - Path=/bff/console/sbx-carte/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/console/sbx-carte/(?<p>.*), /api/v1/console/${p}
+            - id: portail-sbx-carte
+              uri: ${gimac.services.sbx-carte}
+              predicates:
+                - Path=/bff/portail/sbx-carte/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/portail/sbx-carte/(?<p>.*), /api/v1/portail/${p}
+            - id: console-sbx-campagne
+              uri: ${gimac.services.sbx-campagne}
+              predicates:
+                - Path=/bff/console/sbx-campagne/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/console/sbx-campagne/(?<p>.*), /api/v1/console/${p}
+            - id: portail-sbx-campagne
+              uri: ${gimac.services.sbx-campagne}
+              predicates:
+                - Path=/bff/portail/sbx-campagne/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/portail/sbx-campagne/(?<p>.*), /api/v1/portail/${p}
+            - id: console-sbx-trace
+              uri: ${gimac.services.sbx-trace}
+              predicates:
+                - Path=/bff/console/sbx-trace/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/console/sbx-trace/(?<p>.*), /api/v1/console/${p}
+            - id: portail-sbx-trace
+              uri: ${gimac.services.sbx-trace}
+              predicates:
+                - Path=/bff/portail/sbx-trace/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/portail/sbx-trace/(?<p>.*), /api/v1/portail/${p}
+            - id: console-sbx-lecture
+              uri: ${gimac.services.sbx-lecture}
+              predicates:
+                - Path=/bff/console/sbx-lecture/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/console/sbx-lecture/(?<p>.*), /api/v1/console/${p}
+            - id: portail-sbx-lecture
+              uri: ${gimac.services.sbx-lecture}
+              predicates:
+                - Path=/bff/portail/sbx-lecture/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/portail/sbx-lecture/(?<p>.*), /api/v1/portail/${p}
+            - id: des-sbx-espace
+              uri: ${gimac.services.sbx-espace}
+              predicates:
+                - Path=/bff/des/sbx-espace/**
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/des/sbx-espace/(?<p>.*), /api/v1/console/${p}
           # See alternatives in https://github.com/spring-cloud/spring-cloud-gateway/issues/3818
           trusted-proxies: '.*'
   docker:
@@ -526,6 +785,29 @@ gimac:
     pilotage: http://localhost:8091
     reporting: http://localhost:8092
     collaboration: http://localhost:8093
+    # Services de la Sandbox GIMAC (D-120) : ports 8101 à 8111 (SBX-ESPACE 8101).
+    sbx-espace: http://localhost:8101
+    sbx-raccordement: http://localhost:8102
+    sbx-referentiel: http://localhost:8103
+    sbx-donnees: http://localhost:8104
+    sbx-simulation: http://localhost:8105
+    sbx-mobile: http://localhost:8106
+    sbx-iso20022: http://localhost:8107
+    sbx-carte: http://localhost:8108
+    sbx-campagne: http://localhost:8109
+    sbx-trace: http://localhost:8110
+    sbx-lecture: http://localhost:8111
+  # Sandbox GIMAC (D-120, US-EXI-07) : quotas par minute d'un titulaire (institution effective ou compte du GIMAC) sur
+  # une route, par couche ; projection des périmètres de SBX-ESPACE (sbx-espace.scope-changed.v1) pour les mandats.
+  sandbox:
+    quotas:
+      portail: 120
+      console: 300
+      des: 120
+    perimetres:
+      actif: true
+      sujet: sbx-espace.scope-changed.v1
+      bootstrap-servers: ${spring.kafka.bootstrap-servers:${spring.cloud.stream.kafka.binder.brokers:localhost:9092}}
   # Canal poussé des couches de présentation (GET /bff/{couche}/live, contrat de messagerie §5) :
   # consommateur Kafka propre à chaque instance, reprise sur les 500 derniers événements (5 min).
   live:

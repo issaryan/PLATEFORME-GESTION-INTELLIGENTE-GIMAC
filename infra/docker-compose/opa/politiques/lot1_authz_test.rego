@@ -1541,3 +1541,79 @@ test_mon_rapports_permission if {
 	not authz.allow with input as {"method": "GET", "path": "/bff/des/monitoring/grilles/g1/export", "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2"}
 	not authz.allow with input as {"method": "DELETE", "path": "/bff/des/monitoring/rapports-monitoring/r1", "permissions": ["MON_SUPERVISION_READ"], "authentifie": true, "acr": "2"}
 }
+
+# D-120 (US-EXI-07) : routes de la Sandbox GIMAC, matrice des onze services contre leurs permissions SBX.
+sbx_services := {
+	"espace": "HAB",
+	"raccordement": "RAC",
+	"referentiel": "REF",
+	"donnees": "DON",
+	"simulation": "SIM",
+	"mobile": "MOB",
+	"iso20022": "ISO",
+	"carte": "CAR",
+	"campagne": "CER",
+	"trace": "TRA",
+	"lecture": "LEC",
+}
+
+test_sbx_matrice_portail_console if {
+	every s, m in sbx_services {
+		consultation := sprintf("SBX_%s_CONSULTATION", [m])
+		administration := sprintf("SBX_%s_ADMINISTRATION", [m])
+		portail := sprintf("/bff/portail/sbx-%s/ressources", [s])
+		console := sprintf("/bff/console/sbx-%s/ressources", [s])
+		authz.allow with input as {"method": "GET", "path": portail, "permissions": [consultation], "institution_id": "99001", "authentifie": true, "acr": "2"}
+		authz.allow with input as {"method": "POST", "path": portail, "permissions": [administration], "institution_id": "99001", "authentifie": true, "acr": "2"}
+		authz.allow with input as {"method": "GET", "path": console, "permissions": [consultation], "authentifie": true, "acr": "2"}
+		authz.allow with input as {"method": "PUT", "path": console, "permissions": [administration], "institution_id": "", "authentifie": true, "acr": "2"}
+
+		# Lecture seule : aucune écriture ; autre module : aucun accès ; sans second facteur : refus.
+		not authz.allow with input as {"method": "POST", "path": portail, "permissions": [consultation], "institution_id": "99001", "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": portail, "permissions": ["SBX_XXX_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": portail, "permissions": [consultation], "institution_id": "99001", "authentifie": true, "acr": "1"}
+
+		# Portail sans institution, console pour un compte d'institution : refus.
+		not authz.allow with input as {"method": "GET", "path": portail, "permissions": [consultation], "institution_id": "", "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": console, "permissions": [consultation], "institution_id": "99001", "authentifie": true, "acr": "2"}
+	}
+}
+
+test_sbx_fonctions_ecriture if {
+	authz.allow with input as {"method": "POST", "path": "/bff/portail/sbx-simulation/essais", "permissions": ["SBX_SIM_SIMULATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+	authz.allow with input as {"method": "POST", "path": "/bff/portail/sbx-campagne/campagnes/c1/executions", "permissions": ["SBX_CER_EXECUTION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+	authz.allow with input as {"method": "POST", "path": "/bff/console/sbx-campagne/verdicts/v1/validation", "permissions": ["SBX_CER_VALIDATION"], "authentifie": true, "acr": "2"}
+	authz.allow with input as {"method": "HEAD", "path": "/bff/portail/sbx-trace/traces", "permissions": ["SBX_TRA_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+
+	# Critère 1 : développeur de 99001 titulaire de SBX_SIM_SIMULATION, route du portail de la simulation.
+	authz.allow with input as {"method": "GET", "path": "/bff/portail/sbx-simulation/essais", "permissions": ["SBX_SIM_SIMULATION", "SBX_SIM_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+}
+
+test_sbx_espace_departement if {
+	# D-118 : administration des espaces depuis le département, comptes du GIMAC, HAB seulement.
+	authz.allow with input as {"method": "GET", "path": "/bff/des/sbx-espace/espaces", "permissions": ["SBX_HAB_CONSULTATION"], "authentifie": true, "acr": "2"}
+	authz.allow with input as {"method": "POST", "path": "/bff/des/sbx-espace/espaces/99001/suspension", "permissions": ["SBX_HAB_ADMINISTRATION"], "authentifie": true, "acr": "2"}
+	authz.allow with input as {"method": "DELETE", "path": "/bff/des/sbx-espace/espaces/99001", "permissions": ["SBX_HAB_ADMINISTRATION"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/des/sbx-espace/espaces/99001/suspension", "permissions": ["SBX_HAB_CONSULTATION"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/console/sbx-espace/espaces", "permissions": ["SBX_HAB_SIMULATION"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": "/bff/des/sbx-espace/espaces", "permissions": ["SBX_HAB_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+
+	# Toute méthode, sans permission SBX : jamais ouvert par la règle de repli du département.
+	not authz.allow with input as {"method": "GET", "path": "/bff/des/sbx-espace/espaces", "permissions": ["HOM_LIAISON_READ"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "OPTIONS", "path": "/bff/des/sbx-espace/espaces", "permissions": [], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "TRACE", "path": "/bff/des/sbx-espace/espaces", "permissions": [], "authentifie": true, "acr": "2"}
+}
+
+test_sbx_aucune_conduite_dans_le_departement if {
+	# Critère 3 : aucun autre service de la sandbox dans le département, même avec la permission du module.
+	not authz.allow with input as {"method": "GET", "path": "/bff/des/sbx-simulation/essais", "permissions": ["SBX_SIM_CONSULTATION"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": "/bff/des/sbx-inconnu/x", "permissions": ["SBX_SIM_CONSULTATION"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": "/bff/portail/sbx-inconnu/x", "permissions": ["SBX_SIM_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+
+	# Routes internes et session restreinte : refus.
+	not authz.allow with input as {"method": "GET", "path": "/bff/console/sbx-espace/interne/fiches", "permissions": ["SBX_HAB_CONSULTATION"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": "/bff/console/sbx-espace/espaces", "permissions": ["SBX_HAB_CONSULTATION"], "authentifie": true, "acr": "2", "restreinte": true}
+
+	# Administration déléguée (D-115) inchangée.
+	authz.allow with input as {"method": "GET", "path": "/bff/portail/sbx-habilitations/comptes", "permissions": ["SBX_HAB_ADMINISTRATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+}

@@ -126,3 +126,15 @@ gimac:
     pilotage: http://pilotage:8091
     reporting: http://reporting:8092
     collaboration: http://collaboration:8093
+    # Services de la Sandbox GIMAC (D-120) : ports 8101 à 8111 (SBX-ESPACE 8101).
+    sbx-espace: http://sbx-espace:8101
+    sbx-raccordement: http://sbx-raccordement:8102
+    sbx-referentiel: http://sbx-referentiel:8103
+    sbx-donnees: http://sbx-donnees:8104
+    sbx-simulation: http://sbx-simulation:8105
+    sbx-mobile: http://sbx-mobile:8106
+    sbx-iso20022: http://sbx-iso20022:8107
+    sbx-carte: http://sbx-carte:8108
+    sbx-campagne: http://sbx-campagne:8109
+    sbx-trace: http://sbx-trace:8110
+    sbx-lecture: http://sbx-lecture:8111

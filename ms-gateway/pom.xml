@@ -1054,6 +1054,57 @@
                                 </rules>
                             </configuration>
                         </execution>
+                        <!--
+                            Sandbox GIMAC (D-120, US-EXI-07) : 98 % en lignes, méthodes et branches pour chaque classe ajoutée
+                            (cloisonnement des routes de la sandbox), dès les tests unitaires ; la projection R2DBC est couverte
+                            par ProjectionPerimetresR2dbcIT. Le seuil global du service reste inchangé.
+                        -->
+                        <execution>
+                            <id>seuil-sandbox-routes</id>
+                            <phase>test</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <dataFile>${project.build.directory}/jacoco.exec</dataFile>
+                                <includes>
+                                    <include>cm/gimac/des/gateway/domain/sandbox/**</include>
+                                    <include>cm/gimac/des/gateway/service/sandbox/**</include>
+                                    <include>cm/gimac/des/gateway/infrastructure/sandbox/ProjectionPerimetresMemoire*</include>
+                                    <include>cm/gimac/des/gateway/infrastructure/sandbox/JournalDecisionsSandboxAudit*</include>
+                                    <include>cm/gimac/des/gateway/infrastructure/sandbox/LecturePerimetre*</include>
+                                    <include>cm/gimac/des/gateway/security/EmetteurJetonReduitJwt*</include>
+                                    <include>cm/gimac/des/gateway/infrastructure/sandbox/ConsommateurPerimetresKafka*</include>
+                                    <include>cm/gimac/des/gateway/web/filter/CloisonnementSandbox*</include>
+                                    <include>cm/gimac/des/gateway/config/Sandbox*</include>
+                                </includes>
+                                <rules>
+                                    <rule>
+                                        <element>CLASS</element>
+                                        <excludes>
+                                            <exclude>*.package-info</exclude>
+                                        </excludes>
+                                        <limits>
+                                            <limit>
+                                                <counter>LINE</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>0.98</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>METHOD</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>0.98</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>BRANCH</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>0.98</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                </rules>
+                            </configuration>
+                        </execution>
                         <execution>
                             <id>pre-integration-tests</id>
                             <goals>

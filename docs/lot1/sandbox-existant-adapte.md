@@ -140,6 +140,88 @@ Règles :
 | US-EXI-01 | Fait (D-115) | Connexion à la console et au portail de la sandbox, quand leurs écrans seront servis |
 | US-EXI-02 | Fait (D-115) | Saga MATRICE de SBX-ESPACE, à son arrivée |
 | US-EXI-03 | Fait (D-115) | Sagas de SBX-ESPACE et écran des collaborateurs du portail de la sandbox |
+| US-EXI-07 | Fait (D-120, §6) | Appel réel de chaque service de la sandbox par sa route ; mandat de partenaire avec le jeton réduit actif |
+
+## 6. Routes de la sandbox dans MS-GATEWAY (US-EXI-07, D-120)
+
+### 6.1 Routes
+
+Onze services de la sandbox, chacun dans les couches console et portail, plus une seule route du département. Chaque
+route commence par `OpaAuthorize`, puis `CloisonnementSandbox`, corps de 1 Mo au plus.
+
+| Chemin reçu | Service | Chemin relayé |
+|---|---|---|
+| `/bff/console/sbx-<service>/(.*)` | `sbx-<service>` | `/api/v1/console/$1` |
+| `/bff/portail/sbx-<service>/(.*)` | `sbx-<service>` | `/api/v1/portail/$1` |
+| `/bff/des/sbx-espace/(.*)` | `sbx-espace` | `/api/v1/console/$1` (D-118 : l'application du DES emploie l'API console) |
+
+Services et adresses (`gimac.services.sbx-*`, `localhost` en développement, nom du service en production) : espace
+8101, raccordement 8102, referentiel 8103, donnees 8104, simulation 8105, mobile 8106, iso20022 8107, carte 8108,
+campagne 8109, trace 8110, lecture 8111. Aucune autre adresse : une route de la sandbox ne peut viser qu'une propriété
+`gimac.services.sbx-*` (GW-21, `RoutesSandboxTest`).
+
+Écart au CP (critère 3 de US-EXI-07, « aucune route de conduite dans l'application du département ») : D-118 ouvre
+`/bff/des/sbx-espace/**` pour l'administration des espaces. La revue de configuration (`RoutesSandboxTest`, règle OPA
+`sbx_chemin`) refuse toute autre route `/bff/des/sbx-*`.
+
+### 6.2 Autorisation (OPA, bloc D-120 de `lot1_authz.rego`)
+
+| Service | Module | Lecture (GET, HEAD, OPTIONS) | Écriture (POST, PUT, PATCH, DELETE) |
+|---|---|---|---|
+| sbx-espace | HAB | `SBX_HAB_CONSULTATION` | `SBX_HAB_ADMINISTRATION` |
+| sbx-raccordement, referentiel, donnees, simulation, mobile, iso20022, carte, campagne, trace, lecture | RAC, REF, DON, SIM, MOB, ISO, CAR, CER, TRA, LEC | `SBX_<MODULE>_CONSULTATION` | l'une de `SBX_<MODULE>_ADMINISTRATION`, `_SIMULATION`, `_EXECUTION`, `_VALIDATION` ; le service vérifie la fonction exacte du geste |
+
+- Portail : jeton portant `institution_id`. Console et département : comptes du GIMAC seulement (sans institution).
+- Second facteur (`acr` 2 ou 3), session restreinte refusée, chemins `/interne` jamais relayés.
+- La règle de repli du département (chemin non listé, compte authentifié) n'ouvre jamais `/bff/des/sbx-*`.
+- La mention `SBX_ESP_*` de D-118 est une coquille pour `SBX_HAB_*` (module des habilitations) ; le lot homologation
+  la corrige au REC.
+
+### 6.3 Cloisonnement étendu aux mandats
+
+Le filtre `CloisonnementSandbox` (après OPA et après le relais du jeton de session) décide au nom de quelle institution
+l'appel est relayé :
+
+| Situation | Décision | Statut |
+|---|---|---|
+| Compte du GIMAC (aucune institution) | admis, aucune institution (`COMPTE_GIMAC`) | relayé |
+| Compte d'institution sans en-tête, ou en-tête égal à son institution | institution du jeton (`INSTITUTION_PROPRE`) | relayé |
+| En-tête `X-Institution-Mandante: 99002`, mandat actif (fin postérieure à l'instant) | institution mandante (`MANDAT_ACTIF`) | relayé |
+| Mandat absent ou échu | refus (`MANDAT_ABSENT`, `MANDAT_ECHU`) | 404 `GW_SBX_INTROUVABLE` |
+| Mandat actif mais aucun jeton réduit ne peut être émis | refus par défaut (`JETON_REDUIT_INDISPONIBLE`) | 404 `GW_SBX_INTROUVABLE` |
+| Quota dépassé | refus (`QUOTA_DEPASSE`) | 429 `GW_SBX_QUOTA_DEPASSE`, `Retry-After: 60` |
+
+- **Mandats** : la passerelle tient une projection des périmètres de SBX-ESPACE (table `sbx_perimetre` de sa base,
+  consommateur du sujet `sbx-espace.scope-changed.v1`, groupe `gateway-sbx-perimetres`). Champs lus dans `data` :
+  `idCompte`, `institutionPropre`, `mandantes` (`{code: fin ISO 8601}`), `version`. Un instantané de version inférieure
+  ou égale est sans effet ; une enveloppe non conforme est écartée.
+- **Jeton interne réduit** (RFC 8693) : quand l'émetteur de jetons internes de la passerelle est actif
+  (`gimac.securite.jeton-fantome.actif`), l'en-tête `Authorization` relayé est remplacé par un jeton RS256 de cinq
+  minutes, issuer `gimac-gateway`, lié au certificat mTLS quand il existe (`cnf`, RFC 8705). Revendications : `sub`,
+  `institution_id` (institution effective), `institution_propre` (si mandat), `roles` (permissions `SBX_*` seulement),
+  `acr`, `aud` = `sbx-<service>`, `jti`. Les services de la sandbox valident ce jeton par `/api/internal/jwks` de la
+  passerelle. Émetteur inactif (poste de développement) : le jeton de session est relayé tel quel et un mandat est
+  refusé (aucune institution mandante ne peut être portée).
+- L'en-tête `X-Institution-Mandante` n'est jamais relayé au service.
+- **Quotas** (`gimac.sandbox.quotas`, requêtes par minute) : portail 120, console 300, département 120, par couche,
+  titulaire (institution effective, ou compte du GIMAC) et service ; seau Valkey partagé si la limitation de débit est
+  active, mémoire sinon.
+- **Journal** : chaque décision publie `gateway.sandbox-decision.v1` sur `gateway.security.events` (scellé par
+  MS-AUDIT) quand le journal des décisions est actif, et toujours au journal applicatif `gimac.audit.sandbox`. Détails :
+  `source=sandbox`, couche, service, méthode, chemin, institutions du jeton, demandée et effective, décision, motif ;
+  jamais de jeton.
+- Problèmes RFC 9457 : titre en fr, en ou es selon `Accept-Language`, sans révéler la ressource ni le mandat.
+
+### 6.4 Tests
+
+| Critère | Test |
+|---|---|
+| 1. Route du portail cloisonnée, décision journalisée | `CloisonnementSandboxTest.routePortailCloisonnee`, `CloisonnementSandboxGatewayFilterFactoryTest.routePortailCloisonnee`, `AdaptateursSandboxTest.journal`, OPA `test_sbx_fonctions_ecriture` |
+| 2. Partenaire mandaté | `CloisonnementSandboxTest.partenaireMandate`, `CloisonnementSandboxGatewayFilterFactoryTest.partenaireMandate`, `AdaptateursSandboxTest.jetonReduit` |
+| 3. Aucune route de conduite dans le département | `RoutesSandboxTest.routeDeConduiteDansLeDepartement`, OPA `test_sbx_aucune_conduite_dans_le_departement` |
+| 4. Institution hors mandat | `CloisonnementSandboxTest.institutionHorsMandat`, `CloisonnementSandboxGatewayFilterFactoryTest.institutionHorsMandat`, `ProjectionPerimetresR2dbcIT.refusMandatEchu` |
+| Sécurité : matrice des routes | `RoutesSandboxTest.matriceDesRoutes`, OPA `test_sbx_matrice_portail_console` |
+| GW-21 | `RoutesSandboxTest.aucuneRouteVersLaProduction` |
 
 ## Journal des mises à jour
 
@@ -148,3 +230,4 @@ Règles :
 | 2026-10-19 | - | Création : principes, identité et matrice des permissions (US-EXI-01, US-EXI-02), ordre de la suite |
 | 2026-10-20 | - | §4 : administration déléguée (US-EXI-03), route du portail et règles |
 | 2026-10-22 | - | D-121 : supervision de la sandbox hors de MS-MONITORING ; EXI-11, 12, 13, 18, 19 et 22 écartés ; écran dans l'espace sandbox du DES sur SBX-TRACE |
+| 2026-10-22 | - | §6 : routes de la sandbox dans MS-GATEWAY, OPA, cloisonnement étendu aux mandats, jeton réduit, quotas, journal (US-EXI-07, D-120) |
