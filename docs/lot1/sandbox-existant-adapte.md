@@ -142,10 +142,13 @@ Règles :
 | US-EXI-03 | Fait (D-115) | Sagas de SBX-ESPACE et écran des collaborateurs du portail de la sandbox |
 | US-EXI-07 | Fait (D-120, §6) | Appel réel de chaque service de la sandbox par sa route ; mandat de partenaire avec le jeton réduit actif |
 | US-EXI-16 | Fait (D-122, §7) | Consommation par SBX-CAMPAGNE et SBX-LECTURE à leur arrivée (projection de référence en test de contrat) |
+| US-EXI-20 | Fait (D-120, §6.5) | Événement périmé écarté par SBX-ESPACE, à son raccordement au bus |
 
-## 6. Routes de la sandbox dans MS-GATEWAY (US-EXI-07, D-120)
+## 6. Passerelle, registre et services transverses (lot D-120)
 
-### 6.1 Routes
+Routes de la sandbox dans MS-GATEWAY (US-EXI-07) aux §6.1 à §6.4, registre de MS-PARTICIPANT (US-EXI-20, US-EXI-21) ensuite.
+
+### 6.1 Routes de la sandbox dans MS-GATEWAY (US-EXI-07)
 
 Onze services de la sandbox, chacun dans les couches console et portail, plus une seule route du département. Chaque
 route commence par `OpaAuthorize`, puis `CloisonnementSandbox`, corps de 1 Mo au plus.
@@ -203,6 +206,9 @@ l'appel est relayé :
   `acr`, `aud` = `sbx-<service>`, `jti`. Les services de la sandbox valident ce jeton par `/api/internal/jwks` de la
   passerelle. Émetteur inactif (poste de développement) : le jeton de session est relayé tel quel et un mandat est
   refusé (aucune institution mandante ne peut être portée).
+- **Activation** : `gimac.securite.jeton-fantome.actif` (variable `GIMAC_SECURITE_JETONFANTOME_ACTIF`) reste fausse par
+  défaut dans le dépôt. Elle est mise à vrai dans le `.env` de la recette locale seulement ; elle active aussi la clé
+  RS256 de la passerelle (`RsaKeyConfig`) et son JWKS. Sans elle, les mandats de partenaire sont refusés.
 - L'en-tête `X-Institution-Mandante` n'est jamais relayé au service.
 - **Quotas** (`gimac.sandbox.quotas`, requêtes par minute) : portail 120, console 300, département 120, par couche,
   titulaire (institution effective, ou compte du GIMAC) et service ; seau Valkey partagé si la limitation de débit est
@@ -223,6 +229,31 @@ l'appel est relayé :
 | 4. Institution hors mandat | `CloisonnementSandboxTest.institutionHorsMandat`, `CloisonnementSandboxGatewayFilterFactoryTest.institutionHorsMandat`, `ProjectionPerimetresR2dbcIT.refusMandatEchu` |
 | Sécurité : matrice des routes | `RoutesSandboxTest.matriceDesRoutes`, OPA `test_sbx_matrice_portail_console` |
 | GW-21 | `RoutesSandboxTest.aucuneRouteVersLaProduction` |
+
+### 6.5 Version de statut dans participant.status-changed.v1 (US-EXI-20)
+
+- **Champ ajouté par extension** : `versionStatutRegistre` (entier, 1 au premier changement de statut publié), en
+  dernier champ des données de `participant.status-changed.v1`. Les champs existants sont inchangés ; les lecteurs
+  (MS-HOMOLOGATION, HOM-06) le tiennent pour optionnel : les événements publiés avant D-120 ne le portent pas.
+- **Incrément strict par institution** dans la transaction du changement de statut (approbation d'une transition,
+  transition automatique de la liaison, reprise) : table `institution_version_statut` (une ligne par institution),
+  ordre unique `insert … on conflict … do update set version = version + 1 returning version`, ligne verrouillée
+  jusqu'à la validation. Une transaction annulée ne consomme aucune version. La version n'est jamais recalculée à la
+  redélivrance : l'outbox renvoie la charge déjà écrite.
+- **Contrat lisible par machine** : `ms-participant/src/main/resources/config/contrats/participant.status-changed.v1.schema.json`
+  (JSON Schema 2020-12).
+- **Clé de partition** : l'identifiant de l'institution (clé de l'outbox, sujet `participant.status`). Écart au CP, qui
+  demande le code participant : la clé est en bijection avec lui, mais une candidate n'a pas encore de code, et
+  changer de clé désordonnerait les événements en vol d'une même institution. L'ordre par institution est garanti.
+- **Lecteurs (SBX-ESPACE, SBX-RACCORDEMENT)** : appliquent un événement si sa version est supérieure à celle qu'ils ont
+  retenue, l'acquittent sans effet sinon (critères 2 et 3 du récit, réalisés dans SBX-ESPACE :
+  `EspaceInstitution`, `version <= versionStatutRegistre`).
+
+| Critère | Test |
+|---|---|
+| 1. Suspension ordonnée (version 6 vers 7) | `VersionStatutRegistreTest.suspensionOrdonnee` |
+| Contrat : présence et monotonie | `VersionStatutRegistreTest.monotonie`, `VersionStatutRegistreTest.contratLisibleParMachine`, `VersionsStatutRegistreJdbcIT.incrementStrict` |
+| 2 et 3. Republication et événement périmé | côté SBX-ESPACE (lecteur) ; la plateforme garantit la version publiée |
 
 ## 7. MS-HOMOLOGATION et MS-CERTIFICATION (lot homologation, D-122)
 
@@ -250,3 +281,4 @@ l'appel est relayé :
 | 2026-10-22 | - | D-121 : supervision de la sandbox hors de MS-MONITORING ; EXI-11, 12, 13, 18, 19 et 22 écartés ; écran dans l'espace sandbox du DES sur SBX-TRACE |
 | 2026-10-22 | - | §6 : routes de la sandbox dans MS-GATEWAY, OPA, cloisonnement étendu aux mandats, jeton réduit, quotas, journal (US-EXI-07, D-120) |
 | 2026-10-22 | - | §7.1 : états des liaisons publiés pour la sandbox (US-EXI-16, D-122) |
+| 2026-10-22 | - | §6.5 : version de statut dans participant.status-changed.v1, contrat lisible par machine (US-EXI-20, D-120) ; §6.3 : activation du jeton réduit |

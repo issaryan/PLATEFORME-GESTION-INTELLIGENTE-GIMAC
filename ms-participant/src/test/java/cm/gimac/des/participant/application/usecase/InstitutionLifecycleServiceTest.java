@@ -93,6 +93,7 @@ class InstitutionLifecycleServiceTest {
     @Mock
     OutboxPublisher outbox;
 
+    final VersionsStatutMemoire versions = new VersionsStatutMemoire();
     InstitutionLifecycleService service;
     Institution banque;
     List<AdhesionPiece> dossier;
@@ -112,7 +113,8 @@ class InstitutionLifecycleServiceTest {
             outbox,
             props,
             new DossierSnapshots(pieces),
-            Clock.fixed(MAINTENANT, ZoneOffset.UTC)
+            Clock.fixed(MAINTENANT, ZoneOffset.UTC),
+            versions
         );
         banque = new Institution()
             .name("Banque B")
@@ -555,6 +557,7 @@ class InstitutionLifecycleServiceTest {
             assertThat(payload.statut()).isEqualTo("ADHERENT");
             assertThat(payload.ancienStatut()).isEqualTo("CANDIDAT");
             assertThat(payload.institutionId()).isEqualTo(banque.getId());
+            assertThat(payload.versionStatutRegistre()).isEqualTo(1);
             // D-98 : approbation définitive publiée sur le sujet des transitions (clôture de la tâche de l'approbateur).
             ArgumentCaptor<Object> approbation = ArgumentCaptor.forClass(Object.class);
             verify(outbox).publish(eq("transition"), eq(banque.getId()), eq(TransitionApprovedPayload.TYPE), approbation.capture());

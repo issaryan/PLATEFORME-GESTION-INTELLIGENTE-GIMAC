@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- D-120 (US-EXI-20) : version de statut d'une institution, strictement croissante, publiée dans
+     participant.status-changed.v1 (versionStatutRegistre). Une ligne par institution ; absente tant qu'aucun
+     changement de statut n'a été publié (version 0). Table à part : l'entité Institution générée reste intacte.
+     Sans clé étrangère : la version est attribuée par JDBC dans la transaction JPA, avant que Hibernate n'ait
+     écrit une institution créée par la reprise. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="20261022000100-1" author="lot1">
+        <createTable tableName="institution_version_statut">
+            <column name="institution_id" type="uuid">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_institution_version_statut"/>
+            </column>
+            <column name="version" type="bigint"><constraints nullable="false"/></column>
+        </createTable>
+        <sql>ALTER TABLE institution_version_statut ADD CONSTRAINT ck_institution_version_statut_positive CHECK (version &gt; 0);</sql>
+    </changeSet>
+</databaseChangeLog>

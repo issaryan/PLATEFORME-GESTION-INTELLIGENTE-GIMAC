@@ -3,6 +3,7 @@ package cm.gimac.des.participant.application.usecase;
 import cm.gimac.des.participant.application.port.in.ManageInstitutionUseCase;
 import cm.gimac.des.participant.application.port.out.DocumentRegistry;
 import cm.gimac.des.participant.application.port.out.StrongReauthVerifier;
+import cm.gimac.des.participant.application.port.out.VersionsStatutRegistre;
 import cm.gimac.des.participant.application.AdhesionProperties;
 import cm.gimac.des.participant.domain.AdhesionPiece;
 import cm.gimac.des.participant.domain.Institution;
@@ -71,6 +72,7 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
     private final AdhesionProperties adhesion;
     private final DossierSnapshots snapshots;
     private final Clock clock;
+    private final VersionsStatutRegistre versions;
 
     public InstitutionLifecycleService(
         InstitutionRepository institutions,
@@ -82,7 +84,8 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
         OutboxPublisher outbox,
         AdhesionProperties adhesion,
         DossierSnapshots snapshots,
-        Clock clock
+        Clock clock,
+        VersionsStatutRegistre versions
     ) {
         this.institutions = institutions;
         this.pieces = pieces;
@@ -94,6 +97,7 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
         this.adhesion = adhesion;
         this.snapshots = snapshots;
         this.clock = clock;
+        this.versions = versions;
     }
 
     /** Fuseau des agents du GIMAC (Africa/Douala, UTC+1) : le jour d'un acte est celui de Douala, pas celui du serveur (UTC). */
@@ -346,7 +350,7 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
             AGREGAT_INSTITUTION,
             i.getId(),
             StatusChangedPayload.TYPE,
-            new StatusChangedPayload(i.getId(), i.getParticipantCode(), t.getFromStatus().name(), i.getStatus().name(), t.getReason(), t.getId(), maintenant)
+            new StatusChangedPayload(i.getId(), i.getParticipantCode(), t.getFromStatus().name(), i.getStatus().name(), t.getReason(), t.getId(), maintenant, versions.suivante(i.getId()))
         );
         return t;
     }
@@ -455,7 +459,7 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
             AGREGAT_INSTITUTION,
             i.getId(),
             StatusChangedPayload.TYPE,
-            new StatusChangedPayload(i.getId(), i.getParticipantCode(), t.getFromStatus().name(), i.getStatus().name(), motif, t.getId(), maintenant)
+            new StatusChangedPayload(i.getId(), i.getParticipantCode(), t.getFromStatus().name(), i.getStatus().name(), motif, t.getId(), maintenant, versions.suivante(i.getId()))
         );
         return t;
     }

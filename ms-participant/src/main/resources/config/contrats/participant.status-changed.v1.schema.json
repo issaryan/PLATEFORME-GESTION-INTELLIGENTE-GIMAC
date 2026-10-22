@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gimac.cm/contrats/participant.status-changed.v1.schema.json",
+  "title": "participant.status-changed.v1",
+  "description": "Données (champ data de l'enveloppe CloudEvents) du changement de statut d'une institution publié par MS-PARTICIPANT, sujet participant.status, clé de partition : identifiant de l'institution. versionStatutRegistre (D-120, US-EXI-20) est ajouté par extension : toujours présent depuis D-120, optionnel pour les lecteurs (absent des événements antérieurs).",
+  "type": "object",
+  "required": ["institutionId", "statut", "transitionId", "dateEffet"],
+  "properties": {
+    "institutionId": { "type": "string", "format": "uuid" },
+    "participantCode": { "type": ["string", "null"], "description": "Code participant ; absent tant que l'institution n'en a pas reçu." },
+    "ancienStatut": { "type": "string" },
+    "statut": { "type": "string" },
+    "motif": { "type": ["string", "null"] },
+    "transitionId": { "type": "string", "format": "uuid" },
+    "dateEffet": { "type": "string", "format": "date-time" },
+    "versionStatutRegistre": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Version de statut strictement croissante par institution ; un lecteur écarte sans effet un événement de version inférieure ou égale à celle qu'il a retenue."
+    }
+  },
+  "additionalProperties": true
+}

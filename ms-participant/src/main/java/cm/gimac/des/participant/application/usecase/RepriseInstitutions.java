@@ -18,6 +18,7 @@ import cm.gimac.des.participant.domain.enumeration.SubscriptionState;
 import cm.gimac.des.participant.domain.enumeration.TransitionState;
 import cm.gimac.des.participant.domain.event.InstitutionRegisteredPayload;
 import cm.gimac.des.participant.domain.event.InstitutionUpdatedPayload;
+import cm.gimac.des.participant.application.port.out.VersionsStatutRegistre;
 import cm.gimac.des.participant.domain.event.StatusChangedPayload;
 import cm.gimac.des.participant.domain.service.InstitutionLifecycle;
 import cm.gimac.des.participant.infrastructure.messaging.outbox.OutboxPublisher;
@@ -75,6 +76,7 @@ public class RepriseInstitutions implements RepriseInstitutionsUseCase {
     private final EntityManager em;
     private final TransactionTemplate transaction;
     private final Clock clock;
+    private final VersionsStatutRegistre versions;
 
     public RepriseInstitutions(
         InstitutionRepository institutions,
@@ -86,7 +88,8 @@ public class RepriseInstitutions implements RepriseInstitutionsUseCase {
         AdhesionProperties adhesion,
         EntityManager em,
         PlatformTransactionManager transactions,
-        Clock clock
+        Clock clock,
+        VersionsStatutRegistre versions
     ) {
         this.institutions = institutions;
         this.pieces = pieces;
@@ -99,6 +102,7 @@ public class RepriseInstitutions implements RepriseInstitutionsUseCase {
         this.transaction = new TransactionTemplate(transactions);
         this.transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.clock = clock;
+        this.versions = versions;
     }
 
     /** Contexte d'un lot : codes et UUID déjà vus, institutions créées par une ligne précédente d'une simulation. */
@@ -290,7 +294,7 @@ public class RepriseInstitutions implements RepriseInstitutionsUseCase {
             AGREGAT,
             i.getId(),
             StatusChangedPayload.TYPE,
-            new StatusChangedPayload(i.getId(), i.getParticipantCode(), depuis.name(), i.getStatus().name(), motif, t.getId(), f.dateDecision() == null ? maintenant : debut(f.dateDecision()))
+            new StatusChangedPayload(i.getId(), i.getParticipantCode(), depuis.name(), i.getStatus().name(), motif, t.getId(), f.dateDecision() == null ? maintenant : debut(f.dateDecision()), versions.suivante(i.getId()))
         );
     }
 

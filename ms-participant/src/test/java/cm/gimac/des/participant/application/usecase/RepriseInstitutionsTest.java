@@ -89,6 +89,7 @@ class RepriseInstitutionsTest {
     @Mock
     PlatformTransactionManager tm;
 
+    final VersionsStatutMemoire versions = new VersionsStatutMemoire();
     RepriseInstitutions reprise;
     final List<SimpleTransactionStatus> statuts = new ArrayList<>();
 
@@ -96,7 +97,7 @@ class RepriseInstitutionsTest {
     void preparer() {
         reprise = new RepriseInstitutions(
             institutions, pieces, transitions, interactions, services, outbox,
-            new AdhesionProperties(List.of(new AdhesionProperties.PieceDefinition("STATUTS", "Statuts", true))), em, tm, HORLOGE
+            new AdhesionProperties(List.of(new AdhesionProperties.PieceDefinition("STATUTS", "Statuts", true))), em, tm, HORLOGE, versions
         );
         lenient().when(tm.getTransaction(any())).thenAnswer(inv -> {
             SimpleTransactionStatus s = new SimpleTransactionStatus();
