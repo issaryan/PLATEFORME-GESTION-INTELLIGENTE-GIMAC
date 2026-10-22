@@ -49,6 +49,21 @@ class RoutesSandboxTest {
     }
 
     @Test
+    @DisplayName("US-EXI-08, 09, 10 : routes de la console vers les services transverses adaptés pour la sandbox")
+    void routesTransverses() {
+        for (String[] c : new String[][] {
+            { "/bff/console/document/sandbox/types-pieces", "console-document-sandbox", "${gimac.services.document}", "/api/v1/sandbox/types-pieces" },
+            { "/bff/console/document/sandbox/types-pieces/SBX_TRACE_EXPORTEE/retention", "console-document-sandbox", "${gimac.services.document}", "/api/v1/sandbox/types-pieces/SBX_TRACE_EXPORTEE/retention" },
+        }) {
+            List<Route> r = RoutesPresentationTest.correspondantes(c[0]);
+            assertThat(r).extracting(Route::id).containsExactly(c[1]);
+            assertThat(r.get(0).uri()).isEqualTo(c[2]);
+            assertThat(r.get(0).filtres().get(0)).isEqualTo("OpaAuthorize");
+            assertThat(RoutesPresentationTest.reecrire(r.get(0), c[0])).isEqualTo(c[3]);
+        }
+    }
+
+    @Test
     @DisplayName("Critère 3 : aucune route de conduite de la sandbox dans l'application du département, hors administration des espaces (D-118)")
     void routeDeConduiteDansLeDepartement() {
         List<Route> des = sandbox().stream().filter(r -> r.chemins().stream().anyMatch(p -> p.getPatternString().startsWith("/bff/des/"))).toList();

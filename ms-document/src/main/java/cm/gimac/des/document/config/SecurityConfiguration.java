@@ -67,6 +67,9 @@ public class SecurityConfiguration {
                     .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/v1/interne/documents/*/contenu")).access(new ServiceTokenAuthorizationManager("INTERNAL_DOCUMENT_READ"))
                     // Rendu PDF d'un document composé par un service (D-102, organigramme de MS-IAM).
                     .requestMatchers(mvc.pattern(HttpMethod.POST, "/api/v1/interne/rendus/pdf")).access(new ServiceTokenAuthorizationManager("INTERNAL_DOCUMENT_RENDER"))
+                    // Pièces de la Sandbox GIMAC (D-120, US-EXI-08) : SBX-CAMPAGNE, SBX-TRACE, SBX-ISO20022.
+                    .requestMatchers(mvc.pattern(HttpMethod.POST, "/api/v1/interne/pieces-sandbox")).access(new ServiceTokenAuthorizationManager("INTERNAL_DOCUMENT_DEPOSIT"))
+                    .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/v1/interne/documents/empreintes/*")).access(new ServiceTokenAuthorizationManager("INTERNAL_DOCUMENT_READ"))
                     .requestMatchers(mvc.pattern("/api/v1/interne/**")).denyAll()
                     // Portail des participants : institution obligatoire dans le jeton (RG-59).
                     .requestMatchers(mvc.pattern("/api/v1/portail/**")).access(new InstitutionClaimPresentAuthorizationManager())

@@ -604,3 +604,30 @@ allow if {
 # POST /api/v1/interne/sandbox/liaisons/republication de MS-HOMOLOGATION, réservée au jeton de service portant
 # INTERNAL_HOMOLOGATION_REPUBLISH (contrôle du service). Route interne : jamais relayée par la passerelle, même avec
 # la permission (règle « interne » ci-dessus) ; aucune règle d'ouverture n'est ajoutée.
+# D-120 (US-EXI-08) : types de pièces de la sandbox et quarantaines de MS-DOCUMENT, depuis la console, comptes du GIMAC
+# seulement (un compte d'institution porte SBX_TRA_CONSULTATION pour ses propres traces, pas pour ce catalogue).
+sbx_document_lecture if {
+	input.method == "GET"
+	regex.match(`^/bff/console/document/sandbox/(types-pieces|quarantaines)$`, input.path)
+}
+
+sbx_document_ecriture if {
+	input.method == "PUT"
+	regex.match(`^/bff/console/document/sandbox/types-pieces/[A-Z0-9_]+/retention$`, input.path)
+}
+
+allow if {
+	not restreinte
+	sbx_document_lecture
+	not compte_externe
+	double_facteur
+	"SBX_TRA_CONSULTATION" in input.permissions
+}
+
+allow if {
+	not restreinte
+	sbx_document_ecriture
+	not compte_externe
+	double_facteur
+	"SBX_TRA_ADMINISTRATION" in input.permissions
+}

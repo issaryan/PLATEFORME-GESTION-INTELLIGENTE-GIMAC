@@ -258,6 +258,7 @@ Tests : `AppareilsDomaineTest`, `SuiviEtServiceAppareilsTest`, `FermetureAutresS
 | 2026-10-20 | D-115 | Route `portail-sbx-habilitations` (`/bff/portail/sbx-habilitations/**` vers l'administration déléguée de MS-IAM) |
 | 2026-10-22 | D-120 | Routes de la sandbox (`console-sbx-*`, `portail-sbx-*`, `des-sbx-espace`, adresses `gimac.services.sbx-*` 8101 à 8111), filtre `CloisonnementSandbox` (mandats, jeton réduit, quotas, `gateway.sandbox-decision.v1`), table `sbx_perimetre`, règle JaCoCo à 98 % |
 | 2026-10-22 | D-119 | Route `console-iam-sandbox` (`/bff/console/iam/sandbox/**` vers `/api/v1/sandbox/**` de MS-IAM) |
+| 2026-10-22 | D-120 | Route `console-document-sandbox` (types de pièces et quarantaines de la sandbox, US-EXI-08) |
 <!-- GIMAC:FIN -->
 
 # gateway
