@@ -162,7 +162,9 @@ class RoutesPresentationTest {
             Arguments.of("/bff/des/monitoring/rapports/r1/visa", "${gimac.services.monitoring}", "/api/v1/rapports/r1/visa"),
             Arguments.of("/bff/des/monitoring/vacations/v1/main-courante", "${gimac.services.monitoring}", "/api/v1/vacations/v1/main-courante"),
             // Sandbox GIMAC, administration déléguée (D-115, US-EXI-03).
-            Arguments.of("/bff/portail/sbx-habilitations/comptes/c1/roles", "${gimac.services.iam}", "/api/v1/administration-deleguee/comptes/c1/roles")
+            Arguments.of("/bff/portail/sbx-habilitations/comptes/c1/roles", "${gimac.services.iam}", "/api/v1/administration-deleguee/comptes/c1/roles"),
+            // Sandbox GIMAC dans la console (D-119, lot IAM).
+            Arguments.of("/bff/console/iam/sandbox/perimetres", "${gimac.services.iam}", "/api/v1/sandbox/perimetres")
         );
     }
 

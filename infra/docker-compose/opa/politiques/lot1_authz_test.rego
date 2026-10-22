@@ -1617,3 +1617,25 @@ test_sbx_aucune_conduite_dans_le_departement if {
 	# Administration déléguée (D-115) inchangée.
 	authz.allow with input as {"method": "GET", "path": "/bff/portail/sbx-habilitations/comptes", "permissions": ["SBX_HAB_ADMINISTRATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
 }
+
+# D-119, lot IAM de l'épopée EXI : la sandbox dans la console, lectures sous IAM_ACCOUNT_READ et deux facteurs ; aucune
+# écriture relayée (suspensions et protections passent par les sagas de SBX-ESPACE).
+routes_sbx_console_iam := [
+	["GET", "/bff/console/iam/sandbox/perimetres"],
+	["GET", "/bff/console/iam/sandbox/perimetres/99001"],
+	["GET", "/bff/console/iam/sandbox/protections"],
+]
+
+test_sbx_console_iam_lecture if {
+	every r in routes_sbx_console_iam {
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_sbx_console_iam_refus if {
+	every r in routes_sbx_console_iam {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["SBX_HAB_CONSULTATION"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "1"}
+	}
+	not authz.allow with input as {"method": "PUT", "path": "/bff/console/iam/sandbox/perimetres/99001/suspension", "permissions": ["IAM_ACCOUNT_READ", "IAM_ACCOUNT_STATUS"], "authentifie": true, "acr": "2"}
+}

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MS-IAM : suspension des périmètres d'institution et protection du dernier administrateur de la Sandbox GIMAC (D-119,
+     docs/lot1/sandbox-existant-adapte.md §6, US-EXI-06) ; dernière connexion des comptes, base de la désactivation des
+     comptes inactifs (US-EXI-23). Ensemble idempotent. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="iam-perimetre-suspendu" author="lot1">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="perimetre_suspendu"/></not>
+        </preConditions>
+        <createTable tableName="perimetre_suspendu">
+            <column name="code" type="varchar(64)"><constraints primaryKey="true" primaryKeyName="pk_perimetre_suspendu" nullable="false"/></column>
+            <column name="suspendu_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="acteur_id" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="motif" type="varchar(500)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="iam-protection-administrateur" author="lot1">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="protection_administrateur"/></not>
+        </preConditions>
+        <createTable tableName="protection_administrateur">
+            <column name="compte_id" type="varchar(100)"><constraints primaryKey="true" primaryKeyName="pk_protection_administrateur" nullable="false"/></column>
+            <column name="institution_id" type="varchar(64)"><constraints nullable="false"/></column>
+            <column name="protege_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="acteur_id" type="varchar(100)"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="iam-activite-compte" author="lot1">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="activite_compte"/></not>
+        </preConditions>
+        <createTable tableName="activite_compte">
+            <column name="compte_id" type="varchar(100)"><constraints primaryKey="true" primaryKeyName="pk_activite_compte" nullable="false"/></column>
+            <column name="derniere_connexion" type="timestamptz"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

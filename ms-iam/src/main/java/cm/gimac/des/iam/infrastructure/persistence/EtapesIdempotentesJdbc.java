@@ -35,4 +35,21 @@ public class EtapesIdempotentesJdbc implements EtapesIdempotentes {
             Timestamp.from(clock.instant())
         );
     }
+
+    /**
+     * Insertion sans conflit (D-119) : la clé primaire (cle, operation) sérialise deux reprises concurrentes ; la
+     * seconde attend la validation de la première, n'insère rien et lit son résultat.
+     */
+    @Override
+    public Optional<String> reserver(String cle, String operation, String resultat, String acteur) {
+        int lignes = jdbc.update(
+            "insert into etape_idempotente (cle, operation, resultat, acteur_id, cree_le) values (?, ?, ?, ?, ?) on conflict (cle, operation) do nothing",
+            cle,
+            operation,
+            resultat,
+            acteur,
+            Timestamp.from(clock.instant())
+        );
+        return lignes == 1 ? Optional.empty() : resultat(cle, operation);
+    }
 }

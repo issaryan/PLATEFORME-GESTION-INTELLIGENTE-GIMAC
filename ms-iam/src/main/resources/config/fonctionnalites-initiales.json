@@ -1777,6 +1777,24 @@
       "droits": []
     },
     {
+      "cle": "consoleSandbox",
+      "application": "console",
+      "module": "administration",
+      "libelle": "console.nav.sandbox",
+      "groupe": "comptes",
+      "ordre": 115,
+      "icone": "shield-check",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "IAM_ACCOUNT_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
       "cle": "consoleJournal",
       "application": "console",
       "module": "administration",

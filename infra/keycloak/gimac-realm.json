@@ -671,6 +671,18 @@
         "clientRole": false
       },
       {
+        "name": "INTERNAL_IAM_SBX_SAGA",
+        "description": "Sandbox : étapes des sagas de SBX-ESPACE dans MS-IAM (périmètres, protections, délégations)",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "INTERNAL_IAM_SBX_INTROSPECT",
+        "description": "Sandbox : introspection des jetons par MS-IAM (jeton interne réduit)",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "SBX_HAB_ADMINISTRATION",
         "description": "Sandbox, habilitations : administration",
         "composite": false,
@@ -3077,7 +3089,18 @@
       "serviceAccountClientId": "gateway-service",
       "realmRoles": [
         "default-roles-gimac",
-        "INTERNAL_IAM_READ"
+        "INTERNAL_IAM_READ",
+        "INTERNAL_IAM_SBX_INTROSPECT"
+      ]
+    },
+    {
+      "username": "service-account-sbx-espace",
+      "enabled": true,
+      "serviceAccountClientId": "sbx-espace",
+      "realmRoles": [
+        "default-roles-gimac",
+        "INTERNAL_IAM_SBX_SAGA",
+        "INTERNAL_PARTICIPANT_READ"
       ]
     },
     {
@@ -3895,6 +3918,29 @@
       "publicClient": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "${GIMAC_SECRET_GATEWAY_SERVICE}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "sbx-espace",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_SBX_ESPACE}",
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,

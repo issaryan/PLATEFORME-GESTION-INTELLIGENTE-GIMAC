@@ -37,6 +37,13 @@ if ! kubectl -n "$NS" get secret gimac-clients-keycloak -o jsonpath='{.data.repr
   kubectl -n "$NS" patch secret gimac-clients-keycloak --type merge \
     -p "{\"stringData\":{\"reprise-service\":\"$(openssl rand -hex 24)\"}}" >/dev/null && echo "complété : gimac-clients-keycloak (reprise-service)"
 fi
+# Clients de la Sandbox GIMAC (D-119), ajoutés après la première création du secret : complétés sans toucher aux autres.
+for cle in sbx-espace; do
+  if ! kubectl -n "$NS" get secret gimac-clients-keycloak -o jsonpath="{.data.$cle}" 2>/dev/null | grep -q .; then
+    kubectl -n "$NS" patch secret gimac-clients-keycloak --type merge \
+      -p "{\"stringData\":{\"$cle\":\"$(openssl rand -hex 24)\"}}" >/dev/null && echo "complété : gimac-clients-keycloak ($cle)"
+  fi
+done
 # Messagerie de travail (D-64) : clé AES-256-GCM du chiffrement au repos (32 octets en base 64).
 creer gimac-messagerie --from-literal=cle-chiffrement="$(openssl rand -base64 32)"
 # Clé AES-256-GCM des secrets de MS-IAM (enrôlement TOTP, mot de passe SMTP, D-65).
