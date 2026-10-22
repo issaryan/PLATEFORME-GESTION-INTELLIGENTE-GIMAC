@@ -103,7 +103,7 @@ public class PublicationEtatsLiaison {
             publier(l, etats.save(new EtatLiaisonSandbox(l.getId(), code(l), statut, t)), null);
             return true;
         }
-        EtatLiaisonSandbox e = connu.get();
+        EtatLiaisonSandbox e = connu.orElseThrow();
         StatutSandbox avant = e.getStatut();
         if (!e.constater(statut, t)) {
             return false;
