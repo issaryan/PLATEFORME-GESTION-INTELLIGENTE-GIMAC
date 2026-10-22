@@ -141,6 +141,7 @@ Règles :
 | US-EXI-02 | Fait (D-115) | Saga MATRICE de SBX-ESPACE, à son arrivée |
 | US-EXI-03 | Fait (D-115) | Sagas de SBX-ESPACE et écran des collaborateurs du portail de la sandbox |
 | US-EXI-07 | Fait (D-120, §6) | Appel réel de chaque service de la sandbox par sa route ; mandat de partenaire avec le jeton réduit actif |
+| US-EXI-16 | Fait (D-122, §7) | Consommation par SBX-CAMPAGNE et SBX-LECTURE à leur arrivée (projection de référence en test de contrat) |
 
 ## 6. Routes de la sandbox dans MS-GATEWAY (US-EXI-07, D-120)
 
@@ -223,6 +224,23 @@ l'appel est relayé :
 | Sécurité : matrice des routes | `RoutesSandboxTest.matriceDesRoutes`, OPA `test_sbx_matrice_portail_console` |
 | GW-21 | `RoutesSandboxTest.aucuneRouteVersLaProduction` |
 
+## 7. MS-HOMOLOGATION et MS-CERTIFICATION (lot homologation, D-122)
+
+### 7.1 États des liaisons publiés pour la sandbox (US-EXI-16)
+
+| Événement (sujet `homologation.liaison`, extension `institutionid`) | Quand | Données ajoutées pour la sandbox |
+|---|---|---|
+| `homologation.liaison-opened.v1` | Ouverture au cadrage, reprise de l'existant (D-107), service supplémentaire (rang 35) | `codeParticipant`, `versionEtat` = 1 |
+| `homologation.liaison-status-changed.v1` (nom P14 retenu) | Ouverture, puis chaque changement du statut vu par la sandbox | `liaisonId`, `institutionId`, `codeParticipant`, `typeProjet`, `statut` (`OUVERTE`, `GELEE`, `CLOSE`), `statutPrecedent`, `etatLiaison`, `versionEtat`, `survenuLe` |
+
+- **Statut vu par la sandbox** : tous les états actifs de la liaison (ouverte, en homologation, apte, mise en service autorisée, certifiée) valent `OUVERTE` ; `GELEE` et `CLOSE` interdisent l'ouverture d'une campagne.
+- **Version d'état** : strictement croissante par liaison (table `liaison_sandbox`, ligne lue sous verrou) ; un consommateur acquitte sans effet toute version inférieure ou égale à celle qu'il connaît, sans appel en retour.
+- **Détection** : toute liaison chargée pour une écriture est observée ; avant la validation de la transaction, le statut est comparé au dernier publié (`PublicationEtatsLiaison`). Une liaison ouverte avant D-122 reçoit sa version 1 à sa première écriture.
+- **Code participant** : celui de l'interface interne de MS-PARTICIPANT ; registre injoignable : l'événement part sans code, le code est complété à la publication suivante.
+- **Schémas** : `ms-homologation/src/main/resources/contrats/sandbox/*.schema.json` (JSON Schema 2020-12).
+- **Aucune écriture de la sandbox** : aucune route d'écriture de MS-HOMOLOGATION n'admet de permission `SBX_*` (test de revue).
+- **À faire hors de ce lot** : droits de lecture du sujet `homologation.liaison` pour les comptes de service `sbx-campagne` et `sbx-lecture` ; le gel d'une liaison sur changement de statut de l'institution (HOM-06) n'existe pas encore.
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -231,3 +249,4 @@ l'appel est relayé :
 | 2026-10-20 | - | §4 : administration déléguée (US-EXI-03), route du portail et règles |
 | 2026-10-22 | - | D-121 : supervision de la sandbox hors de MS-MONITORING ; EXI-11, 12, 13, 18, 19 et 22 écartés ; écran dans l'espace sandbox du DES sur SBX-TRACE |
 | 2026-10-22 | - | §6 : routes de la sandbox dans MS-GATEWAY, OPA, cloisonnement étendu aux mandats, jeton réduit, quotas, journal (US-EXI-07, D-120) |
+| 2026-10-22 | - | §7.1 : états des liaisons publiés pour la sandbox (US-EXI-16, D-122) |

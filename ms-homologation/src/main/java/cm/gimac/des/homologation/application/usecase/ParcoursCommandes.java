@@ -87,6 +87,14 @@ public class ParcoursCommandes {
     private final Clock clock;
     private cm.gimac.des.homologation.application.port.out.ParticipantDirectoryPort participants;
 
+    private cm.gimac.des.homologation.application.usecase.sandbox.PublicationEtatsLiaison publication;
+
+    /** Publication des états de la liaison pour la Sandbox GIMAC (US-EXI-16). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPublication(cm.gimac.des.homologation.application.usecase.sandbox.PublicationEtatsLiaison publication) {
+        this.publication = publication;
+    }
+
     /** Registre des institutions (institution liée d'une fonction externe, D-93 §1). */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setParticipants(cm.gimac.des.homologation.application.port.out.ParticipantDirectoryPort participants) {
@@ -493,6 +501,9 @@ public class ParcoursCommandes {
         }
         n.setContractualScope(scope);
         instanciation.instancier(n, codes, origine.etat().isFintech(), o.getId(), true);
+        if (publication != null) {
+            publication.ouvertureServiceSupplementaire(n, o.getId(), perimetre, a.id());
+        }
         LOG.info("Service supplémentaire {} ouvert sur la liaison {} par {} : liaison {}", codes, o.getId(), a.id(), n.getId());
         return n;
     }

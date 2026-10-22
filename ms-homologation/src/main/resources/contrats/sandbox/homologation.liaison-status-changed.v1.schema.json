@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gimac.cm/contrats/homologation/homologation.liaison-status-changed.v1",
+  "title": "homologation.liaison-status-changed.v1",
+  "description": "Données (data) de l'événement CloudEvents 1.0 publié par MS-HOMOLOGATION sur le sujet homologation.liaison à l'ouverture, au gel et à la clôture d'une liaison (US-EXI-16 ; nom du point P14 retenu par D-122). Lu par SBX-CAMPAGNE (campagne ouverte sur une liaison OUVERTE seulement) et SBX-LECTURE (périmètre du compte de service). Un lecteur acquitte sans effet toute version d'état inférieure ou égale à celle qu'il connaît, sans aucun appel en retour vers MS-HOMOLOGATION.",
+  "type": "object",
+  "required": ["liaisonId", "institutionId", "codeParticipant", "typeProjet", "statut", "statutPrecedent", "etatLiaison", "versionEtat", "survenuLe"],
+  "properties": {
+    "liaisonId": { "type": "string", "format": "uuid" },
+    "institutionId": { "type": "string", "format": "uuid" },
+    "codeParticipant": { "type": ["string", "null"] },
+    "typeProjet": { "type": "string" },
+    "statut": { "type": "string", "enum": ["OUVERTE", "GELEE", "CLOSE"] },
+    "statutPrecedent": { "type": ["string", "null"], "enum": ["OUVERTE", "GELEE", "CLOSE", null] },
+    "etatLiaison": { "type": "string", "enum": ["OUVERTE", "EN_HOMOLOGATION", "GELEE", "APTE_CERTIFICATION", "MISE_EN_SERVICE_AUTORISEE", "CERTIFIEE", "CLOSE"] },
+    "versionEtat": { "type": "integer", "minimum": 1 },
+    "survenuLe": { "type": "string", "format": "date-time" }
+  }
+}

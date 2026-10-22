@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        US-EXI-16 (D-122) : dernier état de chaque liaison publié pour la Sandbox GIMAC (ouverte, gelée, close),
+        version d'état strictement croissante et code du participant, portés par homologation.liaison-opened.v1 et
+        homologation.liaison-status-changed.v1.
+    -->
+    <changeSet id="exi16-liaison-sandbox" author="gimac">
+        <createTable tableName="liaison_sandbox">
+            <column name="liaison_id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_liaison_sandbox"/>
+            </column>
+            <column name="code_participant" type="varchar(20)"/>
+            <column name="statut" type="varchar(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version_etat" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="publie_le" type="${datetimeType}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="liaison_sandbox" baseColumnNames="liaison_id" constraintName="fk_liaison_sandbox_liaison"
+                                 referencedTableName="liaison" referencedColumnNames="id" onDelete="CASCADE"/>
+        <sql>ALTER TABLE liaison_sandbox ADD CONSTRAINT ck_liaison_sandbox_statut CHECK (statut IN ('OUVERTE', 'GELEE', 'CLOSE'))</sql>
+        <sql>ALTER TABLE liaison_sandbox ADD CONSTRAINT ck_liaison_sandbox_version CHECK (version_etat &gt;= 1)</sql>
+    </changeSet>
+</databaseChangeLog>

@@ -917,6 +917,49 @@
                                 </rules>
                             </configuration>
                         </execution>
+                        <execution>
+                            <!-- Sandbox GIMAC, épopée EXI (D-115, D-122) : code ajouté tenu à 98 %, seuil global inchangé. -->
+                            <id>seuil-sandbox-exi</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <dataFile>${project.build.directory}/jacoco-fusion.exec</dataFile>
+                                <includes>
+                                    <include>cm/gimac/des/homologation/domain/sandbox/**</include>
+                                    <include>cm/gimac/des/homologation/application/usecase/sandbox/**</include>
+                                    <include>cm/gimac/des/homologation/domain/event/LiaisonStatusChangedPayload*</include>
+                                    <!-- Classes de la sandbox des récits suivants ajoutées ici. -->
+                                </includes>
+                                <excludes>
+                                    <!-- Métamodèle JPA produit à la compilation. -->
+                                    <exclude>cm/gimac/des/homologation/domain/sandbox/*_*</exclude>
+                                </excludes>
+                                <rules>
+                                    <rule>
+                                        <element>CLASS</element>
+                                        <limits>
+                                            <limit>
+                                                <counter>LINE</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>0.98</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>BRANCH</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>0.98</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>METHOD</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>0.98</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                </rules>
+                            </configuration>
+                        </execution>
                     </executions>
                 </plugin>
                 <plugin>

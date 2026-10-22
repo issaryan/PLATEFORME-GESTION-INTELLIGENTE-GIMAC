@@ -62,6 +62,7 @@
     <include file="config/liquibase/changelog/20261016000100_reprise_liaisons.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261017000100_preuves_signatures_cr_v17.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261019000100_etapes_brouillons_d59.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261022000100_exi16_etat_liaison_sandbox.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

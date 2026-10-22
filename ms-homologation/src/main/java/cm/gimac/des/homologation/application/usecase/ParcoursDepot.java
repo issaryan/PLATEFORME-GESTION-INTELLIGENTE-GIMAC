@@ -41,6 +41,7 @@ public class ParcoursDepot {
     private final CoverageRepository couvertures;
     private final EntityManager em;
     private SuiviTachesParcours suivi;
+    private cm.gimac.des.homologation.application.usecase.sandbox.PublicationEtatsLiaison publication;
 
     public ParcoursDepot(
         LiaisonRepository liaisons,
@@ -66,6 +67,12 @@ public class ParcoursDepot {
         this.suivi = suivi;
     }
 
+    /** Publication des états de la liaison pour la Sandbox GIMAC (US-EXI-16) : chaque liaison écrite est observée. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPublication(cm.gimac.des.homologation.application.usecase.sandbox.PublicationEtatsLiaison publication) {
+        this.publication = publication;
+    }
+
     /** Parcours d'une liaison ; {@code verrou} sérialise les écritures concurrentes sur la liaison. */
     public Optional<Parcours> trouver(UUID liaisonId, boolean verrou) {
         Optional<Liaison> l = verrou ? liaisons.findByIdForUpdate(liaisonId) : liaisons.findById(liaisonId);
@@ -75,6 +82,9 @@ public class ParcoursDepot {
         Optional<Parcours> p = parcours.findById(liaisonId).map(e -> assembler(l.orElseThrow(), e));
         if (suivi != null) {
             p.ifPresent(suivi::observer);
+        }
+        if (verrou && publication != null) {
+            p.ifPresent(x -> publication.observer(x.liaison()));
         }
         return p;
     }
@@ -172,6 +182,9 @@ public class ParcoursDepot {
         p.services().forEach(em::persist);
         if (suivi != null) {
             suivi.observerNouveau(p);
+        }
+        if (publication != null) {
+            publication.observer(p.liaison());
         }
     }
 
