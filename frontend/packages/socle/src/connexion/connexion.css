@@ -83,3 +83,8 @@
   .gm-acces-contenu { padding: var(--gm-space-6) var(--gm-space-5); }
   .gm-acces-pied { justify-content: center; text-align: center; }
 }
+
+/* Habillage d'un produit hébergé (D-118) : sans marque, la carte d'accès est centrée sur son fond ; un pied réduit
+   à l'heure la garde à droite. */
+.gm-acces-centre .gm-acces-corps { justify-content: center; }
+.gm-acces-pied > :only-child { margin-inline-start: auto; }

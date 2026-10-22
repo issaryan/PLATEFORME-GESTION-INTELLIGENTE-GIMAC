@@ -10,7 +10,7 @@ import { usePreferences } from '../enveloppe/usePreferences'
 import { Preferences } from '../enveloppe/Preferences'
 import { Cernes, Marque, NOM_PLATEFORME } from './Decor'
 import { navigation, retourSur } from '../session/deconnexion'
-import { adresseApplication, adresseConnexionApplication, applicationApresRefus, applicationDe } from '../session/aiguillage'
+import { AIGUILLAGE_PLATEFORME, type HabillageConnexion, type ReglesAiguillage } from '../habillage'
 import { reglageAiguillage } from '../session/Aiguillage'
 import { lireSessionDemo } from '../session/demo'
 import { useConnexion } from './contexte'
@@ -27,6 +27,10 @@ export type PageConnexionProps = {
   service?: ServiceConnexion
   /** Erreur signalée par l'application, avec son identifiant de corrélation. */
   erreur?: { message: string; correlationId?: string }
+  /** Décor, logo, nom et mention d'un produit hébergé (D-118) ; ceux de la plateforme à défaut. */
+  habillage?: HabillageConnexion
+  /** Règle d'aiguillage d'un produit hébergé (D-118) ; celle de la plateforme à défaut. */
+  aiguillage?: ReglesAiguillage
 }
 
 type Erreur = { texte: string; correlationId?: string; violations?: string[]; code?: string }
@@ -63,11 +67,12 @@ const CODE = /^[0-9]{6}$/
 
 // Identifiant et mot de passe, puis code à six chiffres (CODE_REQUIS). Le mot de passe ne vit que dans
 // l'état de ce formulaire, le temps de la saisie du code ; il est effacé dès la réponse ou l'abandon.
-function FormulaireConnexion({ service, couche, destination, erreurApplication }: {
+function FormulaireConnexion({ service, couche, destination, erreurApplication, regles }: {
   service: ServiceConnexion
   couche: Couche
   destination: string
   erreurApplication?: PageConnexionProps['erreur']
+  regles: ReglesAiguillage
 }) {
   const { t } = useTranslation()
   const [parametres] = useSearchParams()
@@ -125,18 +130,18 @@ function FormulaireConnexion({ service, couche, destination, erreurApplication }
       setCode('')
       // Compte connecté hors de son application (compte interne sans permission de console sur la console) :
       // conduit vers son tableau de bord, la session de la passerelle étant commune aux trois applications.
-      const cible = r.etat === 'CONNECTE' ? applicationDe(r.session, couche) : couche
+      const cible = r.etat === 'CONNECTE' ? regles.applicationDe(r.session, couche) : couche
       if (cible !== couche) {
-        setAiguillage({ texte: t(`aiguillage.${couche}.${cible}`, { defaultValue: t(`aiguillage.vers.${cible}`) }), adresse: adresseApplication(cible, undefined, lireSessionDemo()) })
+        setAiguillage({ texte: t(`aiguillage.${couche}.${cible}`, { defaultValue: t(`aiguillage.vers.${cible}`) }), adresse: regles.adresse(cible, lireSessionDemo()) })
         return
       }
       navigation.vers(destination)
     } catch (x) {
       // Couche refusée par la passerelle : le compte relève d'une autre application, ouverte sur son écran de connexion.
       if (estApiError(x) && x.code === 'CNX_COUCHE_REFUSEE') {
-        const cible = applicationApresRefus(couche)
+        const cible = regles.apresRefus(couche)
         setMotDePasse('')
-        setAiguillage({ texte: t(`aiguillage.refus.${cible}`), adresse: adresseConnexionApplication(cible, { identifiant, depuis: couche }) })
+        setAiguillage({ texte: t(`aiguillage.refus.${cible}`), adresse: regles.adresseConnexion(cible, { identifiant, depuis: couche }) })
         return
       }
       setErreur(message(x, etape === 'CODE' ? 'connexion.erreur.code' : 'connexion.erreur'))
@@ -325,7 +330,7 @@ function OutilsConnexion() {
 // chiffres ; mot de passe oublié et nouveau mot de passe sous /connexion. La passerelle soumet les secrets à
 // Keycloak, serveur à serveur : aucune page du fournisseur d'identité n'est ouverte. Langue et thème en haut à
 // droite ; couche, classification et heures de Douala et UTC en pied de page.
-export function PageConnexion({ couche, destination, service, erreur }: PageConnexionProps) {
+export function PageConnexion({ couche, destination, service, erreur, habillage: h, aiguillage = AIGUILLAGE_PLATEFORME }: PageConnexionProps) {
   const { t } = useTranslation()
   const p = usePreferences()
   const contexte = useConnexion()
@@ -339,33 +344,34 @@ export function PageConnexion({ couche, destination, service, erreur }: PageConn
   }, [])
   useEffect(() => {
     // D-101 : l'onglet porte simplement le nom du logiciel.
-    document.title = NOM_PLATEFORME
-  }, [])
+    document.title = h?.nom ?? NOM_PLATEFORME
+  }, [h?.nom])
   const vue = pathname.endsWith('/mot-de-passe-oublie') ? 'oubli' : pathname.endsWith('/nouveau-mot-de-passe') ? 'nouveau' : 'connexion'
   const apres = retourSur(parametres.get('retour')) ?? destination ?? `/${couche}/tableau-de-bord`
   const sombre = p.theme === 'dark'
 
   return (
-    <div className="gm-acces gm-root">
+    <div className={h?.marque === null ? 'gm-acces gm-root gm-acces-centre' : 'gm-acces gm-root'}>
+      {h?.fond ?? null}
       <header className="gm-acces-haut"><OutilsConnexion /></header>
       <div className="gm-acces-corps">
         <main className="gm-acces-carte" aria-labelledby={vue === 'connexion' ? 'gm-acces-titre' : undefined}>
-          <Cernes />
+          {h?.fond === undefined ? <Cernes /> : null}
           <div className="gm-filet" aria-hidden="true"><i /><i /><i /></div>
           <div className="gm-acces-contenu">
-            <img className="gm-acces-logo" src={sombre ? logoBlanc : logoCouleur} alt="GIMAC" />
+            <img className="gm-acces-logo" src={h?.logo ? (sombre ? h.logo.sombre : h.logo.clair) : sombre ? logoBlanc : logoCouleur} alt={h?.logo?.alt ?? 'GIMAC'} />
             {vue === 'connexion' ? <h1 id="gm-acces-titre" className="gm-acces-titre">{t('connexion.titre')}</h1> : null}
             {vue === 'oubli' ? <MotDePasseOublie service={svc} /> : null}
             {vue === 'nouveau' ? <NouveauMotDePasse service={svc} /> : null}
-            {vue === 'connexion' ? <FormulaireConnexion service={svc} couche={couche} destination={apres} erreurApplication={erreur} /> : null}
+            {vue === 'connexion' ? <FormulaireConnexion service={svc} couche={couche} destination={apres} erreurApplication={erreur} regles={aiguillage} /> : null}
             {vue === 'connexion' ? <p className="gm-acces-note">{t('connexion.cle')}</p> : null}
           </div>
         </main>
-        <Marque sombre={sombre} signature={t('connexion.signature')} />
+        {h?.marque === undefined ? <Marque sombre={sombre} signature={t('connexion.signature')} /> : h.marque}
       </div>
       <footer className="gm-acces-pied">
         {/* DDR-22 : le portail des participants n'est pas d'usage interne. */}
-        <span>{t(`connexion.couche.${couche}`)} · {t(couche === 'portail' ? 'connexion.classificationPortail' : 'connexion.classification')}</span>
+        {h?.mention === '' ? null : <span>{h?.mention ?? `${t(`connexion.couche.${couche}`)} · ${t(couche === 'portail' ? 'connexion.classificationPortail' : 'connexion.classification')}`}</span>}
         <span className="gm-acces-heure" role="timer" aria-label={t('connexion.heure')}>
           <time dateTime={maintenant.toISOString()}>Douala {format(maintenant, 'Africa/Douala')}</time> · UTC {format(maintenant, 'UTC')}
         </span>

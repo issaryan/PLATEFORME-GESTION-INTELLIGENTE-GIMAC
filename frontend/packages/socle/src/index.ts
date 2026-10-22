@@ -42,6 +42,7 @@ export {
   adresseConnexionApplication, reprendreSessionDemo, type Predicat,
 } from './session/aiguillage'
 export { Aiguillage, MessageAiguillage, reglageAiguillage } from './session/Aiguillage'
+export { AIGUILLAGE_PLATEFORME, type HabillageConnexion, type HabillageEnveloppe, type LogoHabillage, type ReglesAiguillage } from './habillage'
 export { LangueComposants } from './i18n/LangueComposants'
 export { useLibelleProfil, type LibellesProfils } from './i18n/libelleProfil'
 // Notifications de la plateforme (D-80, docs/lot1/notifications.md) : cloche, page, fenêtres surgissantes, système.

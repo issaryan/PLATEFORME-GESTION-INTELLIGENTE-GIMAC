@@ -27,6 +27,17 @@ describe('Footer', () => {
     expect(document.body.textContent).toContain('c0ffee00-1234')
   })
 
+  it('produit hébergé (D-118) : désignation et classification propres, ou aucune classification', () => {
+    render(<Footer version="1.0.0" plateforme="Sandbox GIMAC, version 0.1.0" classification="Environnement de test" />)
+    expect(screen.getByText('Sandbox GIMAC, version 0.1.0')).toBeTruthy()
+    expect(screen.getByText('Environnement de test')).toBeTruthy()
+    expect(screen.queryByText(/Plateforme de suivi/)).toBeNull()
+    cleanup()
+    render(<Footer couche="console" classification="" />)
+    expect(screen.queryByText('Usage interne, confidentiel')).toBeNull()
+    expect(screen.getByText('Plateforme de suivi des activités du GIMAC')).toBeTruthy()
+  })
+
   it('se traduit en anglais et en espagnol', () => {
     const { rerender } = render(<LangueProvider langue="en"><Footer /></LangueProvider>)
     expect(screen.getByText('Central African Interbank Electronic Payment Group')).toBeTruthy()

@@ -94,3 +94,4 @@ Le catalogue vivant (`apps/catalogue`) affiche chaque composant, un à un, en cl
 | 2026-10-19 | D-112 | `gm-chip` sans coupure de texte ; DagView : nœud de 150 px, titre sur deux lignes au plus et lisible au survol ; GanttView : pourcentage d'une barre écrit seulement si elle peut le contenir |
 | 2026-10-19 | D-113 | Nouveau composant AgendaGrid (vues jour, semaine, mois) au catalogue ; KanbanBoard : glisser-déposer, Alt + flèche, ouverture, ajout par colonne, pagination des colonnes ; TicketCard `reference` |
 | 2026-10-19 | D-114 | WallBoard : `label` de la pastille (état réel), nom et grand chiffre sans débordement ; GanttView : colonne « Tenue » seulement si un jalon a une probabilité ; onglets sur une ligne, défilants ; barres de défilement accordées au thème (`color-scheme`) |
+| 2026-10-20 | D-118 | Footer : `plateforme` (désignation du produit hébergé) et `classification` facultatives ; une chaîne vide retire la classification. Libellés inchangés. |

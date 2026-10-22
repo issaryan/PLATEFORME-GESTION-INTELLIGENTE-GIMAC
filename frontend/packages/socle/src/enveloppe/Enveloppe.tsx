@@ -14,6 +14,7 @@ import { useCompteurNotifications, useContexteNotifications } from '../notificat
 import { PanneauNotifications } from '../notifications/Cloche'
 import { NotificationsSurgissantes } from '../notifications/Surgissantes'
 import { ContexteBarreLaterale } from './barreLaterale'
+import type { HabillageEnveloppe } from '../habillage'
 
 /** Identifiant du tiroir de navigation des écrans étroits, commandé par le bouton de menu (aria-controls). */
 const ID_TIROIR = 'gm-shell-tiroir'
@@ -60,6 +61,8 @@ export type EnveloppeProps = {
    * écrans permis. Sans elles (premier accès, par exemple), pas de recherche ; jamais au portail (§6.1).
    */
   recherche?: SourceRecherche[]
+  /** Logo, bandeau et pied d'un produit hébergé (D-118) ; ceux de la plateforme à défaut. */
+  habillage?: HabillageEnveloppe
   children: ReactNode
 }
 
@@ -178,8 +181,10 @@ export function Enveloppe(p: EnveloppeProps) {
   // Notifications de la plateforme (D-80) : cloche active et fenêtres surgissantes dans les couches internes.
   const notifications = useContexteNotifications()
   // Logo principal blanc, fondu dans le dégradé bleu de la navigation (dans les deux thèmes).
-  const nav = <SideNav current={courante?.cle ?? ''} groups={groupes} height="100%" logo={logoBlanc} couche={p.couche} />
-  const navLaterale = <SideNav current={courante?.cle ?? ''} groups={groupes} height="100%" logo={logoBlanc} couche={p.couche} reduite={reduite} />
+  const h = p.habillage
+  const logoNav = h?.logo?.sombre ?? logoBlanc
+  const nav = <SideNav current={courante?.cle ?? ''} groups={groupes} height="100%" logo={logoNav} couche={p.couche} />
+  const navLaterale = <SideNav current={courante?.cle ?? ''} groups={groupes} height="100%" logo={logoNav} couche={p.couche} reduite={reduite} />
 
   const barre = (cloche?: Cloche) => (
     <TopBar
@@ -195,7 +200,7 @@ export function Enveloppe(p: EnveloppeProps) {
           : undefined
       }
       layer={p.couche}
-      logo={theme === 'dark' ? logoBlanc : logoCouleur}
+      logo={h?.logo ? (theme === 'dark' ? h.logo.sombre : h.logo.clair) : theme === 'dark' ? logoBlanc : logoCouleur}
       sansMarque={!etroit}
       breadcrumb={p.fil}
       user={p.utilisateur}
@@ -216,12 +221,13 @@ export function Enveloppe(p: EnveloppeProps) {
       <div className="gm-shell-colonne">
       <div className="gm-shell-top">
         {notifications ? <AvecCloche>{barre}</AvecCloche> : barre()}
+        {h?.bandeau ?? null}
         {p.etatCanal === 'lost' ? <Banner level="info">{t('live.perdu')}</Banner> : null}
       </div>
       <div className="gm-shell-corps">
         <div ref={contenu} className="gm-shell-contenu" data-testid="gm-shell-contenu">
           <main className="gm-shell-main"><ContexteBarreLaterale.Provider value={barreLaterale}>{p.children}</ContexteBarreLaterale.Provider></main>
-          <Footer version={p.version} documentation={p.documentation} correlationId={p.correlationId} couche={p.couche} />
+          <Footer version={p.version} documentation={p.documentation} correlationId={p.correlationId} couche={p.couche} plateforme={h?.pied?.plateforme} classification={h?.pied?.classification} />
         </div>
         {etroit && navOuverte ? (
           // Tiroir de navigation : voile du catalogue confiné à la zone sous la barre supérieure, fermeture par le voile ou Échap.
