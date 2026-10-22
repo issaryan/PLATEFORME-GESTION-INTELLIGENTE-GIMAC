@@ -104,6 +104,8 @@ export const ECRANS_DES: Record<string, Ecran> = {
   journalisation: { chemin: `${PLATEFORME}/journalisation` },
   courriels: { chemin: `${PLATEFORME}/courriels` },
   adminConsole: { chemin: versConsole('/console/tableau-de-bord') },
+  // Espace sandbox du DES (D-118, D-122 ; paquet @gimac/sandbox-admin, une entrée par écran sous /des/sandbox).
+  sandboxEspaces: { chemin: '/des/sandbox/espaces' },
 }
 
 /** Accueil de chaque application : seule entrée montrée tant que le catalogue n'est pas servi (repli prudent). */

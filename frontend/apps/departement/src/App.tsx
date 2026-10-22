@@ -15,6 +15,7 @@ import {
   ServicesConsoleProvider, TableauAdministrationComptes, WidgetChargesEnErreur, WidgetSupervision, servicesConsoleHttp, servicesConsoleSimules, useFonctionnalites, useSourceComptes,
 } from '@gimac/administration'
 import { ServicesExploitationProvider, servicesExploitationHttp, servicesExploitationSimules } from '@gimac/exploitation'
+import { RoutesSandbox, ServicesSandboxProvider, servicesSandboxHttp, servicesSandboxSimules } from '@gimac/sandbox-admin'
 import { PROFILS_DEMO, roleDemo, sessionDemo } from './profils'
 import { connexionDemo } from './connexionDemo'
 
@@ -205,6 +206,8 @@ function Pages({ session, etatCanal, correlationId, notifications }: { session: 
                   <Route path="plateforme/configuration" element={G('configuration', <ConfigurationPlateformePage />)} />
                   <Route path="plateforme/journalisation" element={G('journalisation', <JournalisationPage />)} />
                   <Route path="plateforme/courriels" element={G('courriels', <CourrielsPage />)} />
+                  {/* Espace sandbox du DES (D-118, D-121, D-122) : une entrée par écran, chacune gardée par sa fonctionnalité et sa permission. */}
+                  <Route path="sandbox/*" element={<RoutesSandbox garde={G} />} />
                   <Route path="*" element={<Navigate to="/des/tableau-de-bord" replace />} />
                 </>
               )}
@@ -279,6 +282,12 @@ export default function App() {
     const s = sessionDemo()
     return { ...servicesExploitationSimules({ utilisateur: { id: s.sujet, nom: s.nom }, permissions: s.permissions }), apercu: services.apercu }
   }, [reels, services])
+  // Espace sandbox (D-122) : SBX-ESPACE par /bff/des/sbx-espace, ou simulé au contrat exact au nom du profil de démonstration.
+  const sandbox = useMemo(() => {
+    if (reels) return servicesSandboxHttp()
+    const s = sessionDemo()
+    return servicesSandboxSimules({ permissions: s.permissions, deuxFacteurs: s.doubleFacteur })
+  }, [reels])
   const connexion = useMemo(() => (reels ? connexionHttp() : connexionDemo()), [reels])
   const [correlationId, setCorrelationId] = useState<string | undefined>()
   useEffect(() => {
@@ -295,6 +304,7 @@ export default function App() {
         <CompteProvider service={compte}>
         <ServicesConsoleProvider services={administration} chemins={CHEMINS_ADMINISTRATION}>
         <ServicesExploitationProvider services={exploitation}>
+        <ServicesSandboxProvider services={sandbox}>
         <ExtensionsTableauDeBordProvider valeur={EXTENSIONS_TABLEAU}>
           <Routes>
             <Route path="/connexion/*" element={<PageConnexion couche="des" />} />
@@ -302,6 +312,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/des/tableau-de-bord" replace />} />
           </Routes>
         </ExtensionsTableauDeBordProvider>
+        </ServicesSandboxProvider>
         </ServicesExploitationProvider>
         </ServicesConsoleProvider>
         </CompteProvider>

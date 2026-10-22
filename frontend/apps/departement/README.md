@@ -46,3 +46,4 @@ Scénarios de bout en bout par acteur : `e2e/specs/departement-*.spec.ts` (voir 
 | 2026-10-19 | D-114 | Routes `/des/exploitation/{supervision,astreintes,releve}` (`@gimac/exploitation`), services HTTP ou simulés au nom du profil de démonstration, catalogues fr, en, es ; test de la navigation par profil |
 | 2026-10-20 | - | D-116 : routes /des/exploitation/aujourdhui, /rapports, /activite ; aperçu bureautique transmis au module d’exploitation |
 | 2026-10-20 | - | D-117 : aperçu bureautique et permissions de démonstration transmis au module d’exploitation |
+| 2026-10-22 | D-122 | Route `/des/sandbox/*` (`@gimac/sandbox-admin`), services SBX-ESPACE HTTP ou simulés au nom du profil de démonstration, catalogues fr, en, es |
