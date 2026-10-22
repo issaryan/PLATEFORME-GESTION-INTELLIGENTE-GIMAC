@@ -1624,6 +1624,8 @@ test_d122_republication_jamais_relayee if {
 	not authz.allow with input as {"method": "POST", "path": "/bff/des/homologation/interne/sandbox/liaisons/republication", "permissions": ["INTERNAL_HOMOLOGATION_REPUBLISH"], "authentifie": true, "acr": "2"}
 	not authz.allow with input as {"method": "POST", "path": "/bff/console/homologation/interne/sandbox/liaisons/republication", "permissions": ["INTERNAL_HOMOLOGATION_REPUBLISH"], "authentifie": true, "acr": "2"}
 	not authz.allow with input as {"method": "POST", "path": "/bff/portail/homologation/interne/sandbox/liaisons/republication", "permissions": ["INTERNAL_HOMOLOGATION_REPUBLISH"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+}
+
 # D-119, lot IAM de l'épopée EXI : la sandbox dans la console, lectures sous IAM_ACCOUNT_READ et deux facteurs ; aucune
 # écriture relayée (suspensions et protections passent par les sagas de SBX-ESPACE).
 routes_sbx_console_iam := [
