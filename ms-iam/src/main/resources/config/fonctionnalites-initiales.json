@@ -1378,6 +1378,26 @@
       ]
     },
     {
+      "cle": "sandboxEspaces",
+      "application": "des",
+      "module": "sandbox",
+      "libelle": "nav.sandboxEspaces",
+      "groupe": "sandbox",
+      "ordre": 275,
+      "icone": "network",
+      "visible": true,
+      "permissions": {
+        "tous": [
+          "PIL_ACTIVITY_OWN"
+        ],
+        "unDe": [
+          "SBX_HAB_CONSULTATION"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
       "cle": "dossierCertification",
       "application": "des",
       "module": "certification",

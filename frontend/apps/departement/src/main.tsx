@@ -8,12 +8,13 @@ import { catalogues } from '@gimac/lot1'
 import { catalogueCompte } from '@gimac/compte'
 import { cataloguesAdministration } from '@gimac/administration'
 import { cataloguesExploitation } from '@gimac/exploitation'
+import { cataloguesSandbox } from '@gimac/sandbox-admin'
 import App from './App.tsx'
 
 // Démonstration (services simulés) : session apportée par une autre application dans le fragment d'adresse (D-79).
 if (import.meta.env.VITE_SERVICES === 'simule') reprendreSessionDemo()
 
-initI18n([...catalogues, catalogueCompte, ...cataloguesAdministration, ...cataloguesExploitation], langueInitiale())
+initI18n([...catalogues, catalogueCompte, ...cataloguesAdministration, ...cataloguesExploitation, ...cataloguesSandbox], langueInitiale())
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

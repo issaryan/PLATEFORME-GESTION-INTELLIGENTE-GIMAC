@@ -7,13 +7,14 @@ import { FONCTIONNALITES_DEMO, catalogues } from '@gimac/lot1'
 import { catalogueCompte } from '@gimac/compte'
 import { cataloguesAdministration } from '@gimac/administration'
 import { cataloguesExploitation } from '@gimac/exploitation'
+import { cataloguesSandbox } from '@gimac/sandbox-admin'
 import App from './App'
 import { CLE_PROFIL_DEMO, PROFILS_DEMO, roleDemo, sessionDemo } from './profils'
 
 // Application du département : session de démonstration par profil (D-57, D-58), navigation élaguée
 // selon les permissions, premier accès, session réelle par la passerelle, déconnexion.
 beforeAll(() => {
-  if (!i18next.isInitialized) initI18n([...catalogues, catalogueCompte, ...cataloguesAdministration, ...cataloguesExploitation], 'fr')
+  if (!i18next.isInitialized) initI18n([...catalogues, catalogueCompte, ...cataloguesAdministration, ...cataloguesExploitation, ...cataloguesSandbox], 'fr')
   Object.defineProperty(window, 'innerWidth', { value: 1400, configurable: true })
 })
 // Session de démonstration ouverte (connexion simulée, D-65) ; retirée par les scénarios de connexion.
@@ -107,6 +108,21 @@ describe('Astreintes et monitoring (D-114, D-116)', () => {
     cleanup()
     localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_CHEF_DDRM')
     monter('/des/exploitation/astreintes')
+    expect(await screen.findByText('Accès refusé', {}, { timeout: 8000 })).toBeTruthy()
+  })
+})
+
+describe('Espace sandbox du DES (D-118, D-122)', () => {
+  it('super administrateur : « Espaces des institutions » dans le groupe Sandbox GIMAC ; chef de la DDRM : refusé', async () => {
+    localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_SUPER_ADMIN')
+    monter('/des/sandbox/espaces')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Espaces des institutions' }, { timeout: 8000 })).toBeTruthy()
+    expect(within(navigation()).getByRole('link', { name: 'Espaces des institutions' }).getAttribute('href')).toBe('/des/sandbox/espaces')
+    expect(await screen.findByText('ESP-99001', {}, { timeout: 8000 })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Ouvrir un espace' })).toBeTruthy()
+    cleanup()
+    localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_CHEF_DDRM')
+    monter('/des/sandbox/espaces')
     expect(await screen.findByText('Accès refusé', {}, { timeout: 8000 })).toBeTruthy()
   })
 })
