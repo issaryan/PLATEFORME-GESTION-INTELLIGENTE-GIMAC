@@ -1043,6 +1043,12 @@
         "clientRole": false
       },
       {
+        "name": "SBX_SUP_CONSULTATION",
+        "description": "Sandbox, supervision depuis la plateforme : consultation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "ROLE_INGENIEUR_HOMOLOGATION",
         "description": "Conduit les opérations d'homologation des liaisons (référentiel, preuves, validation) et prépare la certification.",
         "composite": true,

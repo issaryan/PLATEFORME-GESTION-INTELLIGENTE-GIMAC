@@ -43,6 +43,12 @@ du catalogue du frontend).
 
 Fonctions : ADMINISTRATION, SIMULATION, EXECUTION (de campagne), VALIDATION (de verdict), CONSULTATION.
 
+Ajout de D-119, en complément de D-121 : un treizième module, `SUP` (supervision de la sandbox depuis la plateforme),
+avec la seule permission `SBX_SUP_CONSULTATION`, soit soixante et une permissions `SBX_*`. Elle s'attribue par profil
+depuis la console ; aucun profil livré ne la reçoit d'office (vérifié par le générateur). SBX-TRACE l'accepte sur ses
+quatre routes de lecture de supervision. MS-IAM refuse toute autre fonction du module SUP (`ReglesSandbox`), et le
+catalogue des droits porte la fonctionnalité `sandboxSup`.
+
 ### 2.2 Valeurs de départ
 
 Valeurs configurables ensuite depuis la console (écran des profils, D-86). Les fonctions du GIMAC s'ajoutent aux profils

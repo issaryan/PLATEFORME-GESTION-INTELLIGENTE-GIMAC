@@ -89,6 +89,9 @@ PERMISSIONS = {
 SBX_MODULES = ["HAB", "RAC", "REF", "SCN", "DON", "SIM", "MOB", "ISO", "CAR", "CER", "TRA", "LEC"]
 SBX_FONCTIONS = ["ADMINISTRATION", "SIMULATION", "EXECUTION", "VALIDATION", "CONSULTATION"]
 PERMISSIONS["SBX"] = [f"{m}_{f}" for m in SBX_MODULES for f in SBX_FONCTIONS]
+# Treizième module (D-121, D-119) : supervision de la sandbox depuis la plateforme, consultation seule, attribuée par
+# profil depuis la console ; aucun profil livré ne la reçoit d'office. SBX-TRACE l'accepte sur ses routes de supervision.
+PERMISSIONS["SBX"].append("SUP_CONSULTATION")
 TOUTES = [f"{d}_{p}" for d, ps in PERMISSIONS.items() for p in ps]
 
 LECTURE_DES = ["HOM_REFERENTIEL_READ", "HOM_LIAISON_READ", "HOM_LIAISON_LIST", "HOM_DASHBOARD_READ", "CER_CIRCUIT_READ",
@@ -330,6 +333,9 @@ _MODULES_SBX = {"HAB": "habilitations", "RAC": "raccordements", "REF": "référe
 _FONCTIONS_SBX = {"ADMINISTRATION": "administration", "SIMULATION": "simulation", "EXECUTION": "exécution de campagne",
                   "VALIDATION": "validation de verdict", "CONSULTATION": "consultation"}
 LIBELLES_PERMISSIONS.update({f"SBX_{m}_{f}": f"Sandbox, {_MODULES_SBX[m]} : {_FONCTIONS_SBX[f]}" for m in SBX_MODULES for f in SBX_FONCTIONS})
+LIBELLES_PERMISSIONS["SBX_SUP_CONSULTATION"] = "Sandbox, supervision depuis la plateforme : consultation"
+assert len(PERMISSIONS["SBX"]) == 61 and not [n for n, ps in PROFILS.items() if "SBX_SUP_CONSULTATION" in ps], "SBX_SUP_CONSULTATION"
+
 # D-94 §3 : le conducteur de projet est le porteur de HOM_PROJECT_CONDUCT, donnée par défaut au profil conducteur seul.
 assert [n for n, ps in PROFILS.items() if "HOM_PROJECT_CONDUCT" in ps] == ["ROLE_CONDUCTEUR_PROJET"]
 # D-97 : permission de chaque fonction opérationnelle, donnée aux profils que le catalogue des fonctions (D-91,
