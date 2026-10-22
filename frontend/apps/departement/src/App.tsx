@@ -18,6 +18,7 @@ import { ServicesExploitationProvider, servicesExploitationHttp, servicesExploit
 import { RoutesSandbox, ServicesSandboxProvider, servicesSandboxHttp, servicesSandboxSimules } from '@gimac/sandbox-admin'
 import { PROFILS_DEMO, roleDemo, sessionDemo } from './profils'
 import { connexionDemo } from './connexionDemo'
+import { PAGES } from './pages'
 
 // Application du département (couche « des ») : routes du lot 1 (DS-GIMAC-01 §10.1). Services réels par
 // la passerelle par défaut ; services simulés seulement sur demande explicite (VITE_SERVICES=simule : tests de bout
@@ -28,67 +29,67 @@ import { connexionDemo } from './connexionDemo'
 // En services simulés, la session est celle d'un profil de démonstration (profils.ts, D-57, D-58), ouverte
 // par la connexion simulée (connexionDemo.ts, D-65). Connexion sur la plateforme : /connexion (D-65).
 // Session fermée après 30 minutes d'inactivité (SessionActive, D-65 §6).
-const TableauDeBordPage = lazy(() => import('@gimac/lot1/pages/des/TableauDeBordPage'))
-const InstitutionsPage = lazy(() => import('@gimac/lot1/pages/des/InstitutionsPage'))
-const InstitutionPage = lazy(() => import('@gimac/lot1/pages/des/InstitutionPage'))
-const LiaisonsPage = lazy(() => import('@gimac/lot1/pages/des/LiaisonsPage'))
-const ClotureOperationPage = lazy(() => import('@gimac/lot1/pages/des/ClotureOperationPage'))
-const DossierMiseEnServicePage = lazy(() => import('@gimac/lot1/pages/des/DossierMiseEnServicePage'))
+const TableauDeBordPage = lazy(PAGES.TableauDeBordPage)
+const InstitutionsPage = lazy(PAGES.InstitutionsPage)
+const InstitutionPage = lazy(PAGES.InstitutionPage)
+const LiaisonsPage = lazy(PAGES.LiaisonsPage)
+const ClotureOperationPage = lazy(PAGES.ClotureOperationPage)
+const DossierMiseEnServicePage = lazy(PAGES.DossierMiseEnServicePage)
 /** Ancienne adresse d'une liaison : renvoi vers son dossier de parcours. */
 function VersDossier() {
   const { id = '' } = useParams()
   return <Navigate to={`/des/parcours/${id}`} replace />
 }
-const ParcoursPage = lazy(() => import('@gimac/lot1/pages/des/parcours/ParcoursPage'))
-const DossierLiaisonPage = lazy(() => import('@gimac/lot1/pages/des/parcours/DossierLiaisonPage'))
+const ParcoursPage = lazy(PAGES.ParcoursPage)
+const DossierLiaisonPage = lazy(PAGES.DossierLiaisonPage)
 // Parcours de certification (D-98, docs/lot1/lancement-processus.md §8) : lancement guidé et « Mes actions de certification ».
-const LancerCertificationPage = lazy(() => import('@gimac/lot1/pages/des/certification/LancerCertificationPage'))
-const MesActionsCertificationPage = lazy(() => import('@gimac/lot1/pages/des/certification/MesActionsCertificationPage'))
-const ReferentielsOperationsPage = lazy(() => import('@gimac/lot1/pages/des/ReferentielsOperationsPage'))
+const LancerCertificationPage = lazy(PAGES.LancerCertificationPage)
+const MesActionsCertificationPage = lazy(PAGES.MesActionsCertificationPage)
+const ReferentielsOperationsPage = lazy(PAGES.ReferentielsOperationsPage)
 // Types de projet et catalogue des fonctions (D-91).
-const TypesProjetPage = lazy(() => import('@gimac/lot1/pages/des/referentiels/TypesProjetPage'))
-const MessageriePage = lazy(() => import('@gimac/lot1/pages/des/messagerie/MessageriePage'))
+const TypesProjetPage = lazy(PAGES.TypesProjetPage)
+const MessageriePage = lazy(PAGES.MessageriePage)
 // Mon activité (D-76, docs/lot1/mon-activite.md) : journée, agenda, tâches, rapports et équipe de chacun.
-const MaJourneePage = lazy(() => import('@gimac/lot1/pages/des/activite/MaJourneePage'))
-const AgendaPage = lazy(() => import('@gimac/lot1/pages/des/activite/AgendaPage'))
-const TachesPage = lazy(() => import('@gimac/lot1/pages/des/activite/TachesPage'))
-const RapportsPage = lazy(() => import('@gimac/lot1/pages/des/activite/RapportsPage'))
-const EquipePage = lazy(() => import('@gimac/lot1/pages/des/activite/EquipePage'))
+const MaJourneePage = lazy(PAGES.MaJourneePage)
+const AgendaPage = lazy(PAGES.AgendaPage)
+const TachesPage = lazy(PAGES.TachesPage)
+const RapportsPage = lazy(PAGES.RapportsPage)
+const EquipePage = lazy(PAGES.EquipePage)
 // Processus d'unité (D-87, docs/lot1/processus-unite.md) : catalogue, modélisateur, suivi d'une instance.
-const ProcessusPage = lazy(() => import('@gimac/lot1/pages/des/processus/ProcessusPage'))
-const ModelisateurProcessusPage = lazy(() => import('@gimac/lot1/pages/des/processus/ModelisateurProcessusPage'))
-const InstanceProcessusPage = lazy(() => import('@gimac/lot1/pages/des/processus/InstancePage'))
+const ProcessusPage = lazy(PAGES.ProcessusPage)
+const ModelisateurProcessusPage = lazy(PAGES.ModelisateurProcessusPage)
+const InstanceProcessusPage = lazy(PAGES.InstanceProcessusPage)
 // Lancer une demande et suivre ses demandes (D-98, docs/lot1/lancement-processus.md §3, §7).
-const LancerDemandePage = lazy(() => import('@gimac/lot1/pages/des/processus/LancerDemandePage'))
-const MesDemandesPage = lazy(() => import('@gimac/lot1/pages/des/processus/MesDemandesPage'))
+const LancerDemandePage = lazy(PAGES.LancerDemandePage)
+const MesDemandesPage = lazy(PAGES.MesDemandesPage)
 // Administration des comptes (D-69) : écrans de @gimac/administration servis sous /des/administration,
 // pour le RSSI et le super administrateur ; la console garde la supervision et la configuration.
-const ComptesPage = lazy(() => import('@gimac/administration/pages/ComptesPage'))
-const ComptePage = lazy(() => import('@gimac/administration/pages/ComptePage'))
-const CreationComptePage = lazy(() => import('@gimac/administration/pages/CreationComptePage'))
-const JournalAdministrationPage = lazy(() => import('@gimac/administration/pages/JournalPage'))
-const ProfilsPage = lazy(() => import('@gimac/administration/pages/ProfilsPage'))
-const PolitiqueSecuritePage = lazy(() => import('@gimac/administration/pages/PolitiqueSecuritePage'))
-const OrganisationPage = lazy(() => import('@gimac/administration/pages/OrganisationPage'))
+const ComptesPage = lazy(PAGES.ComptesPage)
+const ComptePage = lazy(PAGES.ComptePage)
+const CreationComptePage = lazy(PAGES.CreationComptePage)
+const JournalAdministrationPage = lazy(PAGES.JournalAdministrationPage)
+const ProfilsPage = lazy(PAGES.ProfilsPage)
+const PolitiqueSecuritePage = lazy(PAGES.PolitiqueSecuritePage)
+const OrganisationPage = lazy(PAGES.OrganisationPage)
 // Organigramme (D-86 §3) : unités, chefs, membres et n+1, pouvoirs effectifs.
-const OrganigrammePage = lazy(() => import('@gimac/administration/pages/OrganigrammePage'))
+const OrganigrammePage = lazy(PAGES.OrganigrammePage)
 // Pouvoirs hiérarchiques (D-81) : demandes des chefs à traiter, matrice des pouvoirs.
-const DemandesPage = lazy(() => import('@gimac/administration/pages/DemandesPage'))
-const MatricePouvoirsPage = lazy(() => import('@gimac/administration/pages/MatricePouvoirsPage'))
+const DemandesPage = lazy(PAGES.DemandesPage)
+const MatricePouvoirsPage = lazy(PAGES.MatricePouvoirsPage)
 // Plateforme (D-79) : les écrans de la console servis aussi dans l'application interne, sous /des/plateforme ;
 // /api/plateforme est servi par la passerelle depuis toute couche (flux SSE compris).
-const SupervisionPage = lazy(() => import('@gimac/administration/pages/SupervisionPage'))
-const InfrastructurePage = lazy(() => import('@gimac/administration/pages/InfrastructurePage'))
-const ConfigurationPlateformePage = lazy(() => import('@gimac/administration/pages/ConfigurationPlateformePage'))
-const JournalisationPage = lazy(() => import('@gimac/administration/pages/JournalisationPage'))
-const CourrielsPage = lazy(() => import('@gimac/administration/pages/MessageriePage'))
+const SupervisionPage = lazy(PAGES.SupervisionPage)
+const InfrastructurePage = lazy(PAGES.InfrastructurePage)
+const ConfigurationPlateformePage = lazy(PAGES.ConfigurationPlateformePage)
+const JournalisationPage = lazy(PAGES.JournalisationPage)
+const CourrielsPage = lazy(PAGES.CourrielsPage)
 // Supervision des liaisons, astreintes et relève de quart (D-114, docs/lot1/astreintes-monitoring.md) : MS-MONITORING.
-const SupervisionLiaisonsPage = lazy(() => import('@gimac/exploitation/pages/SupervisionPage'))
-const AstreintesPage = lazy(() => import('@gimac/exploitation/pages/AstreintesPage'))
-const RelevePage = lazy(() => import('@gimac/exploitation/pages/RelevePage'))
-const AujourdhuiPage = lazy(() => import('@gimac/exploitation/pages/AujourdhuiPage'))
-const RapportsMonitoringPage = lazy(() => import('@gimac/exploitation/pages/RapportsPage'))
-const ActiviteEquipePage = lazy(() => import('@gimac/exploitation/pages/ActivitePage'))
+const SupervisionLiaisonsPage = lazy(PAGES.SupervisionLiaisonsPage)
+const AstreintesPage = lazy(PAGES.AstreintesPage)
+const RelevePage = lazy(PAGES.RelevePage)
+const AujourdhuiPage = lazy(PAGES.AujourdhuiPage)
+const RapportsMonitoringPage = lazy(PAGES.RapportsMonitoringPage)
+const ActiviteEquipePage = lazy(PAGES.ActiviteEquipePage)
 const CHEMINS_ADMINISTRATION = { base: '/des/administration', espace: '/des', plateforme: '/des/plateforme' }
 // Widgets du tableau de bord fournis par l'administration : indicateurs, actions et derniers actes d'administration
 // des comptes (D-69), résumé de la supervision et charges de travail en erreur (D-78, D-79).

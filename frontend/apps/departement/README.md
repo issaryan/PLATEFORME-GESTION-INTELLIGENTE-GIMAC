@@ -47,3 +47,4 @@ Scénarios de bout en bout par acteur : `e2e/specs/departement-*.spec.ts` (voir 
 | 2026-10-20 | - | D-116 : routes /des/exploitation/aujourdhui, /rapports, /activite ; aperçu bureautique transmis au module d’exploitation |
 | 2026-10-20 | - | D-117 : aperçu bureautique et permissions de démonstration transmis au module d’exploitation |
 | 2026-10-22 | D-122 | Route `/des/sandbox/*` (`@gimac/sandbox-admin`), services SBX-ESPACE HTTP ou simulés au nom du profil de démonstration, catalogues fr, en, es |
+| 2026-10-22 | - | Pages chargées à la demande réunies dans `pages.ts`, chacune éprouvée par `pages.test.ts` (44 pages) ; couverture des fonctions de 74 % à 98,6 %, seuil de 80 % de nouveau tenu |
