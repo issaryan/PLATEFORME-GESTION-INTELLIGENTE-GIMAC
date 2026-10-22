@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ThemeProvider } from '@gimac/design-system'
 import { ApiError } from '../http/errors'
@@ -223,6 +223,21 @@ describe('PageConnexion : identifiant, mot de passe, puis code', () => {
     expect(screen.queryByRole('dialog', { name: 'Preferences' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Preferences' }))
     fireEvent.change(screen.getByRole('combobox', { name: 'Language' }), { target: { value: 'fr' } })
+  })
+
+  it('thème changé dans un autre onglet (storage gm.theme) : appliqué sans recharger ; autres clés et valeurs ignorées', () => {
+    monter()
+    const style = () => screen.getByRole('img', { name: 'Moabi' }).getAttribute('data-style')
+    const evenement = (key: string, newValue: string | null) => act(() => window.dispatchEvent(new StorageEvent('storage', { key, newValue })))
+    evenement('gm.theme', 'dark')
+    expect(style()).toBe('contour')
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+    evenement('gm.theme', 'bleu')
+    evenement('autre', 'light')
+    evenement('gm.theme', null)
+    expect(style()).toBe('contour')
+    evenement('gm.theme', 'light')
+    expect(style()).toBe('guilloche')
   })
 })
 

@@ -36,6 +36,14 @@ export function usePreferences() {
   useEffect(() => {
     document.documentElement.lang = langue
   }, [langue])
+  // Un changement de thème fait dans un autre onglet (événement storage sur gm.theme) s'applique ici sans recharger.
+  useEffect(() => {
+    const suivre = (e: StorageEvent) => {
+      if (e.key === CLE_THEME && (e.newValue === 'light' || e.newValue === 'dark')) setTheme(e.newValue)
+    }
+    window.addEventListener('storage', suivre)
+    return () => window.removeEventListener('storage', suivre)
+  }, [setTheme])
   return {
     theme,
     langue,
