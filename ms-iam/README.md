@@ -200,6 +200,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | 2026-10-19 | D-114 | Catalogue des fonctionnalités : `monitoringSupervision`, `monitoringAstreintes`, `monitoringReleve` (groupe `monitoring`, prédicat `MON_SUPERVISION_READ`) |
 | 2026-10-19 | D-115 | `ReglesSandbox` : permissions `SBX_<MODULE>_<FONCTION>`, validation des verdicts refusée à tout profil externe (422 `IAM_SBX_VALIDATION_RESERVEE`) à la création, à la recomposition et au passage en externe ; `GET /configuration/permissions?prefixe=` ; six profils `ROLE_SBX_*` attribuables et externes ; module sandbox du catalogue des fonctionnalités |
 | 2026-10-20 | D-115 | Administration déléguée de la sandbox (`AdministrationDelegueeService`, `ReglesAdministrationDeleguee`) : comptes bornés à l'institution du jeton, rôles délégables, jamais sur soi-même, RG-15 ; clé d'idempotence des étapes de saga (table `etape_idempotente`, changeset `20261019180000_iam_sandbox_delegation`) |
+| 2026-10-22 | D-122 | Catalogue des fonctionnalités : entrée `sandboxEspaces` (application des, groupe `sandbox`, comptes internes portant `SBX_HAB_CONSULTATION`) |
 <!-- GIMAC:FIN -->
 | 2026-10-20 | - | D-116 : catalogue des fonctionnalités, entrées monitoringAujourdhui, monitoringRapports, monitoringActivite ; supervision et relève passent en visible: false |
 

@@ -241,6 +241,36 @@ l'appel est relayé :
 - **Aucune écriture de la sandbox** : aucune route d'écriture de MS-HOMOLOGATION n'admet de permission `SBX_*` (test de revue).
 - **À faire hors de ce lot** : droits de lecture du sujet `homologation.liaison` pour les comptes de service `sbx-campagne` et `sbx-lecture` ; le gel d'une liaison sur changement de statut de l'institution (HOM-06) n'existe pas encore.
 
+### 7.2 Espace sandbox du DES : « Espaces des institutions » (D-118 points 2 et 3)
+
+- **Paquet** `@gimac/sandbox-admin`, monté sous `/des/sandbox/*` dans l'application du DES. Registre d'entrées
+  (`ENTREES_SANDBOX`) : chaque écran a son fichier, sa fonctionnalité au catalogue de MS-IAM (groupe `sandbox`), sa
+  permission et ses routes ; une entrée de plus (« Supervision de la sandbox », D-121) ne touche à aucune autre.
+- **Entrée « Espaces des institutions »** (`sandboxEspaces`, `/des/sandbox/espaces`, `/des/sandbox/espaces/:code`) :
+  fonctionnalité réservée aux comptes internes (`PIL_ACTIVITY_OWN` et `SBX_HAB_CONSULTATION`) ; actes pour
+  `SBX_HAB_ADMINISTRATION`. La mention `SBX_ESP_*` de D-118 est une coquille : les permissions sont celles du module HAB.
+- **Contrat de SBX-ESPACE** (API console, branche `sbx-espace-hexagone`, servie par `/bff/des/sbx-espace/**`, §6.1) :
+
+| Méthode | Route | Effet | Refus |
+|---|---|---|---|
+| GET | `/espaces?apres=&taille=` | Page `{elements, suivant}` par curseur (code participant), 1 à 100 | 404 `SBX_ESP_INTROUVABLE` hors droit |
+| GET | `/espaces/{code}` | `EspaceVM` | 404 |
+| POST | `/espaces` `{codeParticipant, correspondantId}` | 201 saga `TERMINEE`, 202 en reprise ou compensation | 404 institution absente ; 409 `SBX_ESP_STATUT_NON_ADMIS`, `SBX_ESP_ESPACE_EXISTANT` ; 422 `SBX_ESP_CORRESPONDANT_INCONNU` |
+| POST | `/espaces/{code}/suspension` | Motif `DECISION_GIMAC`, état `SUSPENDU` | 409 `SBX_ESP_ETAT_INCOMPATIBLE` |
+| POST | `/espaces/{code}/retablissement` | État `OUVERT`, motifs effacés | 409 `SBX_ESP_ETAT_INCOMPATIBLE`, `SBX_ESP_REGISTRE_OPPOSE` |
+| POST | `/espaces/{code}/fermeture` | État `FERME` (institution retirée) | 409 `SBX_ESP_ETAT_INCOMPATIBLE`, `SBX_ESP_NON_RETIRE` |
+
+  Toute écriture : en-tête `Idempotency-Key` (400 `SBX_ESP_CLE_IDEMPOTENCE_ABSENTE`, 422 `…_INVALIDE`), tiré à
+  l'ouverture du dialogue ; second facteur (422 `SBX_ESP_SECOND_FACTEUR_EXIGE`) ; problèmes RFC 9457 traduits en fr,
+  en, es par leur code.
+- **Fiche réutilisable** `EspaceInstitution` : servie aussi par l'onglet « Sandbox » du dossier de liaison, avec
+  l'ouverture de l'espace proposée au code de l'institution quand il n'existe pas.
+- **Écarts relevés** : (1) les statuts admis de SBX-ESPACE (`CANDIDAT`, `EN_HOMOLOGATION`, `ACTIF`, `A_REGULARISER`)
+  excluent `ADHERENT`, alors qu'un adhérent précède l'homologation : à confirmer pour SBX-ESPACE ; (2) aucune route ne
+  liste les correspondants d'une institution : le correspondant est saisi par l'identifiant de son compte.
+- **Comptes de démonstration** : `super.admin` (lecture et actes), chef du DES et RSSI (lecture). Simulation au contrat
+  exact : institutions fictives 99001 à 99005.
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -250,3 +280,4 @@ l'appel est relayé :
 | 2026-10-22 | - | D-121 : supervision de la sandbox hors de MS-MONITORING ; EXI-11, 12, 13, 18, 19 et 22 écartés ; écran dans l'espace sandbox du DES sur SBX-TRACE |
 | 2026-10-22 | - | §6 : routes de la sandbox dans MS-GATEWAY, OPA, cloisonnement étendu aux mandats, jeton réduit, quotas, journal (US-EXI-07, D-120) |
 | 2026-10-22 | - | §7.1 : états des liaisons publiés pour la sandbox (US-EXI-16, D-122) |
+| 2026-10-22 | - | §7.2 : espace sandbox du DES, « Espaces des institutions » sur SBX-ESPACE (D-118 points 2 et 3, D-122) |
