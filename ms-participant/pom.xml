@@ -886,6 +886,11 @@
                                 <includes>
                                     <include>cm/gimac/des/participant/domain/event/StatusChangedPayload*</include>
                                     <include>cm/gimac/des/participant/infrastructure/persistence/VersionsStatutRegistreJdbc*</include>
+                                    <include>cm/gimac/des/participant/infrastructure/persistence/RegistreLectureJdbc*</include>
+                                    <include>cm/gimac/des/participant/application/usecase/RegistreSandboxQueries*</include>
+                                    <include>cm/gimac/des/participant/web/rest/lot1/RegistreSandboxInterneResource*</include>
+                                    <include>cm/gimac/des/participant/infrastructure/security/JournalRefusSandbox*</include>
+                                    <include>cm/gimac/des/participant/config/JournalRefusConfiguration*</include>
                                 </includes>
                                 <rules>
                                     <rule>

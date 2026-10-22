@@ -143,6 +143,7 @@ Règles :
 | US-EXI-07 | Fait (D-120, §6) | Appel réel de chaque service de la sandbox par sa route ; mandat de partenaire avec le jeton réduit actif |
 | US-EXI-16 | Fait (D-122, §7) | Consommation par SBX-CAMPAGNE et SBX-LECTURE à leur arrivée (projection de référence en test de contrat) |
 | US-EXI-20 | Fait (D-120, §6.5) | Événement périmé écarté par SBX-ESPACE, à son raccordement au bus |
+| US-EXI-21 | Fait (D-120, §6.6) | Ouverture d’un espace par SBX-ESPACE sur le registre réel, comptes de service sbx-* dans le domaine Keycloak |
 
 ## 6. Passerelle, registre et services transverses (lot D-120)
 
@@ -255,6 +256,36 @@ l'appel est relayé :
 | Contrat : présence et monotonie | `VersionStatutRegistreTest.monotonie`, `VersionStatutRegistreTest.contratLisibleParMachine`, `VersionsStatutRegistreJdbcIT.incrementStrict` |
 | 2 et 3. Republication et événement périmé | côté SBX-ESPACE (lecteur) ; la plateforme garantit la version publiée |
 
+### 6.6 Fiche et nomenclature des services de MS-PARTICIPANT (US-EXI-21)
+
+Interface interne de MS-PARTICIPANT (jamais relayée par la passerelle), jeton de service portant
+`INTERNAL_PARTICIPANT_READ`, donné par le domaine Keycloak aux comptes de service `sbx-espace`, `sbx-raccordement` et
+`sbx-referentiel` (lot IAM). Consultation seule.
+
+| Méthode | Route | Réponse |
+|---|---|---|
+| GET | `/api/v1/interne/institutions/code/{code}/fiche` | `{ codeParticipant, raisonSociale, statut, versionStatut, correspondants: [{ id, compteId, nom, fonction }] }` ; 404 `PAR_INSTITUTION_NOT_FOUND` si le code est absent |
+| GET | `/api/v1/interne/nomenclature/services?page=0&taille=50` | `{ contenu: [{ code, institutions }], total, page, taille }`, codes des abonnements actifs triés ; taille de 1 à 100, sinon 422 `PAR_PAGINATION_INVALIDE` |
+
+- `versionStatut` : version de statut courante (§6.5), 0 tant qu'aucun changement n'a été publié.
+- `correspondants` : correspondants actifs seulement ; `compteId` est le compte de la plateforme (MS-IAM) quand il
+  existe. Aucun courriel ni téléphone.
+- **Port de SBX-ESPACE** (`RegistreParticipantPort`, lecture seule) : `lireFiche(code)` vers la fiche
+  (`FicheParticipant(codeParticipant, raisonSociale, statut, versionStatut)`, vide sur 404) ; `estCorrespondant(code,
+  id)` vrai si `id` vaut l'`id` ou le `compteId` d'un correspondant de la fiche.
+- **Écriture refusée** : un compte de service n'a ni second facteur ni permission métier ; toute route d'écriture lui
+  rend 403 sans effet. Chaque refus d'un jeton dont le client (`azp`, sinon `client_id`) commence par `sbx-` est
+  journalisé (`participant.sandbox-write-denied`, journal `gimac.audit.sandbox`, méthode et chemin).
+- **Registre indisponible** (critère 4) : SBX-ESPACE refuse l'ouverture avec un motif explicite (délai, disjoncteur) ;
+  la plateforme n'a rien à servir dans ce cas.
+
+| Critère | Test |
+|---|---|
+| 1. Lecture de la fiche | `RegistreSandboxQueriesTest.lectureDeLaFiche`, `RegistreSandboxIT.lectureDeLaFiche` |
+| 2. Nomenclature des services | `RegistreSandboxQueriesTest.nomenclatureDesServices`, `RegistreSandboxIT.nomenclatureDesServices` |
+| 3. Tentative d'écriture | `RegistreSandboxIT.tentativeEcriture`, `JournalRefusSandboxTest.tentativeEcriture` |
+| 4. Registre indisponible | côté SBX-ESPACE (`OuvertureEspace`) |
+
 ## 7. MS-HOMOLOGATION et MS-CERTIFICATION (lot homologation, D-122)
 
 ### 7.1 États des liaisons publiés pour la sandbox (US-EXI-16)
@@ -313,3 +344,4 @@ l'appel est relayé :
 | 2026-10-22 | - | §7.1 : états des liaisons publiés pour la sandbox (US-EXI-16, D-122) |
 | 2026-10-22 | - | §6.5 : version de statut dans participant.status-changed.v1, contrat lisible par machine (US-EXI-20, D-120) ; §6.3 : activation du jeton réduit |
 | 2026-10-22 | - | §7.2 : espace sandbox du DES, « Espaces des institutions » sur SBX-ESPACE (D-118 points 2 et 3, D-122) |
+| 2026-10-22 | - | §6.6 : fiche et nomenclature des services de MS-PARTICIPANT pour la sandbox, refus journalisé des écritures (US-EXI-21, D-120) |
