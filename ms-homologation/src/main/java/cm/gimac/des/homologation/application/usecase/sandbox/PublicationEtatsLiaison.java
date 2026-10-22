@@ -115,6 +115,19 @@ public class PublicationEtatsLiaison {
         return true;
     }
 
+    /**
+     * Republication (exploitation, projection vide d'un consommateur de la sandbox) : l'état courant part de nouveau
+     * avec la même version d'état, que les lecteurs à jour ignorent ; un état non encore publié reçoit sa version
+     * suivante. Vrai si une nouvelle version a été attribuée.
+     */
+    public boolean republier(Liaison l) {
+        if (constater(l)) {
+            return true;
+        }
+        publier(l, etats.verrouiller(l.getId()).orElseThrow(), null);
+        return false;
+    }
+
     private void publier(Liaison l, EtatLiaisonSandbox e, StatutSandbox avant) {
         outbox.publish(
             AGREGAT,

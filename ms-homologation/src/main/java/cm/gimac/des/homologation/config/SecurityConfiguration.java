@@ -57,6 +57,8 @@ public class SecurityConfiguration {
                     // Interface interne (docs/lot1/parcours-backend.md §2) : jeton de service de MS-CERTIFICATION.
                     // Reprise de l'existant (D-107) : compte de service reprise-service (jeton client_credentials).
                     .requestMatchers("/api/v1/interne/reprise/**").hasAuthority("REF_REPRISE_IMPORT")
+                    // Republication des états de liaison pour la Sandbox GIMAC (D-122) : compte de service d'exploitation.
+                    .requestMatchers("/api/v1/interne/sandbox/**").hasAuthority("INTERNAL_HOMOLOGATION_REPUBLISH")
                     .requestMatchers("/api/v1/interne/**").hasAuthority("INTERNAL_HOMOLOGATION_READ")
                     // Portail des participants : institution obligatoire dans le jeton (RG-59) et second facteur (D-61).
                     .requestMatchers("/api/v1/portail/**").access(
