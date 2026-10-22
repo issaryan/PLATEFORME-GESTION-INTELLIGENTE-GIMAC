@@ -301,7 +301,7 @@ Interface interne de MS-PARTICIPANT (jamais relayée par la passerelle), jeton d
 - **Code participant** : celui de l'interface interne de MS-PARTICIPANT ; registre injoignable : l'événement part sans code, le code est complété à la publication suivante.
 - **Schémas** : `ms-homologation/src/main/resources/contrats/sandbox/*.schema.json` (JSON Schema 2020-12).
 - **Aucune écriture de la sandbox** : aucune route d'écriture de MS-HOMOLOGATION n'admet de permission `SBX_*` (test de revue).
-- **À faire hors de ce lot** : droits de lecture du sujet `homologation.liaison` pour les comptes de service `sbx-campagne` et `sbx-lecture` ; le gel d'une liaison sur changement de statut de l'institution (HOM-06) n'existe pas encore.
+- **À faire hors de ce lot** : droits de lecture du sujet `homologation.liaison` pour les comptes de service `sbx-campagne` et `sbx-lecture` (lot IAM). Le gel sur changement de statut de l'institution (HOM-06) est réalisé au §7.3.
 
 ### 7.2 Espace sandbox du DES : « Espaces des institutions » (D-118 points 2 et 3)
 
@@ -333,6 +333,25 @@ Interface interne de MS-PARTICIPANT (jamais relayée par la passerelle), jeton d
 - **Comptes de démonstration** : `super.admin` (lecture et actes), chef du DES et RSSI (lecture). Simulation au contrat
   exact : institutions fictives 99001 à 99005.
 
+### 7.3 Gel des liaisons (HOM-06) et republication des états
+
+- **Gel** : MS-HOMOLOGATION consomme `participant.status-changed.v1` (sujet `participant.status`, groupe
+  `homologation-statut-institution`, idempotent par identifiant d'événement). Une institution `SUSPENDU` ou `RETIRE` fait
+  passer ses liaisons actives (hors `CLOSE`) à `GELEE` : état d'avant le gel retenu dans `etat_avant_gel`, motif dans
+  `motif_etat`. Au retour à un autre statut, chaque liaison gelée retrouve l'état qu'elle avait. Chaque changement part
+  par `homologation.liaison-status-changed.v1` avec une version d'état supérieure (§7.1).
+- **Ordre** : par `versionStatutRegistre` (D-120, US-EXI-20) quand l'événement et le dernier appliqué en portent une,
+  sinon par `dateEffet` (strictement postérieure) ; un événement sans version ni date comparable prévaut. Dernier statut
+  appliqué par institution : table `institution_statut_applique`. Un événement périmé est acquitté sans effet.
+- **Republication** : `POST /api/v1/interne/sandbox/liaisons/republication` (jeton de service portant
+  `INTERNAL_HOMOLOGATION_REPUBLISH`, route interne jamais relayée par la passerelle, test OPA du bloc D-122) republie
+  l'état courant de chaque liaison avec sa version d'état (idempotente : les lecteurs à jour l'ignorent) ; une liaison
+  jamais publiée, ou dont le statut a changé sans publication, reçoit sa version suivante. Réponse
+  `{liaisons, republiees, nouvelles, le}` ; appel journalisé avec son demandeur. À jouer à la mise en service de
+  SBX-CAMPAGNE et de SBX-LECTURE.
+- **Besoin du lot IAM** : la permission `INTERNAL_HOMOLOGATION_REPUBLISH` sur le compte de service d'exploitation qui
+  joue la republication.
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -345,3 +364,4 @@ Interface interne de MS-PARTICIPANT (jamais relayée par la passerelle), jeton d
 | 2026-10-22 | - | §6.5 : version de statut dans participant.status-changed.v1, contrat lisible par machine (US-EXI-20, D-120) ; §6.3 : activation du jeton réduit |
 | 2026-10-22 | - | §7.2 : espace sandbox du DES, « Espaces des institutions » sur SBX-ESPACE (D-118 points 2 et 3, D-122) |
 | 2026-10-22 | - | §6.6 : fiche et nomenclature des services de MS-PARTICIPANT pour la sandbox, refus journalisé des écritures (US-EXI-21, D-120) |
+| 2026-10-22 | - | §7.3 : gel des liaisons sur changement de statut de l'institution (HOM-06) et republication des états (D-122) |

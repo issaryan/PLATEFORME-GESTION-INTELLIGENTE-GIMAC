@@ -596,3 +596,8 @@ allow if {
 	some p in input.permissions
 	p in sbx_permissions
 }
+
+# D-122 (docs/lot1/sandbox-existant-adapte.md §7, HOM-06) : republication des états de liaison pour la Sandbox GIMAC,
+# POST /api/v1/interne/sandbox/liaisons/republication de MS-HOMOLOGATION, réservée au jeton de service portant
+# INTERNAL_HOMOLOGATION_REPUBLISH (contrôle du service). Route interne : jamais relayée par la passerelle, même avec
+# la permission (règle « interne » ci-dessus) ; aucune règle d'ouverture n'est ajoutée.

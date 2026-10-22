@@ -1617,3 +1617,11 @@ test_sbx_aucune_conduite_dans_le_departement if {
 	# Administration déléguée (D-115) inchangée.
 	authz.allow with input as {"method": "GET", "path": "/bff/portail/sbx-habilitations/comptes", "permissions": ["SBX_HAB_ADMINISTRATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
 }
+
+# D-122 : republication des états de liaison pour la sandbox, route interne de MS-HOMOLOGATION jamais relayée,
+# même avec la permission dédiée, depuis aucune couche.
+test_d122_republication_jamais_relayee if {
+	not authz.allow with input as {"method": "POST", "path": "/bff/des/homologation/interne/sandbox/liaisons/republication", "permissions": ["INTERNAL_HOMOLOGATION_REPUBLISH"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/console/homologation/interne/sandbox/liaisons/republication", "permissions": ["INTERNAL_HOMOLOGATION_REPUBLISH"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/portail/homologation/interne/sandbox/liaisons/republication", "permissions": ["INTERNAL_HOMOLOGATION_REPUBLISH"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+}
