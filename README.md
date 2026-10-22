@@ -155,3 +155,4 @@ infra/ci/valider-securite.sh                       # secrets (gitleaks) et vuln�
 | 2026-10-20 | - | D-117, écrans : programme en calendrier (jour, semaine, mois) ou en tableau comme la feuille du DES, « Mon programme » et « Mon jour », éditeur des créneaux, téléchargement PDF et Excel, contraintes du rapport de 8 h |
 | 2026-10-20 | - | D-118 : administration de la Sandbox GIMAC depuis la plateforme, résultats lus par MS-HOMOLOGATION (REC) |
 | 2026-10-20 | - | Programme d’astreinte : calendrier refait en planning lisible (semaine, jour, mois) |
+| 2026-10-22 | - | Exploitation : tests des rapports indépendants de la date du jour |
