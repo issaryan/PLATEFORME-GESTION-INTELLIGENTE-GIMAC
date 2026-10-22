@@ -89,6 +89,7 @@ public class RepriseLiaisons implements RepriseLiaisonsUseCase {
     private final EntityManager em;
     private final TransactionTemplate transaction;
     private final Clock clock;
+    private cm.gimac.des.homologation.application.usecase.sandbox.PublicationEtatsLiaison publication;
     private PorteursPermission porteurs;
     private CoverageRepository couvertures;
 
@@ -131,6 +132,12 @@ public class RepriseLiaisons implements RepriseLiaisonsUseCase {
     @Autowired(required = false)
     public void setCouvertures(CoverageRepository couvertures) {
         this.couvertures = couvertures;
+    }
+
+    /** Publication des états de la liaison pour la Sandbox GIMAC (US-EXI-16). */
+    @Autowired(required = false)
+    public void setPublication(cm.gimac.des.homologation.application.usecase.sandbox.PublicationEtatsLiaison publication) {
+        this.publication = publication;
     }
 
     /** Lecteur des porteurs d'une permission (HOM_PROJECT_CONDUCT du conducteur, D-94 §3) ; absent : admis. */
@@ -239,12 +246,13 @@ public class RepriseLiaisons implements RepriseLiaisonsUseCase {
         appliquerServices(p, l, new ArrayList<>());
         mesurerEssais(liaison, l.essais(), maintenant);
         RepriseParcours.Bilan bilan = avancer(p, l, acteur);
-        outbox.publish(
-            AGREGAT,
-            liaison.getId(),
-            LiaisonOpenedPayload.TYPE,
-            new LiaisonOpenedPayload(liaison.getId(), liaison.getInstitutionId(), liaison.getTypeProjet().name(), version.getId(), version.getNumero(), liaison.getChefDeProjetId(), liaison.getBanquePartenaireId(), perimetre, acteur.id(), liaison.modeleTypeProjet().name())
-        );
+        LiaisonOpenedPayload ouverte = new LiaisonOpenedPayload(liaison.getId(), liaison.getInstitutionId(), liaison.getTypeProjet().name(), version.getId(), version.getNumero(), liaison.getChefDeProjetId(), liaison.getBanquePartenaireId(), perimetre, acteur.id(), liaison.modeleTypeProjet().name());
+        if (publication != null) {
+            // US-EXI-16 : code membre de la ligne reprise et version d'état 1, puis homologation.liaison-status-changed.v1.
+            publication.ouverture(liaison, institution.codeParticipant() != null ? institution.codeParticipant() : l.codeMembre(), ouverte);
+        } else {
+            outbox.publish(AGREGAT, liaison.getId(), LiaisonOpenedPayload.TYPE, ouverte);
+        }
         List<String> avertissements = new ArrayList<>(bilan.avertissements());
         if (l.conducteurId() == null) {
             avertissements.add("Conducteur à désigner par un chef de département");

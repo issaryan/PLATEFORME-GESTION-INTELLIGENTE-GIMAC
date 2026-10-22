@@ -129,8 +129,10 @@ class CadrageLiaisonIT extends AbstractHomologationIT {
             .andExpect(jsonPath("$.chefDeProjetNom").value("Paul Essomba"));
         // D-93 : les opérations ouvertes à l'instanciation émettent aussi homologation.operation-activated.v1.
         List<String> types = jdbc.queryForList("select event_type from outbox_event where aggregate_id = ? order by created_at", String.class, id);
-        assertThat(types).filteredOn(t -> !t.startsWith("homologation.operation-")).containsExactly(
+        // US-EXI-16 : l'ouverture publie aussi l'état de la liaison pour la sandbox (version 1).
+        assertThat(types).filteredOn(t -> !t.startsWith("homologation.operation-")).containsExactlyInAnyOrder(
             "homologation.liaison-opened.v1",
+            "homologation.liaison-status-changed.v1",
             "homologation.liaison-lead-designated.v1"
         );
         assertThat(types).contains("homologation.operation-activated.v1");

@@ -37,7 +37,12 @@ public class ParticipantStubAdapter implements ParticipantDirectoryPort {
 
     /** Enregistre une institution et son code membre (jeux d'essai de la reprise, D-107). */
     public void enregistrer(InstitutionView institution, String codeMembre) {
-        enregistrer(institution);
+        // Le code membre est aussi le code participant servi par l'interface interne (US-EXI-16).
+        enregistrer(
+            institution.codeParticipant() != null
+                ? institution
+                : new InstitutionView(institution.id(), institution.nom(), institution.statut(), institution.categorie(), institution.servicesSouscrits(), codeMembre)
+        );
         codes.put(codeMembre, institution.id());
     }
 

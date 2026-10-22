@@ -60,6 +60,13 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
     private final ParcoursCommandes conduite;
     private final DefinitionTypeProjetRepository typesProjet;
     private PorteursPermission porteurs;
+    private cm.gimac.des.homologation.application.usecase.sandbox.PublicationEtatsLiaison publication;
+
+    /** Publication des états de la liaison pour la Sandbox GIMAC (US-EXI-16). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPublication(cm.gimac.des.homologation.application.usecase.sandbox.PublicationEtatsLiaison publication) {
+        this.publication = publication;
+    }
 
     @org.springframework.beans.factory.annotation.Autowired
     public OpenLiaisonService(
@@ -154,12 +161,13 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
         List<String> perimetre = deriverPerimetre(l, institution, maintenant);
         // Étapes 3 à 10 : référentiel de l'annexe A instancié pour la liaison (D-59).
         parcours.instancier(l, perimetre, estFintech(institution), null, false);
-        outbox.publish(
-            AGREGAT,
-            l.getId(),
-            LiaisonOpenedPayload.TYPE,
-            new LiaisonOpenedPayload(l.getId(), l.getInstitutionId(), l.getTypeProjet().name(), enVigueur.getId(), enVigueur.getNumero(), l.getChefDeProjetId(), l.getBanquePartenaireId(), perimetre, acteur.id(), l.modeleTypeProjet().name())
-        );
+        LiaisonOpenedPayload ouverte = new LiaisonOpenedPayload(l.getId(), l.getInstitutionId(), l.getTypeProjet().name(), enVigueur.getId(), enVigueur.getNumero(), l.getChefDeProjetId(), l.getBanquePartenaireId(), perimetre, acteur.id(), l.modeleTypeProjet().name());
+        if (publication != null) {
+            // US-EXI-16 : code participant et version d'état 1, puis homologation.liaison-status-changed.v1.
+            publication.ouverture(l, institution.codeParticipant(), ouverte);
+        } else {
+            outbox.publish(AGREGAT, l.getId(), LiaisonOpenedPayload.TYPE, ouverte);
+        }
         return l;
     }
 

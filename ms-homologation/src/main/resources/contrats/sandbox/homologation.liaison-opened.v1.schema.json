@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gimac.cm/contrats/homologation/homologation.liaison-opened.v1",
+  "title": "homologation.liaison-opened.v1",
+  "description": "Données (data) de l'événement CloudEvents 1.0 publié par MS-HOMOLOGATION sur le sujet homologation.liaison à l'ouverture d'une liaison (cadrage, reprise de l'existant, service supplémentaire). Lu par MS-PARTICIPANT, MS-AUDIT, SBX-CAMPAGNE et SBX-LECTURE (US-EXI-16, D-122). Extension CloudEvents institutionid : identifiant de l'institution.",
+  "type": "object",
+  "required": ["liaisonId", "institutionId", "typeProjet", "versionId", "versionNumero", "chefDeProjetId", "perimetre", "ouvertPar", "modeleTypeProjet", "codeParticipant", "versionEtat"],
+  "properties": {
+    "liaisonId": { "type": "string", "format": "uuid" },
+    "institutionId": { "type": "string", "format": "uuid" },
+    "typeProjet": { "type": "string" },
+    "versionId": { "type": "string", "format": "uuid" },
+    "versionNumero": { "type": "integer" },
+    "chefDeProjetId": { "type": "string", "format": "uuid" },
+    "banquePartenaireId": { "type": ["string", "null"], "format": "uuid" },
+    "perimetre": { "type": "array", "items": { "type": "string" } },
+    "ouvertPar": { "type": "string", "format": "uuid" },
+    "modeleTypeProjet": { "type": "string" },
+    "codeParticipant": { "type": ["string", "null"], "description": "Code du participant au registre de MS-PARTICIPANT ; null seulement si le registre était injoignable." },
+    "versionEtat": { "type": "integer", "minimum": 1, "description": "Version d'état de la liaison, 1 à l'ouverture." }
+  }
+}
