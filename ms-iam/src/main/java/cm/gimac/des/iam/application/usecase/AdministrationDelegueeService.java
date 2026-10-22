@@ -2,10 +2,12 @@ package cm.gimac.des.iam.application.usecase;
 
 import cm.gimac.des.iam.application.port.out.Annuaire;
 import cm.gimac.des.iam.application.port.out.EtapesIdempotentes;
+import cm.gimac.des.iam.application.port.out.sandbox.ProtectionsAdministrateur;
 import cm.gimac.des.iam.domain.IamException;
 import cm.gimac.des.iam.domain.compte.Acteur;
 import cm.gimac.des.iam.domain.compte.Compte;
 import cm.gimac.des.iam.domain.compte.NouveauCompte;
+import cm.gimac.des.iam.domain.sandbox.ReglesPerimetre;
 import cm.gimac.des.iam.domain.service.ReglesAdministration;
 import cm.gimac.des.iam.domain.service.ReglesAdministrationDeleguee;
 import java.util.Comparator;
@@ -45,19 +47,22 @@ public class AdministrationDelegueeService {
     private final Annuaire annuaire;
     private final JournalActes journal;
     private final EtapesIdempotentes etapes;
+    private final ProtectionsAdministrateur protections;
 
     public AdministrationDelegueeService(
         AdministrationComptesService comptes,
         CatalogueProfils catalogue,
         Annuaire annuaire,
         JournalActes journal,
-        EtapesIdempotentes etapes
+        EtapesIdempotentes etapes,
+        ProtectionsAdministrateur protections
     ) {
         this.comptes = comptes;
         this.catalogue = catalogue;
         this.annuaire = annuaire;
         this.journal = journal;
         this.etapes = etapes;
+        this.protections = protections;
     }
 
     private Set<String> delegables() {
@@ -149,7 +154,10 @@ public class AdministrationDelegueeService {
         return lire(inst, id);
     }
 
-    /** Suspend ou rétablit un compte de l'institution, sans le supprimer. */
+    /**
+     * Suspend ou rétablit un compte de l'institution, sans le supprimer. Compte protégé (dernier administrateur actif,
+     * D-119 US-EXI-06) : suspension refusée avec son motif (409 IAM_SBX_COMPTE_PROTEGE), tentative journalisée.
+     */
     @Transactional(noRollbackFor = IamException.class)
     public Compte definirActif(Acteur acteur, String institutionActeur, String id, boolean actif, String motif, String cle) {
         String inst = ReglesAdministrationDeleguee.institution(institutionActeur);
@@ -158,6 +166,10 @@ public class AdministrationDelegueeService {
             return lire(inst, id);
         }
         Compte c = lire(inst, id);
+        if (!actif && protections.protege(id)) {
+            journal.compte(acteur, "TENTATIVE_SUSPENSION_COMPTE_PROTEGE", id, c.identifiant(), motif, List.of(ReglesPerimetre.MOTIF_PROTECTION));
+            ReglesPerimetre.verifierSuspensionAdmise(true);
+        }
         Map<String, Set<String>> compositions = catalogue.compositions();
         if (!actif && c.actif() && ReglesAdministrationDeleguee.administrateur(c.profils(), compositions)) {
             ReglesAdministrationDeleguee.verifierDernierAdministrateur(true, administrateursActifs(inst, compositions));

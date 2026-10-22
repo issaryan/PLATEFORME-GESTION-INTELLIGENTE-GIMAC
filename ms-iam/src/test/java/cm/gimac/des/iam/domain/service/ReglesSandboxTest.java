@@ -14,9 +14,14 @@ import org.junit.jupiter.api.Test;
 class ReglesSandboxTest {
 
     @Test
-    @DisplayName("Format SBX_<MODULE>_<FONCTION> : douze modules, cinq fonctions, rien d'autre")
+    @DisplayName("Format SBX_<MODULE>_<FONCTION> : douze modules à cinq fonctions et le treizième, SUP, en consultation seule (61 permissions)")
     void format() {
         assertThat(ReglesSandbox.MODULES).hasSize(12);
+        assertThat(ReglesSandbox.PERMISSIONS).hasSize(61).doesNotHaveDuplicates().contains(ReglesSandbox.SUPERVISION);
+        assertThat(ReglesSandbox.PERMISSIONS).allMatch(ReglesSandbox::conforme);
+        for (String f : List.of("ADMINISTRATION", "SIMULATION", "EXECUTION", "VALIDATION")) {
+            assertThat(ReglesSandbox.conforme("SBX_SUP_" + f)).isFalse();
+        }
         assertThat(ReglesSandbox.FONCTIONS).hasSize(5);
         for (String m : ReglesSandbox.MODULES) {
             for (String f : ReglesSandbox.FONCTIONS) {

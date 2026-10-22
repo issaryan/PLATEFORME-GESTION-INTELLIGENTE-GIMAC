@@ -43,6 +43,12 @@ du catalogue du frontend).
 
 Fonctions : ADMINISTRATION, SIMULATION, EXECUTION (de campagne), VALIDATION (de verdict), CONSULTATION.
 
+Ajout de D-119, en complément de D-121 : un treizième module, `SUP` (supervision de la sandbox depuis la plateforme),
+avec la seule permission `SBX_SUP_CONSULTATION`, soit soixante et une permissions `SBX_*`. Elle s'attribue par profil
+depuis la console ; aucun profil livré ne la reçoit d'office (vérifié par le générateur). SBX-TRACE l'accepte sur ses
+quatre routes de lecture de supervision. MS-IAM refuse toute autre fonction du module SUP (`ReglesSandbox`), et le
+catalogue des droits porte la fonctionnalité `sandboxSup`.
+
 ### 2.2 Valeurs de départ
 
 Valeurs configurables ensuite depuis la console (écran des profils, D-86). Les fonctions du GIMAC s'ajoutent aux profils
@@ -144,6 +150,7 @@ Règles :
 | US-EXI-16 | Fait (D-122, §7) | Consommation par SBX-CAMPAGNE et SBX-LECTURE à leur arrivée (projection de référence en test de contrat) |
 | US-EXI-20 | Fait (D-120, §6.5) | Événement périmé écarté par SBX-ESPACE, à son raccordement au bus |
 | US-EXI-21 | Fait (D-120, §6.6) | Ouverture d’un espace par SBX-ESPACE sur le registre réel, comptes de service sbx-* dans le domaine Keycloak |
+| US-EXI-06 | Fait (D-119, §8.2) | Sagas SUSPENSION et RETABLISSEMENT de SBX-ESPACE ; refus immédiat sur le jeton réduit quand la passerelle interrogera l'introspection de MS-IAM |
 
 ## 6. Passerelle, registre et services transverses (lot D-120)
 
@@ -352,6 +359,74 @@ Interface interne de MS-PARTICIPANT (jamais relayée par la passerelle), jeton d
 - **Besoin du lot IAM** : la permission `INTERNAL_HOMOLOGATION_REPUBLISH` sur le compte de service d'exploitation qui
   joue la republication.
 
+## 8. MS-IAM : périmètres, délégations et comptes de service (lot IAM, D-119)
+
+Côté plateforme du port `IamAdministrationPort` de SBX-ESPACE. Toute écriture est une étape de saga : en-tête
+`Idempotency-Key` (identifiant de saga et rang de l'étape) ; une étape reprise avec la même clé rend son résultat
+d'origine sans second effet, même quand deux reprises arrivent en même temps (réservation de la clé par insertion sans
+conflit dans `etape_idempotente`, la seconde attend la première et lit son résultat).
+
+### 8.1 Routes internes et permissions de service
+
+Jetons de service seulement, sans second facteur ; `INTERNAL_IAM_READ` n'ouvre aucune de ces routes (moindre
+privilège, règle placée avant celle de `/api/v1/interne/**`).
+
+| Opération du port | Méthode et route MS-IAM | Permission | Corps | Réponse |
+|---|---|---|---|---|
+| `suspendrePerimetre(code, suspendu, cle)` | `PUT /api/v1/interne/sandbox/perimetres/{code}/suspension` | `INTERNAL_IAM_SBX_SAGA` | `{ suspendu, motif? }` | `{ code, suspendu, depuis, sessionsRevoquees, rejouee }` |
+| (lecture) | `GET /api/v1/interne/sandbox/perimetres/{code}` | `INTERNAL_IAM_SBX_SAGA` | | même forme |
+| `attribuerRole(…, protege, cle)` (attribut seul) | `PUT /api/v1/interne/sandbox/comptes/{id}/protection-dernier-administrateur` | `INTERNAL_IAM_SBX_SAGA` | `{ protege }` | `{ compteId, institutionId, protege, rejouee }` |
+| (passerelle, services) | `POST /api/v1/interne/sandbox/introspection` | `INTERNAL_IAM_SBX_INTROSPECT` | `{ jeton, institution? }` | RFC 7662 : `{ active: false }`, ou `{ active, sub, institution_id, permissions, type, delegation_id, composants, exp }` |
+
+Clients du domaine Keycloak (générateur) : `sbx-espace` porte `INTERNAL_IAM_SBX_SAGA` (seul porteur, vérifié par le
+générateur) et `INTERNAL_PARTICIPANT_READ` ; `gateway-service` reçoit `INTERNAL_IAM_SBX_INTROSPECT`. Secret
+`GIMAC_SECRET_SBX_ESPACE` (Compose, `gimac-dev.sh`, Kubernetes, `diagnostiquer-serveur.sh`). Code de périmètre :
+`^[A-Za-z0-9_-]{1,64}$`, sinon 400 `IAM_SBX_PERIMETRE_INVALIDE`.
+
+### 8.2 Suspension d'institution et dernier administrateur (US-EXI-06)
+
+- **Indicateur superposé** (table `perimetre_suspendu`) : jamais recopié sur les comptes. État effectif d'un compte
+  d'institution = compte actif et périmètre non suspendu. Le rétablissement lève l'indicateur : chaque compte retrouve
+  son propre état, un compte suspendu avant la suspension le reste.
+- **Effet immédiat** : à la pose, les sessions Keycloak de chaque compte de l'institution sont fermées (révocation
+  globale, les jetons de ces sessions deviennent inactifs pour Keycloak) ; `GET /api/v1/interne/comptes/{id}/etat-connexion`
+  rend `actif: false` (la passerelle refuse la connexion, D-65) ; l'introspection de MS-IAM refuse tout jeton d'un
+  compte du périmètre (`PERIMETRE_SUSPENDU`), à l'instant de la requête et sans cache.
+- **Traces** : entrée `PERIMETRE_SUSPENDU` ou `PERIMETRE_RETABLI` au journal d'administration (cible : le code), et
+  `iam.account-administered.v1` pour chaque compte du périmètre (équivalent de `iam.user-changed.v1`). Pose répétée
+  avec une autre clé : sessions de nouveau révoquées, aucune nouvelle trace.
+- **Protection du dernier administrateur** (table `protection_administrateur`, posée et levée par SBX-ESPACE) : la
+  suspension du compte par l'institution (`PUT /api/v1/administration-deleguee/comptes/{id}/etat`, `actif: false`) est
+  refusée, 409 `IAM_SBX_COMPTE_PROTEGE`, `details.motif`, tentative journalisée `TENTATIVE_SUSPENSION_COMPTE_PROTEGE` ;
+  la désactivation pour inactivité l'écarte (`DESACTIVATION_INACTIVITE_ECARTEE`). Compte du GIMAC : 422
+  `IAM_SBX_COMPTE_HORS_INSTITUTION`.
+- **Désactivation des comptes inactifs de la sandbox** (IAM-15, n'existait pas encore dans MS-IAM) : comptes
+  d'institution portant un rôle de la sandbox, actifs, sans connexion depuis `gimac.sandbox.inactivite-jours` (90) ;
+  passage quotidien à 2 h 30 (`gimac.sandbox.inactivite-planification`), une seule réplique à la fois (verrou
+  consultatif PostgreSQL) ; désactivation par l'administration des comptes (journal, événement), acteur
+  `systeme-iam`. Dernière connexion : relevée quand la passerelle lit l'état de connexion après le mot de passe (table
+  `activite_compte`) ; à défaut, date de création du compte.
+- **Console** (`/console/sandbox`, fonctionnalité `consoleSandbox`, `IAM_ACCOUNT_READ`) : onglets « Périmètres
+  suspendus » et « Comptes protégés », lecture seule ; routes `GET /bff/console/iam/sandbox/{perimetres,
+  perimetres/{code}, protections}` vers `/api/v1/sandbox/**` (route `console-iam-sandbox`, OPA bloc D-119). Compte de
+  démonstration : `ROLE_SUPER_ADMIN` (ou `ROLE_RSSI`). Captures : `docs/recette/captures/exi/iam/exi-06/`.
+- **À brancher par le lot passerelle** : la décision de MS-IAM est servie par l'introspection (§8.1). Le cache de
+  quatre minutes de `KeycloakIntrospectionClient` et la projection `sbx_perimetre` (§6.3) ne voient pas la suspension :
+  la passerelle doit interroger l'introspection de MS-IAM (sans cache, ou avec un cache borné à quelques secondes) pour
+  que le refus soit immédiat sur le jeton réduit. D'ici là, la suspension prend effet à la fermeture des sessions
+  (Keycloak) et à la connexion suivante.
+
+| Critère | Test |
+|---|---|
+| 1. Introspection refusée, sessions révoquées, état des comptes inchangé | `SandboxPerimetresIT.refusImmediatApresSuspension`, `PerimetresSandboxServiceTest.suspensionDuPerimetre`, `IntrospectionSandboxServiceTest.perimetreSuspendu`, `EtatEffectifSandboxTest.etatEffectif` |
+| 2. Rétablissement à l'état antérieur | `SandboxPerimetresIT.retablissement`, `PerimetresSandboxServiceTest.retablissement`, `ReglesPerimetreTest.actifEffectif` |
+| 3. Dernier administrateur épargné et suspension refusée avec motif | `SandboxPerimetresIT.compteProtege`, `DesactivationInactifsServiceTest.compteProtegeEcarte`, `AdministrationDelegueeServiceTest.suspensionCompteProtegeRefusee` |
+| 4. Reprise idempotente de l'étape pivot | `SandboxPerimetresIT.repriseIdempotente` (trois reprises concurrentes), `PerimetresSandboxServiceTest.repriseIdempotente` |
+| Routes et moindre privilège | `SandboxPerimetresRoutesTest`, OPA `test_sbx_console_iam_lecture`, `test_sbx_console_iam_refus` |
+
+Délégations de mandat comprises dans le refus (critère 1) : vérifiées avec US-EXI-04 (§8.3), qui ajoute les
+délégations au périmètre suspendu.
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -365,3 +440,4 @@ Interface interne de MS-PARTICIPANT (jamais relayée par la passerelle), jeton d
 | 2026-10-22 | - | §7.2 : espace sandbox du DES, « Espaces des institutions » sur SBX-ESPACE (D-118 points 2 et 3, D-122) |
 | 2026-10-22 | - | §6.6 : fiche et nomenclature des services de MS-PARTICIPANT pour la sandbox, refus journalisé des écritures (US-EXI-21, D-120) |
 | 2026-10-22 | - | §7.3 : gel des liaisons sur changement de statut de l'institution (HOM-06) et republication des états (D-122) |
+| 2026-10-22 | - | §8.1 et §8.2 : routes internes du lot IAM, suspension d'institution et protection du dernier administrateur (US-EXI-06, D-119) |

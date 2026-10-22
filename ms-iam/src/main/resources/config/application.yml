@@ -293,6 +293,14 @@ gimac:
     double-facteur:
       exige: true
       niveaux-acr: 2,3
+  # Sandbox GIMAC (D-119, docs/lot1/sandbox-existant-adapte.md §6) : désactivation des comptes inactifs de la sandbox
+  # (jours sans connexion, passage quotidien) et durées maximales des délégations (mandat, accès de prestataire).
+  sandbox:
+    inactivite-active: true
+    inactivite-jours: 90
+    inactivite-planification: '0 30 2 * * *'
+    mandat-duree-max: 90d
+    prestataire-duree-max: 8h
   iam:
     keycloak:
       url: ${GIMAC_KEYCLOAK_URL:http://localhost:9080}
