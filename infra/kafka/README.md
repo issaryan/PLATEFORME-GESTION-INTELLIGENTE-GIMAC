@@ -8,3 +8,4 @@
 |---|---|---|
 | 2026-09-29 | — | Script des sujets du lot 1 (D-55) |
 | 2026-10-01 | — | Exécution automatique par `kafka-sujets-init` ; sujets existants lus une fois et ignorés |
+| 2026-10-23 | D-122, D-124 | Sujet `sbx-lecture.campaign-published.v1` et sa file `.dlq` (fin de campagne de SBX-LECTURE, US-EXI-15) ; les autres sujets de la sandbox, nommés d'après le type de l'événement, sont créés par la sandbox |

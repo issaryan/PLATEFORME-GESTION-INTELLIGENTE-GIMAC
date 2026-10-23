@@ -124,6 +124,7 @@ Unitaires (`LiaisonOpeningPolicyTest`, `OpenLiaisonServiceTest`, `LiaisonQueries
 | 2026-10-13 | D-107 | D-107 : `LiaisonOpeningPolicy` admet ACTIF ; `POST /api/v1/interne/reprise/liaisons` et `/api/v1/reprise/liaisons` (`REF_REPRISE_IMPORT`) : import idempotent par référence d'origine, avancement à qualifier, détaillé ou en production, preuve « reprise », projection recalculée par le moteur, simulation par défaut ; changeset `20261016000100` (`origine_etat`, `reprise_le`) |
 | 2026-10-22 | - | D-122, US-EXI-16 : états des liaisons publiés pour la Sandbox GIMAC (`liaison-status-changed.v1`, code participant, version d'état), règle JaCoCo à 98 % |
 | 2026-10-22 | - | D-122, HOM-06 : gel et rétablissement des liaisons sur changement de statut de l'institution ; route interne de republication des états pour la sandbox |
+| 2026-10-23 | - | D-122, US-EXI-14, US-EXI-15, US-EXI-17 : client du contrat de SBX-LECTURE, relève périodique, consommateur `sbx-lecture.campaign-published.v1` (groupe `homologation-fin-campagne-sandbox`), résultats de la sandbox d'une liaison ; règle JaCoCo à 98 % étendue |
 <!-- GIMAC:FIN -->
 
 # homologation

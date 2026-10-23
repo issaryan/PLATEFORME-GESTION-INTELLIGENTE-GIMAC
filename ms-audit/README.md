@@ -50,6 +50,7 @@ Copié et adapté (paquet `cm.gimac.des.audit`) ; chaque bean est inactif tant q
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 72 tests unitaires et 161 tests d'intégration réussis, image Jib construite ; test généré `PeriodRootResourceIT` corrigé (période unique) (D-54). |
 | 2026-09-29 | — | Permissions métier (HOM_*, CER_*, INTERNAL_*) acceptées comme autorités, en plus de ROLE_* (D-55). |
 | 2026-09-29 | — | `.gitignore` : exception `!src/**/out/`, pour que les ports sortants `application/port/out` soient versionnés |
+| 2026-10-23 | D-124 | US-EXI-10 : événements à effet de la sandbox consommés par motif (`sbx-*`, groupe `audit-sandbox`), enveloppe contrôlée (`EnveloppeSandbox`), registre (colonne `institution_id`), rebut `rebut_sandbox` et alerte au-delà du seuil ; `/api/v1/registre/sandbox` (recherche, export CSV, rebut, `SBX_TRA_CONSULTATION`) ; règle JaCoCo à 98 % des classes de la sandbox |
 <!-- GIMAC:FIN -->
 
 # audit
