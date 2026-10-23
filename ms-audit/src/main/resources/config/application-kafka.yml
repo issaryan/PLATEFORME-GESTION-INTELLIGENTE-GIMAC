@@ -46,3 +46,12 @@ gimac:
       # Signatures de processus d'unité (pilotage.process-step-signed.v1) et d'opérations d'homologation
       # (homologation.operation-signed.v1), scellées au registre (groupe audit-signatures).
       sujets: pilotage.process,homologation.operation
+    # Événements à effet des onze services de la Sandbox GIMAC (US-EXI-10) : sujets nommés par le type
+    # (sbx-<service>.<agrégat>-<événement>.v<n>, comme le relais de SBX-ESPACE) ou par l'agrégat, par motif (files de rebut
+    # exclues), groupe audit-sandbox ; enveloppes non conformes au rebut (table rebut_sandbox).
+    sandbox:
+      motif: 'sbx-[a-z0-9]+\.[a-z0-9-]+(\.v[0-9]+)?'
+  audit:
+    sandbox:
+      # Alerte de retard de consommation (AUD-07) : levée quand le rebut des enveloppes de la sandbox dépasse ce seuil.
+      seuil-rebut: 10
