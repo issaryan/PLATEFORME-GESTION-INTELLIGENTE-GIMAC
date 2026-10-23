@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gimac.cm/contrats/sbx-lecture/v1/campagnes",
+  "title": "SBX-LECTURE v1 : campagnes d'une liaison",
+  "description": "Réponse de GET /v1/liaisons/{id}/campagnes (contrat de lecture L04, CC-SBX-GIMAC-02 annexe D, table D.1) telle que MS-HOMOLOGATION la lit (US-EXI-14, D-122). Une campagne dont le code participant est en collision au registre est remplacée par un signalement.",
+  "type": "object",
+  "required": ["campagnes"],
+  "properties": {
+    "campagnes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["identifiantCampagne", "etat"],
+        "properties": {
+          "identifiantCampagne": { "type": "string" },
+          "code": { "type": ["string", "null"] },
+          "etat": { "type": "string", "enum": ["BROUILLON", "EN_COURS", "SUSPENDUE", "TERMINEE", "ANNULEE", "SIGNALEE"] },
+          "signalement": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

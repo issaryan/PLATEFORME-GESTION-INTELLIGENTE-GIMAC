@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gimac.cm/contrats/sbx-lecture/v1/executions",
+  "title": "SBX-LECTURE v1 : page d'enregistrements d'exécution",
+  "description": "Réponse de GET /v1/campagnes/{c}/executions?depuis=&taille= (L04, D.3, D.5) : au plus la taille demandée, jeton opaque de la position suivante, page close si et seulement si pleine, étiquette d'entité. Chaque enregistrement porte les treize éléments d'INT-04 et sa position, sa nature, la version de la table et l'origine. Un enregistrement de création porte le verdict natif PENDING sans verdict normalisé.",
+  "type": "object",
+  "required": ["enregistrements", "positionSuivante", "close", "etiquette"],
+  "properties": {
+    "enregistrements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["identifiantCampagne", "identifiantLiaison", "codeParticipant", "identifiantCas", "identifiantScenario", "versionScenario", "identifiantExecution", "dateExecution", "verdictNatif", "modeExecution", "referenceTrace", "position", "nature", "origine"],
+        "properties": {
+          "identifiantCampagne": { "type": "string" },
+          "identifiantLiaison": { "type": "string", "format": "uuid" },
+          "codeParticipant": { "type": "string" },
+          "identifiantCas": { "type": "string" },
+          "identifiantScenario": { "type": "string" },
+          "versionScenario": { "type": "string" },
+          "identifiantExecution": { "type": "string" },
+          "dateExecution": { "type": "string", "format": "date-time" },
+          "verdictNatif": { "type": "string", "enum": ["PASSED", "FAILED", "PENDING", "SKIPPED", "NA"] },
+          "verdictNormalise": { "type": ["string", "null"], "enum": ["favorable", "defavorable", "non_execute", null] },
+          "motif": { "type": ["string", "null"] },
+          "modeExecution": { "type": "string" },
+          "referenceTrace": { "type": "string" },
+          "position": { "type": "string" },
+          "nature": { "type": "string", "enum": ["CREATION", "VALIDATION", "RECTIFICATION"] },
+          "versionTable": { "type": ["string", "null"] },
+          "origine": { "type": "string", "enum": ["PLATEFORME", "REPRISE"] }
+        }
+      }
+    },
+    "positionSuivante": { "type": ["string", "null"] },
+    "close": { "type": "boolean" },
+    "etiquette": { "type": "string" }
+  }
+}
