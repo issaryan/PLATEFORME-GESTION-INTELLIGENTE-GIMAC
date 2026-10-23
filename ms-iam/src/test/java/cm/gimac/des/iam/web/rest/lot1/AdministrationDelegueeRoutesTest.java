@@ -125,6 +125,19 @@ class AdministrationDelegueeRoutesTest {
     }
 
     @Test
+    @DisplayName("US-EXI-23 : demande de déblocage de l'institution transmise au service avec son motif, ou sans corps")
+    void deblocage() throws Exception {
+        when(service.refuserDeblocage(any(), eq("99001"), eq("c1"), any())).thenThrow(IamException.interdit("IAM_SBX_DEBLOCAGE_RESERVE", "Réservé au GIMAC", java.util.Map.of()));
+        mvc
+            .perform(post(U + "/comptes/c1/deblocage").with(administrateur()).contentType(MediaType.APPLICATION_JSON).content("{\"motif\":\"Testeur bloqué\"}"))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("IAM_SBX_DEBLOCAGE_RESERVE"));
+        mvc.perform(post(U + "/comptes/c1/deblocage").with(administrateur())).andExpect(status().isForbidden());
+        verify(service).refuserDeblocage(any(), eq("99001"), eq("c1"), eq("Testeur bloqué"));
+        verify(service).refuserDeblocage(any(), eq("99001"), eq("c1"), isNull());
+    }
+
+    @Test
     @DisplayName("Accès : 401 sans jeton, 403 sans la permission ou sans second facteur")
     void acces() throws Exception {
         mvc.perform(get(U + "/comptes")).andExpect(status().isUnauthorized());

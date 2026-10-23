@@ -70,7 +70,7 @@ class DemandesSandboxConsumerTest {
     void donneesTexte() throws Exception {
         consommateur.recevoir(
             """
-            {"id":"d-2","type":"sbx-raccordement.notification-requested.v1","data":"{\\"modele\\":\\"SBX_RAC_ECHEANCE_CERTIFICAT\\",\\"le\\":\\"hier\\"}"}"""
+            {"id":"d-2","type":"sbx-raccordement.notification-requested.v1","data":"{\\"modele\\":\\"SBX_RAC_ECHEANCE_CERTIFICAT\\",\\"le\\":\\"hier\\",\\"destinataires\\":[1,\\"a\\",null]}"}"""
         );
         consommateur.recevoir("{\"id\":\"d-3\",\"type\":\"sbx-trace.notification-requested.v1\",\"data\":{\"modele\":\"SBX_TRA_ALERTE\",\"destinataires\":\"x\"}}");
         ArgumentCaptor<Demande> d = ArgumentCaptor.forClass(Demande.class);
