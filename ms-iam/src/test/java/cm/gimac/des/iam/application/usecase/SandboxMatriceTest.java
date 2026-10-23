@@ -65,10 +65,11 @@ class SandboxMatriceTest {
     }
 
     @Test
-    @DisplayName("GET /permissions?prefixe=SBX : les soixante permissions de la sandbox, et elles seules")
+    @DisplayName("GET /permissions?prefixe=SBX : les soixante et une permissions de la sandbox (treize modules, SUP en consultation seule), et elles seules")
     void prefixe() {
         List<String> sbx = configuration.permissions("sbx");
-        assertThat(sbx).hasSize(60).allMatch(p -> p.startsWith("SBX_")).contains("SBX_MOB_EXECUTION", "SBX_CER_VALIDATION", "SBX_LEC_CONSULTATION");
+        assertThat(sbx).hasSize(61).allMatch(p -> p.startsWith("SBX_")).contains("SBX_MOB_EXECUTION", "SBX_CER_VALIDATION", "SBX_LEC_CONSULTATION", "SBX_SUP_CONSULTATION")
+            .doesNotContain("SBX_SUP_ADMINISTRATION");
         assertThat(configuration.permissions(" ")).isEqualTo(configuration.permissions()).contains("PAR_INSTITUTION_READ");
         assertThat(configuration.permissions(null)).containsAll(sbx);
     }

@@ -1,0 +1,57 @@
+package cm.gimac.des.participant.application.usecase;
+
+import cm.gimac.des.participant.application.port.out.RegistreLecture;
+import cm.gimac.des.participant.application.port.out.RegistreLecture.Correspondant;
+import cm.gimac.des.participant.application.port.out.RegistreLecture.Identite;
+import cm.gimac.des.participant.application.port.out.RegistreLecture.Service;
+import cm.gimac.des.participant.application.port.out.VersionsStatutRegistre;
+import cm.gimac.des.participant.domain.ParticipantException;
+import java.util.List;
+import java.util.Map;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Lecture du registre officiel par la Sandbox GIMAC (US-EXI-21, D-120), sous les comptes de service sbx-espace,
+ * sbx-raccordement et sbx-referentiel (jeton de service, INTERNAL_PARTICIPANT_READ) : fiche d'une institution (code,
+ * raison sociale, statut et sa version, correspondants actifs) et nomenclature des services souscrits. Consultation
+ * seule : aucune méthode n'écrit.
+ */
+@org.springframework.stereotype.Service
+@Transactional(readOnly = true)
+public class RegistreSandboxQueries {
+
+    public static final int TAILLE_MAX = 100;
+
+    /** Fiche lue par SBX-ESPACE à l'ouverture d'un espace. */
+    public record Fiche(String codeParticipant, String raisonSociale, String statut, long versionStatut, List<Correspondant> correspondants) {}
+
+    /** Page de la nomenclature des services. */
+    public record PageServices(List<Service> contenu, long total, int page, int taille) {}
+
+    private final RegistreLecture registre;
+    private final VersionsStatutRegistre versions;
+
+    public RegistreSandboxQueries(RegistreLecture registre, VersionsStatutRegistre versions) {
+        this.registre = registre;
+        this.versions = versions;
+    }
+
+    /** Fiche de l'institution de ce code ; 404 PAR_INSTITUTION_NOT_FOUND si le code est absent du registre. */
+    public Fiche fiche(String codeParticipant) {
+        String code = codeParticipant == null ? "" : codeParticipant.trim();
+        Identite i = registre.parCode(code).orElseThrow(() -> ParticipantException.notFound("PAR_INSTITUTION_NOT_FOUND", code));
+        return new Fiche(i.codeParticipant(), i.raisonSociale(), i.statut(), versions.courante(i.id()), registre.correspondantsActifs(i.id()));
+    }
+
+    /** Nomenclature des services souscrits, triée par code ; taille de 1 à 100. */
+    public PageServices nomenclature(int page, int taille) {
+        if (page < 0 || taille < 1 || taille > TAILLE_MAX) {
+            throw ParticipantException.unprocessable(
+                "PAR_PAGINATION_INVALIDE",
+                "Page ou taille invalide",
+                Map.of("page", page, "taille", taille, "tailleMax", TAILLE_MAX)
+            );
+        }
+        return new PageServices(registre.services(page, taille), registre.nombreServices(), page, taille);
+    }
+}

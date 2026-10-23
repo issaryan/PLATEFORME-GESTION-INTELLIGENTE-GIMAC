@@ -27,6 +27,8 @@ export const ECRANS_CONSOLE: Record<string, Ecran> = {
   consoleMatrice: { chemin: '/console/matrice-pouvoirs' },
   consoleOrganisation: { chemin: '/console/organisation' },
   consoleOrganigramme: { chemin: '/console/organigramme' },
+  // Sandbox GIMAC (D-119) : ce que MS-IAM applique à la sandbox.
+  consoleSandbox: { chemin: '/console/sandbox' },
   consoleJournal: { chemin: '/console/journal' },
   consolePolitique: { chemin: '/console/politique-securite' },
   consoleSupervision: { chemin: '/console/plateforme/supervision' },

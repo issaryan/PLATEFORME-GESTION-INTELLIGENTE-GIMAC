@@ -68,6 +68,9 @@ public class SecurityConfiguration {
                     // Connexion sur la plateforme (D-65) : jeton de service de la passerelle seulement.
                     .requestMatchers("/api/v1/interne/comptes/*/etat-connexion", "/api/v1/interne/comptes/*/alerte-connexion", "/api/v1/interne/connexion/**")
                         .access(new ClientInterneAuthorizationManager("INTERNAL_IAM_READ", clientsInternesConnexion))
+                    // Sandbox GIMAC (D-119) : étapes de saga de SBX-ESPACE (INTERNAL_IAM_SBX_SAGA) et introspection
+                    // (INTERNAL_IAM_SBX_INTROSPECT), sans INTERNAL_IAM_READ (moindre privilège) ; @PreAuthorize par route.
+                    .requestMatchers("/api/v1/interne/sandbox/**").hasAnyAuthority("INTERNAL_IAM_SBX_SAGA", "INTERNAL_IAM_SBX_INTROSPECT")
                     // Interfaces internes : jeton de service uniquement (PI §0.7).
                     .requestMatchers("/api/v1/interne/**").hasAuthority("INTERNAL_IAM_READ")
                     // Premier accès (D-65) : acr 1 admis sur les seules routes de l'assistant.

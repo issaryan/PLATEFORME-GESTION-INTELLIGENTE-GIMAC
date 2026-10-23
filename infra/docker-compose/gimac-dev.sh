@@ -93,7 +93,7 @@ preparer_env() {
                   GIMAC_SECRET_IAM_SERVICE GIMAC_SECRET_GATEWAY_SUPERVISION GIMAC_SECRET_INTERNAL GIMAC_KEYCLOAK_DB_PASSWORD \
                   GIMAC_SECRET_COLLABORATION_SERVICE GIMAC_SECRET_CONNEXION GIMAC_SECRET_WEB_APP \
                   GIMAC_SECRET_GATEWAY_SERVICE GIMAC_SECRET_PILOTAGE_SERVICE GIMAC_SECRET_NOTIFICATION_SERVICE \
-                  GIMAC_SECRET_REPRISE_SERVICE GIMAC_SECRET_MONITORING_SERVICE; do
+                  GIMAC_SECRET_REPRISE_SERVICE GIMAC_SECRET_MONITORING_SERVICE GIMAC_SECRET_SBX_ESPACE; do
     grep -q "^$variable=" "$fichier" || { echo "$variable=$(openssl rand -hex 20)" >> "$fichier"; echo "Secret ajouté à .env : $variable"; }
   done
   # Clé AES-256-GCM du chiffrement au repos de la messagerie (D-64) : 32 octets en base 64.

@@ -263,6 +263,25 @@ class PublicationEtatsLiaisonTest {
     }
 
     @Test
+    @DisplayName("Republication : état courant avec la même version ; statut changé sans publication : version suivante")
+    void republication() {
+        Liaison l = liaison(EtatLiaison.GELEE);
+        EtatLiaisonSandbox connu = new EtatLiaisonSandbox(l.getId(), "99001", StatutSandbox.OUVERTE, T);
+        connu.constater(StatutSandbox.GELEE, T);
+        when(etats.verrouiller(l.getId())).thenReturn(Optional.of(connu));
+
+        assertThat(publication.republier(l)).isFalse();
+        LiaisonStatusChangedPayload s = changement();
+        assertThat(s.versionEtat()).isEqualTo(2L);
+        assertThat(s.statut()).isEqualTo("GELEE");
+        assertThat(s.statutPrecedent()).isNull();
+
+        Liaison close = liaison(EtatLiaison.CLOSE);
+        when(etats.verrouiller(close.getId())).thenReturn(Optional.of(new EtatLiaisonSandbox(close.getId(), "99001", StatutSandbox.OUVERTE, T)));
+        assertThat(publication.republier(close)).isTrue();
+    }
+
+    @Test
     @DisplayName("Statut vu par la sandbox : états actifs ouverts, gel et clôture distincts")
     void statutSandbox() {
         assertThat(StatutSandbox.de(EtatLiaison.OUVERTE)).isEqualTo(StatutSandbox.OUVERTE);

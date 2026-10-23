@@ -23,10 +23,21 @@ import java.util.regex.Pattern;
 public final class ReglesSandbox {
 
     public static final String PREFIXE = "SBX_";
+    /** Douze modules de la matrice complète (cinq fonctions chacun). */
     public static final List<String> MODULES = List.of("HAB", "RAC", "REF", "SCN", "DON", "SIM", "MOB", "ISO", "CAR", "CER", "TRA", "LEC");
     public static final List<String> FONCTIONS = List.of("ADMINISTRATION", "SIMULATION", "EXECUTION", "VALIDATION", "CONSULTATION");
+    /**
+     * Treizième module (D-121, D-119) : supervision de la sandbox depuis la plateforme, avec la seule consultation,
+     * attribuée par profil, aucun profil livré ne la recevant d'office.
+     */
+    public static final String SUPERVISION = "SBX_SUP_CONSULTATION";
+    /** Soixante et une permissions : les soixante de la matrice complète et la supervision. */
+    public static final List<String> PERMISSIONS = java.util.stream.Stream.concat(
+        MODULES.stream().flatMap(m -> FONCTIONS.stream().map(f -> PREFIXE + m + "_" + f)),
+        java.util.stream.Stream.of(SUPERVISION)
+    ).toList();
     private static final Pattern FORMAT = Pattern.compile(
-        "^SBX_(" + String.join("|", MODULES) + ")_(" + String.join("|", FONCTIONS) + ")$"
+        "^SBX_((" + String.join("|", MODULES) + ")_(" + String.join("|", FONCTIONS) + ")|SUP_CONSULTATION)$"
     );
 
     private ReglesSandbox() {}

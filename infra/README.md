@@ -38,3 +38,4 @@ Principe (D-48) : ce que JHipster sait générer est régénéré, jamais édit�
 | 2026-10-20 | D-116 | OPA : rapports de monitoring, rapports quotidiens, activité de l'équipe et contraintes de génération sous `/bff/des/monitoring` |
 | 2026-10-20 | - | D-117 : règles OPA de /grilles/creneaux (PUT, MON_ROSTER_MANAGE) et /grilles/{id}/export (MON_SUPERVISION_READ) ; INTERNAL_DOCUMENT_RENDER donné à monitoring-service ; domaine Keycloak régénéré |
 | 2026-10-22 | D-120 | OPA : routes de la Sandbox GIMAC (`/bff/{console,portail}/sbx-*`, `/bff/des/sbx-espace`), permissions `SBX_<MODULE>_<FONCTION>`, repli du département fermé à `/bff/des/sbx-*` |
+| 2026-10-22 | D-119 | Keycloak : client `sbx-espace` (`INTERNAL_IAM_SBX_SAGA`, `INTERNAL_PARTICIPANT_READ`), `INTERNAL_IAM_SBX_INTROSPECT` à `gateway-service`, secret `GIMAC_SECRET_SBX_ESPACE` (Compose, gimac-dev.sh, Kubernetes) ; OPA : lectures `/bff/console/iam/sandbox/**` (IAM_ACCOUNT_READ) |

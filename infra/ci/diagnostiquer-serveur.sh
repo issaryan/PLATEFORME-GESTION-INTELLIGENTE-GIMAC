@@ -108,7 +108,8 @@ etape "Jeton de chaque client de service (code HTTP seulement, aucun secret affi
 # ligne de commande) ; seul le code de la réponse de Keycloak est affiché.
 for client in pilotage-service:GIMAC_SECRET_PILOTAGE_SERVICE notification-service:GIMAC_SECRET_NOTIFICATION_SERVICE \
               collaboration-service:GIMAC_SECRET_COLLABORATION_SERVICE homologation-service:GIMAC_SECRET_HOMOLOGATION_SERVICE \
-              reprise-service:GIMAC_SECRET_REPRISE_SERVICE monitoring-service:GIMAC_SECRET_MONITORING_SERVICE; do
+              reprise-service:GIMAC_SECRET_REPRISE_SERVICE monitoring-service:GIMAC_SECRET_MONITORING_SERVICE \
+              sbx-espace:GIMAC_SECRET_SBX_ESPACE; do
   CLIENT_ID="${client%%:*}"
   CLIENT_SECRET="$(sed -n "s/^${client#*:}=//p" "$ENV" 2>/dev/null)"
   export CLIENT_ID CLIENT_SECRET

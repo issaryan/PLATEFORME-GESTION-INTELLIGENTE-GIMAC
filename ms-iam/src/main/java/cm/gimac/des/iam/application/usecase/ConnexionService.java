@@ -1,6 +1,7 @@
 package cm.gimac.des.iam.application.usecase;
 
 import cm.gimac.des.iam.application.port.out.Annuaire;
+import cm.gimac.des.iam.application.usecase.sandbox.EtatEffectifSandbox;
 import cm.gimac.des.iam.domain.IamException;
 import cm.gimac.des.iam.domain.compte.Acteur;
 import cm.gimac.des.iam.domain.compte.ActionRequise;
@@ -35,16 +36,21 @@ public class ConnexionService {
     private final Annuaire annuaire;
     private final LiensCourriel liens;
     private final JournalActes journal;
+    private final EtatEffectifSandbox etatEffectif;
 
-    public ConnexionService(Annuaire annuaire, LiensCourriel liens, JournalActes journal) {
+    public ConnexionService(Annuaire annuaire, LiensCourriel liens, JournalActes journal, EtatEffectifSandbox etatEffectif) {
         this.annuaire = annuaire;
         this.liens = liens;
         this.journal = journal;
+        this.etatEffectif = etatEffectif;
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * État effectif (D-119, US-EXI-06) : un compte d'un périmètre suspendu est vu inactif sans que son état change ;
+     * une connexion admise est relevée comme dernière connexion.
+     */
     public EtatConnexion etat(String id) {
-        return EtatConnexion.de(annuaire.lire(id).orElseThrow(() -> IamException.introuvable("IAM_ACCOUNT_NOT_FOUND", id)));
+        return etatEffectif.etat(annuaire.lire(id).orElseThrow(() -> IamException.introuvable("IAM_ACCOUNT_NOT_FOUND", id)));
     }
 
     /** Connexion signalée par la passerelle depuis un appareil jamais vu pour le compte (mon-compte.md §3). */
