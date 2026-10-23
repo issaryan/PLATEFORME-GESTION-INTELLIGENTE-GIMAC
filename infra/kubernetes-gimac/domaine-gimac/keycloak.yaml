@@ -112,6 +112,66 @@ spec:
                 secretKeyRef:
                   name: gimac-clients-keycloak
                   key: sbx-espace
+            - name: GIMAC_SECRET_SBX_RACCORDEMENT
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: sbx-raccordement
+            - name: GIMAC_SECRET_SBX_REFERENTIEL
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: sbx-referentiel
+            - name: GIMAC_SECRET_SBX_DONNEES
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: sbx-donnees
+            - name: GIMAC_SECRET_SBX_SIMULATION
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: sbx-simulation
+            - name: GIMAC_SECRET_SBX_MOBILE
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: sbx-mobile
+            - name: GIMAC_SECRET_SBX_ISO20022
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: sbx-iso20022
+            - name: GIMAC_SECRET_SBX_CARTE
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: sbx-carte
+            - name: GIMAC_SECRET_SBX_CAMPAGNE
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: sbx-campagne
+            - name: GIMAC_SECRET_SBX_TRACE
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: sbx-trace
+            - name: GIMAC_SECRET_SBX_LECTURE
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: sbx-lecture
+            - name: GIMAC_SECRET_SBX_MIFOS
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: sbx-mifos
+            - name: GIMAC_SECRET_EXPLOITATION_SERVICE
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: exploitation-service
             - name: GIMAC_SECRET_INTERNAL
               valueFrom:
                 secretKeyRef:

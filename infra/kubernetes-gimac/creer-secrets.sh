@@ -37,8 +37,10 @@ if ! kubectl -n "$NS" get secret gimac-clients-keycloak -o jsonpath='{.data.repr
   kubectl -n "$NS" patch secret gimac-clients-keycloak --type merge \
     -p "{\"stringData\":{\"reprise-service\":\"$(openssl rand -hex 24)\"}}" >/dev/null && echo "complété : gimac-clients-keycloak (reprise-service)"
 fi
-# Clients de la Sandbox GIMAC (D-119), ajoutés après la première création du secret : complétés sans toucher aux autres.
-for cle in sbx-espace; do
+# Clients de la Sandbox GIMAC (D-119, US-EXI-05) et compte d'exploitation (D-122), ajoutés après la première création du
+# secret : complétés sans toucher aux autres.
+for cle in sbx-espace sbx-raccordement sbx-referentiel sbx-donnees sbx-simulation sbx-mobile sbx-iso20022 \
+           sbx-carte sbx-campagne sbx-trace sbx-lecture sbx-mifos exploitation-service; do
   if ! kubectl -n "$NS" get secret gimac-clients-keycloak -o jsonpath="{.data.$cle}" 2>/dev/null | grep -q .; then
     kubectl -n "$NS" patch secret gimac-clients-keycloak --type merge \
       -p "{\"stringData\":{\"$cle\":\"$(openssl rand -hex 24)\"}}" >/dev/null && echo "complété : gimac-clients-keycloak ($cle)"

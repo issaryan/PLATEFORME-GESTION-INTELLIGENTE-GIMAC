@@ -207,9 +207,41 @@ public class AnnuaireEnMemoire implements Annuaire {
         }
     }
 
+    /** Échecs de connexion par compte et instant du dernier (protection contre la force brute, US-EXI-23). */
+    private final Map<String, Integer> echecs = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, Instant> derniersEchecs = new java.util.concurrent.ConcurrentHashMap<>();
+
     @Override
     public boolean verifierMotDePasse(String identifiant, String motDePasse) {
-        return parIdentifiant(identifiant).filter(Compte::actif).map(c -> motsDePasse.getOrDefault(c.id(), new ArrayDeque<>()).peekFirst()).map(motDePasse::equals).orElse(false);
+        Optional<Compte> c = parIdentifiant(identifiant).filter(Compte::actif);
+        if (c.isEmpty()) {
+            return false;
+        }
+        String id = c.orElseThrow().id();
+        if (verrouillage(id).verrouille()) {
+            return false;
+        }
+        boolean juste = motDePasse != null && motDePasse.equals(motsDePasse.getOrDefault(id, new ArrayDeque<>()).peekFirst());
+        if (juste) {
+            echecs.remove(id);
+        } else {
+            echecs.merge(id, 1, Integer::sum);
+            derniersEchecs.put(id, Instant.now());
+        }
+        return juste;
+    }
+
+    @Override
+    public cm.gimac.des.iam.domain.compte.Verrouillage verrouillage(String id) {
+        exiger(id);
+        int n = echecs.getOrDefault(id, 0);
+        return new cm.gimac.des.iam.domain.compte.Verrouillage(politique.forceBruteActive() && n >= politique.forceBruteEchecsMax(), n, derniersEchecs.get(id));
+    }
+
+    @Override
+    public void debloquer(String id) {
+        exiger(id);
+        echecs.remove(id);
     }
 
     @Override

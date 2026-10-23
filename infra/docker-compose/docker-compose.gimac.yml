@@ -251,8 +251,21 @@ services:
       - GIMAC_SECRET_MONITORING_SERVICE=${GIMAC_SECRET_MONITORING_SERVICE:?à définir dans .env}
       # Reprise de l'existant (D-107) : client reprise-service de l'outil infra/reprise/importer-reprise.py.
       - GIMAC_SECRET_REPRISE_SERVICE=${GIMAC_SECRET_REPRISE_SERVICE:?à définir dans .env}
-      # Sandbox GIMAC (D-119) : comptes de service des services de la sandbox (clients sbx-*).
+      # Sandbox GIMAC (D-119, US-EXI-05) : comptes de service des onze services de la sandbox et de Mifos (clients sbx-*).
       - GIMAC_SECRET_SBX_ESPACE=${GIMAC_SECRET_SBX_ESPACE:?à définir dans .env}
+      - GIMAC_SECRET_SBX_RACCORDEMENT=${GIMAC_SECRET_SBX_RACCORDEMENT:?à définir dans .env}
+      - GIMAC_SECRET_SBX_REFERENTIEL=${GIMAC_SECRET_SBX_REFERENTIEL:?à définir dans .env}
+      - GIMAC_SECRET_SBX_DONNEES=${GIMAC_SECRET_SBX_DONNEES:?à définir dans .env}
+      - GIMAC_SECRET_SBX_SIMULATION=${GIMAC_SECRET_SBX_SIMULATION:?à définir dans .env}
+      - GIMAC_SECRET_SBX_MOBILE=${GIMAC_SECRET_SBX_MOBILE:?à définir dans .env}
+      - GIMAC_SECRET_SBX_ISO20022=${GIMAC_SECRET_SBX_ISO20022:?à définir dans .env}
+      - GIMAC_SECRET_SBX_CARTE=${GIMAC_SECRET_SBX_CARTE:?à définir dans .env}
+      - GIMAC_SECRET_SBX_CAMPAGNE=${GIMAC_SECRET_SBX_CAMPAGNE:?à définir dans .env}
+      - GIMAC_SECRET_SBX_TRACE=${GIMAC_SECRET_SBX_TRACE:?à définir dans .env}
+      - GIMAC_SECRET_SBX_LECTURE=${GIMAC_SECRET_SBX_LECTURE:?à définir dans .env}
+      - GIMAC_SECRET_SBX_MIFOS=${GIMAC_SECRET_SBX_MIFOS:?à définir dans .env}
+      # Compte de service d'exploitation (D-122) : republication des états des liaisons pour la sandbox.
+      - GIMAC_SECRET_EXPLOITATION_SERVICE=${GIMAC_SECRET_EXPLOITATION_SERVICE:?à définir dans .env}
       - GIMAC_SECRET_INTERNAL=${GIMAC_SECRET_INTERNAL:?à définir dans .env}
 
   prometheus:

@@ -25,4 +25,7 @@ public interface DelegationsSandbox {
     List<Delegation> lister(TypeDelegation type, int page, int taille);
 
     long compter(TypeDelegation type);
+
+    /** Vrai si le compte a jamais été désigné dans une délégation de ce type (compte de prestataire, US-EXI-24). */
+    boolean designe(String compteId, TypeDelegation type);
 }

@@ -104,8 +104,16 @@ class SandboxPerimetresRoutesTest {
         when(delegations.revoquer(any(), eq("d1"), eq("Fin"), eq("saga-r/1"))).thenReturn(vue(false));
         when(delegations.prolonger(any(), eq("d1"), eq(T.plusSeconds(172800)), isNull())).thenReturn(vue(false));
         when(delegations.lister(eq(TypeDelegation.MANDAT), anyInt(), anyInt())).thenReturn(new DelegationsSandboxService.PageDelegations(List.of(vue(false)), 1, 0, 20));
-        when(introspection.introspecter("j1", "99001")).thenReturn(Introspection.refusee("s", "PERIMETRE_SUSPENDU"));
-        when(introspection.introspecter("j2", null)).thenReturn(new Introspection(true, "s", "99001", Set.of("SBX_CER_EXECUTION"), "COMPTE", null, T, Set.of(), null));
+        when(introspection.introspecter("j1", "99001", null)).thenReturn(Introspection.refusee("s", "PERIMETRE_SUSPENDU"));
+        when(introspection.introspecter("j2", null, null)).thenReturn(new Introspection(true, "s", "99001", Set.of("SBX_CER_EXECUTION"), "COMPTE", null, T, Set.of(), null));
+        when(introspection.introspecter("j3", null, "SBX-TRACE")).thenReturn(new Introspection(true, "pr", null, Set.of(), "PRESTATAIRE", "a1", T, Set.of("SBX-TRACE"), null));
+        VueDelegation acces = new VueDelegation(
+            new Delegation("a1", TypeDelegation.PRESTATAIRE, "pr", null, Set.of(), Set.of("SBX-TRACE"), T, T.plusSeconds(14400), EtatDelegation.DEMANDEE, "demo-super-admin", null, "Correctif", T, null),
+            EtatEffectif.DEMANDEE, "Jean Mbarga", false);
+        when(delegations.demanderAccesPrestataire(any(), eq("pr"), eq(List.of("SBX-TRACE")), eq(T), eq(T.plusSeconds(14400)), eq("Correctif"))).thenReturn(acces);
+        when(delegations.approuverAccesPrestataire(any(), eq("a1"))).thenReturn(acces);
+        when(delegations.refuserAccesPrestataire(any(), eq("a1"), eq("Non"))).thenReturn(acces);
+        when(delegations.revoquerAccesPrestataire(any(), eq("a1"), eq("Fin"))).thenReturn(acces);
     }
 
     @Test
@@ -188,5 +196,27 @@ class SandboxPerimetresRoutesTest {
             .andExpect(status().isOk());
         mvc.perform(get("/api/v1/sandbox/delegations?type=MANDAT").with(console("2", "IAM_ACCOUNT_READ"))).andExpect(status().isOk()).andExpect(jsonPath("$.contenu[0].delegation.type").value("MANDAT"));
         mvc.perform(get("/api/v1/sandbox/delegations").with(console("2", "SBX_HAB_ADMINISTRATION"))).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("US-EXI-24 : accès de prestataire demandé, approuvé, refusé, révoqué depuis la console (IAM_ACCOUNT_SECURITY, deux facteurs) ; introspection par composant")
+    void prestataire() throws Exception {
+        String corps = "{\"compteId\":\"pr\",\"composants\":[\"SBX-TRACE\"],\"debut\":\"" + T + "\",\"fin\":\"" + T.plusSeconds(14400) + "\",\"motif\":\"Correctif\"}";
+        mvc
+            .perform(post("/api/v1/sandbox/delegations/prestataire").with(console("2", "IAM_ACCOUNT_SECURITY")).contentType(MediaType.APPLICATION_JSON).content(corps))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.delegation.composants[0]").value("SBX-TRACE"));
+        mvc.perform(post("/api/v1/sandbox/delegations/a1/approbation").with(console("2", "IAM_ACCOUNT_SECURITY"))).andExpect(status().isOk());
+        mvc.perform(post("/api/v1/sandbox/delegations/a1/refus").with(console("2", "IAM_ACCOUNT_SECURITY")).contentType(MediaType.APPLICATION_JSON).content("{\"motif\":\"Non\"}")).andExpect(status().isOk());
+        mvc.perform(post("/api/v1/sandbox/delegations/a1/revocation").with(console("2", "IAM_ACCOUNT_SECURITY")).contentType(MediaType.APPLICATION_JSON).content("{\"motif\":\"Fin\"}")).andExpect(status().isOk());
+        mvc.perform(post("/api/v1/sandbox/delegations/a1/refus").with(console("2", "IAM_ACCOUNT_SECURITY")).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/sandbox/delegations/prestataire").with(console("2", "IAM_ACCOUNT_READ")).contentType(MediaType.APPLICATION_JSON).content(corps)).andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/sandbox/delegations/a1/approbation").with(console("1", "IAM_ACCOUNT_SECURITY"))).andExpect(status().isForbidden());
+        mvc
+            .perform(post("/api/v1/interne/sandbox/introspection").with(service("INTERNAL_IAM_SBX_INTROSPECT")).contentType(MediaType.APPLICATION_JSON).content("{\"jeton\":\"j3\",\"composant\":\"SBX-TRACE\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.type").value("PRESTATAIRE"))
+            .andExpect(jsonPath("$.composants[0]").value("SBX-TRACE"))
+            .andExpect(jsonPath("$.permissions").isEmpty());
     }
 }

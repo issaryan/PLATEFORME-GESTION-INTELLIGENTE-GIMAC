@@ -109,7 +109,11 @@ etape "Jeton de chaque client de service (code HTTP seulement, aucun secret affi
 for client in pilotage-service:GIMAC_SECRET_PILOTAGE_SERVICE notification-service:GIMAC_SECRET_NOTIFICATION_SERVICE \
               collaboration-service:GIMAC_SECRET_COLLABORATION_SERVICE homologation-service:GIMAC_SECRET_HOMOLOGATION_SERVICE \
               reprise-service:GIMAC_SECRET_REPRISE_SERVICE monitoring-service:GIMAC_SECRET_MONITORING_SERVICE \
-              sbx-espace:GIMAC_SECRET_SBX_ESPACE; do
+              sbx-espace:GIMAC_SECRET_SBX_ESPACE sbx-raccordement:GIMAC_SECRET_SBX_RACCORDEMENT sbx-referentiel:GIMAC_SECRET_SBX_REFERENTIEL \
+              sbx-donnees:GIMAC_SECRET_SBX_DONNEES sbx-simulation:GIMAC_SECRET_SBX_SIMULATION sbx-mobile:GIMAC_SECRET_SBX_MOBILE \
+              sbx-iso20022:GIMAC_SECRET_SBX_ISO20022 sbx-carte:GIMAC_SECRET_SBX_CARTE sbx-campagne:GIMAC_SECRET_SBX_CAMPAGNE \
+              sbx-trace:GIMAC_SECRET_SBX_TRACE sbx-lecture:GIMAC_SECRET_SBX_LECTURE sbx-mifos:GIMAC_SECRET_SBX_MIFOS \
+              exploitation-service:GIMAC_SECRET_EXPLOITATION_SERVICE; do
   CLIENT_ID="${client%%:*}"
   CLIENT_SECRET="$(sed -n "s/^${client#*:}=//p" "$ENV" 2>/dev/null)"
   export CLIENT_ID CLIENT_SECRET

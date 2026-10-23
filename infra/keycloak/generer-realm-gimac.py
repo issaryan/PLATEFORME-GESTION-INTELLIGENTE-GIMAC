@@ -82,7 +82,14 @@ PERMISSIONS = {
                  "MONITORING_ALERT_INGEST",
                  # Sandbox GIMAC (D-119, docs/lot1/sandbox-existant-adapte.md §6) : étapes des sagas de SBX-ESPACE dans MS-IAM
                  # (suspension de périmètre, protection, délégations) et introspection des jetons pour la sandbox.
-                 "IAM_SBX_SAGA", "IAM_SBX_INTROSPECT"],
+                 "IAM_SBX_SAGA", "IAM_SBX_INTROSPECT",
+                 # Republication des états des liaisons pour la sandbox (D-122), jouée par le compte de service d'exploitation.
+                 "HOMOLOGATION_REPUBLISH",
+                 # Sandbox GIMAC, US-EXI-05 (D-123) : appels synchrones entre services de la sandbox (CC-SBX-GIMAC-02, tableau
+                 # 5.3), une permission par opération appelée ; lecture de SBX-LECTURE par la plateforme du DES ; Mifos.
+                 "SBX_RACCORDEMENT_IDENTIFIANTS", "SBX_RACCORDEMENT_LIAISONS", "SBX_RACCORDEMENT_RATTACHABILITE",
+                 "SBX_DONNEES_ETATS", "SBX_DONNEES_MOUVEMENTS", "SBX_MOBILE_COUPONS", "SBX_TRACE_REFERENCES",
+                 "SBX_CAMPAGNE_REFERENCES_TRACE", "SBX_SANTE", "SBX_MIFOS_API", "SBX_LECTURE_READ"],
 }
 # Sandbox GIMAC (D-115, docs/lot1/sandbox-existant-adapte.md §2, US-EXI-02) : SBX_<MODULE>_<FONCTION>, douze modules et cinq
 # fonctions (CA-SBX-GIMAC-02 UC-INS-04), soit soixante permissions contrôlées côté serveur par les services de la sandbox.
@@ -326,7 +333,19 @@ LIBELLES_PERMISSIONS = {"REF_METIER_ADMIN": "Administration des référentiels m
                         "MON_ROSTER_PUBLISH": "Publier la grille d'astreinte (signature du chef du DES)",
                         "INTERNAL_MONITORING_ALERT_INGEST": "Réception des alertes des sondes par MS-MONITORING",
                         "INTERNAL_IAM_SBX_SAGA": "Sandbox : étapes des sagas de SBX-ESPACE dans MS-IAM (périmètres, protections, délégations)",
-                        "INTERNAL_IAM_SBX_INTROSPECT": "Sandbox : introspection des jetons par MS-IAM (jeton interne réduit)"}
+                        "INTERNAL_IAM_SBX_INTROSPECT": "Sandbox : introspection des jetons par MS-IAM (jeton interne réduit)",
+                        "INTERNAL_HOMOLOGATION_REPUBLISH": "Sandbox : republication des états des liaisons par MS-HOMOLOGATION",
+                        "INTERNAL_SBX_RACCORDEMENT_IDENTIFIANTS": "Sandbox, appel de SBX-RACCORDEMENT : vérification d'un identifiant d'accès de test",
+                        "INTERNAL_SBX_RACCORDEMENT_LIAISONS": "Sandbox, appel de SBX-RACCORDEMENT : disponibilité des liaisons de test",
+                        "INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE": "Sandbox, appel de SBX-RACCORDEMENT : rattachabilité d'un participant",
+                        "INTERNAL_SBX_DONNEES_ETATS": "Sandbox, appel de SBX-DONNEES : restauration de l'état initial et relevé des soldes",
+                        "INTERNAL_SBX_DONNEES_MOUVEMENTS": "Sandbox, appel de SBX-DONNEES : mouvements, comptes, cartes, PIN et clés de travail",
+                        "INTERNAL_SBX_MOBILE_COUPONS": "Sandbox, appel de SBX-MOBILE : coupons de retrait sans carte",
+                        "INTERNAL_SBX_TRACE_REFERENCES": "Sandbox, appel de SBX-TRACE : référence de trace d'un essai",
+                        "INTERNAL_SBX_CAMPAGNE_REFERENCES_TRACE": "Sandbox, appel de SBX-CAMPAGNE : références de trace protégées",
+                        "INTERNAL_SBX_SANTE": "Sandbox : lecture des points de santé des onze services par SBX-TRACE",
+                        "INTERNAL_SBX_MIFOS_API": "Sandbox : interfaces publiques du cœur bancaire simulé Mifos",
+                        "INTERNAL_SBX_LECTURE_READ": "Sandbox : lecture du contrat SBX-LECTURE par la plateforme du DES"}
 _MODULES_SBX = {"HAB": "habilitations", "RAC": "raccordements", "REF": "référentiels", "SCN": "scénarios", "DON": "données de test",
                 "SIM": "simulation", "MOB": "interface mobile", "ISO": "interface ISO 20022", "CAR": "interface carte",
                 "CER": "campagnes", "TRA": "traces", "LEC": "contrat de lecture"}
@@ -402,12 +421,50 @@ SERVICES = {
     # Sandbox GIMAC (D-119) : SBX-ESPACE conduit ses sagas dans MS-IAM (INTERNAL_IAM_SBX_SAGA seul, sans INTERNAL_IAM_READ)
     # et lit la fiche d'une institution dans MS-PARTICIPANT (US-EXI-21).
     "sbx-espace": ["INTERNAL_IAM_SBX_SAGA", "INTERNAL_PARTICIPANT_READ"],
+    # Republication des états des liaisons pour la sandbox (D-122, docs/lot1/sandbox-existant-adapte.md §7.3), jouée à la
+    # mise en service de SBX-CAMPAGNE et de SBX-LECTURE ; aucune autre permission.
+    "exploitation-service": ["INTERNAL_HOMOLOGATION_REPUBLISH"],
     # Reprise de l'existant (D-107) : outil infra/reprise/importer-reprise.py, jeton client_credentials, routes
     # /api/v1/interne/reprise/** de MS-PARTICIPANT et MS-HOMOLOGATION ; aucune autre permission.
     "reprise-service": ["REF_REPRISE_IMPORT"],
     # Supervision de la passerelle : lecture des points /management des services (ROLE_ADMIN).
     "gateway-supervision": ["ROLE_ADMIN"],
 }
+# US-EXI-05 (D-123, docs/lot1/sandbox-existant-adapte.md §9) : un compte de service par service de la sandbox, plus le compte
+# dédié au cœur bancaire simulé Mifos, et des autorisations d'appel limitées au tableau des appels synchrones du
+# CC-SBX-GIMAC-02 (tableau 5.3) : (appelant, permission portée, objet). Chaque appelé n'accepte que la permission de
+# l'opération appelée ; aucun autre appel n'est autorisé (matrice vérifiée ci-dessous et par le test du générateur).
+APPELS_SBX = [
+    ("sbx-espace", "INTERNAL_PARTICIPANT_READ", "MS-PARTICIPANT : fiche d'une institution"),
+    ("sbx-espace", "INTERNAL_IAM_SBX_SAGA", "MS-IAM : comptes, rôles, délégations (saga)"),
+    ("sbx-raccordement", "INTERNAL_PARTICIPANT_READ", "MS-PARTICIPANT : code participant et nomenclature des services"),
+    ("sbx-referentiel", "INTERNAL_PARTICIPANT_READ", "MS-PARTICIPANT : code participant et nomenclature des services"),
+    ("sbx-mobile", "INTERNAL_SBX_RACCORDEMENT_IDENTIFIANTS", "SBX-RACCORDEMENT : vérification d'un identifiant d'accès de test"),
+    ("sbx-iso20022", "INTERNAL_SBX_RACCORDEMENT_IDENTIFIANTS", "SBX-RACCORDEMENT : vérification d'un identifiant d'accès de test"),
+    ("sbx-simulation", "INTERNAL_SBX_TRACE_REFERENCES", "SBX-TRACE : référence de trace au démarrage de l'essai"),
+    ("sbx-simulation", "INTERNAL_SBX_DONNEES_ETATS", "SBX-DONNEES : restauration de l'état initial, relevé des soldes"),
+    ("sbx-simulation", "INTERNAL_SBX_RACCORDEMENT_LIAISONS", "SBX-RACCORDEMENT : disponibilité des liaisons de test"),
+    ("sbx-mobile", "INTERNAL_SBX_DONNEES_MOUVEMENTS", "SBX-DONNEES : mouvements, comptes, cartes, PIN, clés de travail"),
+    ("sbx-iso20022", "INTERNAL_SBX_DONNEES_MOUVEMENTS", "SBX-DONNEES : mouvements, comptes, cartes, PIN, clés de travail"),
+    ("sbx-carte", "INTERNAL_SBX_DONNEES_MOUVEMENTS", "SBX-DONNEES : mouvements, comptes, cartes, PIN, clés de travail"),
+    ("sbx-carte", "INTERNAL_SBX_MOBILE_COUPONS", "SBX-MOBILE : coupon de retrait sans carte"),
+    ("sbx-campagne", "INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE", "SBX-RACCORDEMENT : rattachabilité d'un participant"),
+    ("sbx-donnees", "INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE", "SBX-RACCORDEMENT : rattachabilité d'un participant"),
+    ("sbx-trace", "INTERNAL_SBX_CAMPAGNE_REFERENCES_TRACE", "SBX-CAMPAGNE : références de trace protégées avant purge"),
+    ("sbx-campagne", "INTERNAL_DOCUMENT_DEPOSIT", "MS-DOCUMENT : dépôt du bilan (US-EXI-08)"),
+    ("sbx-trace", "INTERNAL_DOCUMENT_DEPOSIT", "MS-DOCUMENT : dépôt des traces exportées (US-EXI-08)"),
+    ("sbx-iso20022", "INTERNAL_DOCUMENT_DEPOSIT", "MS-DOCUMENT : dépôt du rapport d'écarts (US-EXI-08)"),
+    ("sbx-mifos", "INTERNAL_SBX_MIFOS_API", "Mifos : comptes, soldes et écritures par ses interfaces publiques (tenu par SBX-DONNEES)"),
+    ("sbx-trace", "INTERNAL_SBX_SANTE", "Les onze services : points de santé"),
+    ("homologation-service", "INTERNAL_SBX_LECTURE_READ", "SBX-LECTURE : campagnes, exécutions, taux et pièces (plateforme du DES)"),
+]
+SERVICES_SBX = ["sbx-espace", "sbx-raccordement", "sbx-referentiel", "sbx-donnees", "sbx-simulation", "sbx-mobile", "sbx-iso20022",
+                "sbx-carte", "sbx-campagne", "sbx-trace", "sbx-lecture", "sbx-mifos"]
+for _client in SERVICES_SBX:
+    SERVICES.setdefault(_client, [])
+for _client, _permission, _ in APPELS_SBX:
+    if _permission not in SERVICES[_client]:
+        SERVICES[_client].append(_permission)
 ROLES_CLIENT_SERVICES = {
     "iam-service": {"realm-management": ["manage-users", "view-users", "query-users", "query-groups", "manage-realm",
                                          "view-realm"]},
@@ -782,6 +839,23 @@ def main():
     assert [u["serviceAccountClientId"] for u in realm["users"] if "INTERNAL_IAM_SBX_SAGA" in (u.get("realmRoles") or [])] == ["sbx-espace"]
     assert "INTERNAL_IAM_READ" not in comptes_service["sbx-espace"]["realmRoles"]
     assert "INTERNAL_IAM_SBX_INTROSPECT" in comptes_service["gateway-service"]["realmRoles"]
+    # US-EXI-05 : un compte de service par service de la sandbox et pour Mifos ; chaque permission INTERNAL_SBX_* et chaque
+    # permission de la plateforme d'un compte sbx-* vient du tableau des appels synchrones, et d'aucune autre source.
+    assert all(c in comptes_service for c in SERVICES_SBX)
+    attendues = {}
+    for appelant, permission, _ in APPELS_SBX:
+        attendues.setdefault(appelant, set()).add(permission)
+    for client_id, u in comptes_service.items():
+        portees = {r for r in u.get("realmRoles") or [] if r != "default-roles-gimac"}
+        if client_id and client_id.startswith("sbx-"):
+            assert portees == attendues.get(client_id, set()), (client_id, portees)
+        else:
+            assert not {r for r in portees if r.startswith("INTERNAL_SBX_")} - attendues.get(client_id, set()), client_id
+    assert comptes_service["sbx-lecture"]["realmRoles"] == ["default-roles-gimac"], "SBX-LECTURE n'appelle aucun service"
+    # US-EXI-25 : aucune autorisation d'appel de la sandbox vers MS-CERTIFICATION ni vers MS-HOMOLOGATION.
+    assert not any(r.startswith(("INTERNAL_CERTIFICATION_", "INTERNAL_HOMOLOGATION_")) or r.startswith(("CER_", "HOM_"))
+                   for c in SERVICES_SBX for r in comptes_service[c]["realmRoles"])
+    assert [u["serviceAccountClientId"] for u in realm["users"] if "INTERNAL_HOMOLOGATION_REPUBLISH" in (u.get("realmRoles") or [])] == ["exploitation-service"]
     # ROLE_ADMIN (CRUD généré et /management des services) : jamais dans un profil, porté par le seul compte
     # de service de la supervision.
     assert "ROLE_ADMIN" in comptes_service["gateway-supervision"]["realmRoles"]

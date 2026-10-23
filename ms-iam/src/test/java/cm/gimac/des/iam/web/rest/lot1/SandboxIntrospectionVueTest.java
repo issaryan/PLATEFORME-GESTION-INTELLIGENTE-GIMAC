@@ -20,6 +20,6 @@ class SandboxIntrospectionVueTest {
         );
         assertThat(admis).containsEntry("active", true).containsEntry("institution_id", "99001").containsEntry("exp", 1000L).containsEntry("delegation_id", "d1");
         assertThat(SandboxIntrospectionResource.vue(new Introspection(true, "s", null, Set.of(), "COMPTE", null, null, Set.of(), null))).containsEntry("exp", null);
-        assertThat(new SandboxIntrospectionResource.IntrospectionRequest("secret", "99001").toString()).doesNotContain("secret");
+        assertThat(new SandboxIntrospectionResource.IntrospectionRequest("secret", "99001", "SBX-TRACE").toString()).doesNotContain("secret");
     }
 }

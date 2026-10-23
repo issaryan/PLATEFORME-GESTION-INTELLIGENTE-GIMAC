@@ -275,6 +275,20 @@ public class ComptesResource {
         return new MotDePasseVue(service.motDePasseProvisoire(ActeurCourant.de(auth), id, r.motif()));
     }
 
+    /** US-EXI-23 : verrouillage du compte (protection contre la force brute), pour la console. */
+    @GetMapping("/{id}/verrouillage")
+    @PreAuthorize("hasAuthority('IAM_ACCOUNT_READ')")
+    public cm.gimac.des.iam.domain.compte.Verrouillage verrouillage(@PathVariable String id) {
+        return service.verrouillage(id);
+    }
+
+    /** US-EXI-23 : déblocage par l'administrateur du GIMAC, motivé. */
+    @PostMapping("/{id}/deblocage")
+    @PreAuthorize("hasAuthority('IAM_ACCOUNT_SECURITY')")
+    public cm.gimac.des.iam.domain.compte.Verrouillage debloquer(@PathVariable String id, @Valid @RequestBody MotifRequest r, Authentication auth) {
+        return service.debloquer(ActeurCourant.de(auth), id, r.motif());
+    }
+
     @PostMapping("/{id}/sessions/fermeture")
     @PreAuthorize("hasAuthority('IAM_ACCOUNT_SECURITY')")
     public ResponseEntity<Void> fermerSessions(@PathVariable String id, @Valid @RequestBody MotifRequest r, Authentication auth) {

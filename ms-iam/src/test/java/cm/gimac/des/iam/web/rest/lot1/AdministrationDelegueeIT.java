@@ -146,4 +146,30 @@ class AdministrationDelegueeIT extends AbstractIamIT {
             .andExpect(status().isNotFound())
             .andExpect(header().doesNotExist("Location"));
     }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    cm.gimac.des.iam.application.port.out.Annuaire annuaire;
+
+    @Test
+    @DisplayName("US-EXI-23 : verrouillage après les échecs paramétrés ; déblocage refusé à l'institution et journalisé, fait par l'administrateur du GIMAC")
+    void verrouillageEtDeblocage() throws Exception {
+        String s = UUID.randomUUID().toString().substring(0, 6);
+        String id = creer("99001", "bloque." + s, null);
+        for (int i = 0; i < 5; i++) {
+            annuaire.verifierMotDePasse("bloque." + s, "faux-" + i);
+        }
+        mvc.perform(get("/api/v1/comptes/{id}/verrouillage", id).with(utilisateur(SUPER_ADMIN, "IAM_ACCOUNT_READ"))).andExpect(status().isOk())
+            .andExpect(jsonPath("$.verrouille").value(true)).andExpect(jsonPath("$.echecs").value(5));
+        mvc
+            .perform(post("/api/v1/administration-deleguee/comptes/{id}/deblocage", id).with(administrateur("admin-99001", "99001")).contentType(MediaType.APPLICATION_JSON).content("{\"motif\":\"Testeur bloqué\"}"))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("IAM_SBX_DEBLOCAGE_RESERVE"));
+        assertThat(jdbc.queryForObject("select count(*) from outbox_event where aggregate_id = ? and payload::text like '%TENTATIVE_DEBLOCAGE%'", Integer.class, id)).isEqualTo(1);
+        mvc.perform(post("/api/v1/administration-deleguee/comptes/{id}/deblocage", id).with(administrateur("admin-99002", "99002"))).andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/comptes/{id}/deblocage", id).with(utilisateur(SUPER_ADMIN, "IAM_ACCOUNT_READ")).contentType(MediaType.APPLICATION_JSON).content("{\"motif\":\"x\"}"))
+            .andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/comptes/{id}/deblocage", id).with(utilisateur(SUPER_ADMIN, "IAM_ACCOUNT_SECURITY")).contentType(MediaType.APPLICATION_JSON).content("{\"motif\":\"Appel au support\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.verrouille").value(false)).andExpect(jsonPath("$.echecs").value(0));
+        assertThat(jdbc.queryForObject("select count(*) from outbox_event where aggregate_id = ? and payload::text like '%COMPTE_DEBLOQUE%'", Integer.class, id)).isEqualTo(1);
+    }
 }
