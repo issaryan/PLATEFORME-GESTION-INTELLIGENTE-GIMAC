@@ -40,11 +40,17 @@ public enum TypeNotification {
      * monitoring.notification) : rapport reçu, rapport quotidien de 8 h attendu ou en retard, grille publiée, relève ;
      * une notification par événement et par destinataire, jamais regroupée.
      */
-    MONITORING;
+    MONITORING,
+    /**
+     * Sandbox GIMAC (US-EXI-09, docs/lot1/sandbox-existant-adapte.md §11, sujets sbx-*.notification-requested.v1) :
+     * invitations, suspension et rétablissement d'un espace, mandats, échéances de certificat, campagnes, signalements
+     * et alertes ; une notification par demande et par destinataire, jamais regroupée.
+     */
+    SANDBOX;
 
     /**
-     * Types qu'un compte d'institution (portail) peut recevoir : le parcours d'homologation de sa liaison seulement ;
-     * messagerie, tâches, rapports, demandes et processus d'unité sont des fonctions internes du GIMAC.
+     * Types qu'un compte d'institution (portail) peut recevoir : le parcours d'homologation de sa liaison et les avis de
+     * la sandbox ; messagerie, tâches, rapports, demandes et processus d'unité sont des fonctions internes du GIMAC.
      */
-    public static final java.util.Set<TypeNotification> PORTAIL = java.util.EnumSet.of(HOMOLOGATION);
+    public static final java.util.Set<TypeNotification> PORTAIL = java.util.EnumSet.of(HOMOLOGATION, SANDBOX);
 }

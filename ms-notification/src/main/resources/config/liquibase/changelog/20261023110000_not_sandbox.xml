@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notifications de la Sandbox GIMAC (US-EXI-09, docs/lot1/sandbox-existant-adapte.md §11) : type SANDBOX (sujets
+     sbx-<service>.notification-requested.v1 des onze services), préférence correspondante (active par défaut) et rebut
+     des demandes sans règle de destinataires (motif conservé, alerte d'exploitation journalisée). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="not-notifications-sandbox" author="lot1">
+        <sql>ALTER TABLE notification_utilisateur DROP CONSTRAINT ck_notification_utilisateur_type;</sql>
+        <sql>ALTER TABLE notification_utilisateur ADD CONSTRAINT ck_notification_utilisateur_type CHECK (type IN ('MESSAGE', 'TACHE', 'RAPPORT', 'DEMANDE', 'MENTION', 'REPONSE', 'PROCESSUS', 'HOMOLOGATION', 'MONITORING', 'SANDBOX'));</sql>
+        <addColumn tableName="preference_notification">
+            <column name="type_sandbox" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+        </addColumn>
+        <createTable tableName="rebut_notification_sandbox">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="evenement_id" type="varchar(80)"/>
+            <column name="service" type="varchar(40)"/>
+            <column name="modele" type="varchar(80)"/>
+            <column name="code_participant" type="varchar(64)"/>
+            <column name="motif" type="varchar(40)"><constraints nullable="false"/></column>
+            <column name="recu_le" type="timestamp with time zone"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="rebut_notification_sandbox" indexName="ix_rebut_notification_sandbox_recu">
+            <column name="recu_le"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

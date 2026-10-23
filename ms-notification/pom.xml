@@ -806,6 +806,66 @@
                                 <goal>report-integration</goal>
                             </goals>
                         </execution>
+                        <execution>
+                            <id>fusion-unitaires-integration</id>
+                            <phase>post-integration-test</phase>
+                            <goals>
+                                <goal>merge</goal>
+                            </goals>
+                            <configuration>
+                                <fileSets>
+                                    <fileSet>
+                                        <directory>${project.build.directory}</directory>
+                                        <includes>
+                                            <include>jacoco.exec</include>
+                                            <include>jacoco-it.exec</include>
+                                        </includes>
+                                    </fileSet>
+                                </fileSets>
+                                <destFile>${project.build.directory}/jacoco-fusion.exec</destFile>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <!-- Sandbox GIMAC, épopée EXI (US-EXI-09, D-124) : code ajouté tenu à 98 % (tests unitaires et d'intégration fusionnés). -->
+                            <id>seuil-sandbox-exi</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <dataFile>${project.build.directory}/jacoco-fusion.exec</dataFile>
+                                <includes>
+                                    <include>cm/gimac/des/notification/domain/service/ReglesSandbox*</include>
+                                    <include>cm/gimac/des/notification/application/usecase/NotificationsSandboxService*</include>
+                                    <include>cm/gimac/des/notification/infrastructure/client/*DestinatairesSandbox*</include>
+                                    <include>cm/gimac/des/notification/infrastructure/messaging/consumer/DemandesSandboxConsumer*</include>
+                                    <include>cm/gimac/des/notification/web/rest/sandbox/**</include>
+                                    <!-- Classes de la sandbox des récits suivants ajoutées ici. -->
+                                </includes>
+                                <rules>
+                                    <rule>
+                                        <element>CLASS</element>
+                                        <limits>
+                                            <limit>
+                                                <counter>LINE</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>0.98</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>BRANCH</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>0.98</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>METHOD</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>0.98</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                </rules>
+                            </configuration>
+                        </execution>
                     </executions>
                 </plugin>
                 <plugin>

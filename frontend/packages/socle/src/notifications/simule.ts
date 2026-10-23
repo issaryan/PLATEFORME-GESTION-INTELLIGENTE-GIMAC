@@ -24,7 +24,7 @@ export type OptionsNotificationsSimulees = {
   couche?: string
 }
 
-const PREFERENCES_DEFAUT: PreferencesNotifications = { systeme: true, son: false, types: { MESSAGE: true, TACHE: true, RAPPORT: true, MENTION: true, REPONSE: true, DEMANDE: true, PROCESSUS: true, HOMOLOGATION: true, MONITORING: true } }
+const PREFERENCES_DEFAUT: PreferencesNotifications = { systeme: true, son: false, types: { MESSAGE: true, TACHE: true, RAPPORT: true, MENTION: true, REPONSE: true, DEMANDE: true, PROCESSUS: true, HOMOLOGATION: true, MONITORING: true, SANDBOX: true } }
 
 export function notificationsSimulees(o: OptionsNotificationsSimulees = {}): ServiceNotificationsSimule {
   const latence = o.latenceMs ?? 150
