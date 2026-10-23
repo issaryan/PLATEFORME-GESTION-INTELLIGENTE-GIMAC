@@ -183,6 +183,10 @@ class IntrospectionSandboxServiceTest {
         prestataire("a1", t.minusSeconds(3600), t.plusSeconds(60), cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation.ACCORDEE);
         jetons.put("j-presta-long", Map.of("sub", delegations.lignes.get("a1").compteId()));
         assertThat(service.introspecter("j-presta-long", null, "SBX-TRACE").expiration()).isEqualTo(t.plusSeconds(60));
+        // Jeton plus long que l'accès : l'expiration est ramenée à la fin de l'accès.
+        assertThat(service.introspecter("j-presta", null, "SBX-TRACE").expiration()).isEqualTo(t.plusSeconds(60));
+        // Accès accordé mais programmé plus tard : jamais retenu avant son début.
+        prestataire("a0", t.plusSeconds(7200), t.plusSeconds(9000), cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation.ACCORDEE);
         horloge.avancer(java.time.Duration.ofSeconds(60));
         assertThat(service.introspecter("j-presta", null, "SBX-TRACE").motifRefus()).isEqualTo("COMPOSANT_HORS_ACCES");
         assertThat(service.introspecter("j-presta", null).motifRefus()).isEqualTo("ACCES_PRESTATAIRE_INACTIF");
