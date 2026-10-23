@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MS-IAM : délégations temporaires de la Sandbox GIMAC (D-119, docs/lot1/sandbox-existant-adapte.md §8.3 et §8.6) : mandats de
+     partenaire (US-EXI-04) et accès de prestataire (US-EXI-24). Table propre : l'entité Delegation générée par JHipster
+     (collaborateurs, niveau d'habilitation) n'est pas reprise. Ensemble idempotent. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="iam-delegation-sandbox" author="lot1">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="delegation_sandbox"/></not>
+        </preConditions>
+        <createTable tableName="delegation_sandbox">
+            <column name="id" type="uuid"><constraints primaryKey="true" primaryKeyName="pk_delegation_sandbox" nullable="false"/></column>
+            <column name="type" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="compte_id" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="institution_id" type="varchar(64)"/>
+            <column name="permissions" type="varchar(4000)"><constraints nullable="false"/></column>
+            <column name="composants" type="varchar(1000)"><constraints nullable="false"/></column>
+            <column name="debut" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="fin" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="etat" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="demandeur_id" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="approbateur_id" type="varchar(100)"/>
+            <column name="motif" type="varchar(1000)"/>
+            <column name="cree_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="close_le" type="timestamptz"/>
+        </createTable>
+        <createIndex tableName="delegation_sandbox" indexName="ix_delegation_sandbox_compte">
+            <column name="compte_id"/>
+            <column name="type"/>
+            <column name="etat"/>
+        </createIndex>
+        <createIndex tableName="delegation_sandbox" indexName="ix_delegation_sandbox_institution">
+            <column name="institution_id"/>
+            <column name="etat"/>
+            <column name="fin"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

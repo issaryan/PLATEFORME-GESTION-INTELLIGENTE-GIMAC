@@ -204,6 +204,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 <!-- GIMAC:FIN -->
 | 2026-10-20 | - | D-116 : catalogue des fonctionnalités, entrées monitoringAujourdhui, monitoringRapports, monitoringActivite ; supervision et relève passent en visible: false |
 | 2026-10-22 | D-119 | US-EXI-06 : `PerimetresSandboxService`, `IntrospectionSandboxService`, `DesactivationInactifsService`, `EtatEffectifSandbox` ; routes `/api/v1/interne/sandbox/**` (`INTERNAL_IAM_SBX_SAGA`, `INTERNAL_IAM_SBX_INTROSPECT`) et `/api/v1/sandbox/**` ; tables `perimetre_suspendu`, `protection_administrateur`, `activite_compte` ; réservation atomique des clés d'idempotence ; règle JaCoCo à 98 % `seuil-sandbox-exi-iam` |
+| 2026-10-22 | D-119 | US-EXI-04 : `DelegationsSandboxService`, `ReglesDelegation`, table `delegation_sandbox`, routes `/api/v1/interne/sandbox/delegations/**` et `GET /api/v1/sandbox/delegations`, introspection des jetons délégués ; module SUP dans `ReglesSandbox` (61 permissions) |
 
 # iam
 

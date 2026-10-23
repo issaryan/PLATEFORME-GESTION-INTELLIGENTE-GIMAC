@@ -21,7 +21,7 @@ export default defineConfig({
       thresholds: {
         statements: 80, branches: 80, functions: 80, lines: 80,
         // Sandbox GIMAC, lot IAM de l'épopée EXI (D-119) : fichiers ajoutés tenus à 98 %.
-        'src/**/{sandbox,SandboxIamPage}.{ts,tsx}': { statements: 98, branches: 98, functions: 98, lines: 98 },
+        'src/**/{sandbox,SandboxIamPage,sandboxOnglets}.{ts,tsx}': { statements: 98, branches: 98, functions: 98, lines: 98 },
       },
     },
   },
