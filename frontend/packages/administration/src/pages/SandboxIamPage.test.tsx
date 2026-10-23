@@ -3,7 +3,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { ApiError } from '@gimac/socle'
 import SandboxIamPage from './SandboxIamPage'
 import { avec, rendrePage, simules } from '../test/rendu'
-import { paginer, sandboxSimulee } from '../services/simule/sandbox'
+import { DELEGATIONS_DEMO, etatEffectif, paginer, sandboxSimulee } from '../services/simule/sandbox'
 import { sandboxHttp } from '../services/http/sandbox'
 
 // D-119, US-EXI-06 : la sandbox dans la console, lectures de MS-IAM (périmètres suspendus, comptes protégés).
@@ -57,7 +57,58 @@ describe('Sandbox GIMAC dans la console', () => {
   })
 })
 
+describe('Sandbox GIMAC : listes', () => {
+  it('taille de page changée, nouvel essai après une erreur, motif absent', async () => {
+    let echec = true
+    const base = simules()
+    const appels: number[] = []
+    page('/console/sandbox', avec('sandbox', {
+      perimetres: async (p, t) => {
+        appels.push(t)
+        if (echec) throw new ApiError(503, 'IAM_INDISPONIBLE', 'MS-IAM indisponible', 'c-2')
+        return paginer([{ code: '99009', depuis: '2026-10-21T07:30:00Z', acteurId: 'sa', motif: null }], p, t)
+      },
+    }, base))
+    expect(await screen.findByText('MS-IAM indisponible')).toBeTruthy()
+    echec = false
+    fireEvent.click(screen.getByRole('button', { name: 'Réessayer' }))
+    expect(await screen.findByText('99009')).toBeTruthy()
+    expect(screen.getByText('—')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Taille de page'), { target: { value: '50' } })
+    await waitFor(() => expect(appels).toContain(50))
+  })
+})
+
+describe('Sandbox GIMAC : mandats de partenaire (US-EXI-04)', () => {
+  it('US-EXI-04 scénarios 1 à 3 : mandat actif avec ses droits et ses dates, programmé, échu à la date de fin, révoqué', async () => {
+    page('/console/sandbox?onglet=mandats')
+    const actif = (await screen.findAllByText('Campagnes de certification : exécuter les campagnes'))[0].closest('tr') as HTMLElement
+    expect(within(actif).getByText('Active')).toBeTruthy()
+    expect(within(actif).getByText('Paul Ebode (Intégrateur Afrique)')).toBeTruthy()
+    expect(within(actif).getByText('99002')).toBeTruthy()
+    expect(screen.getByText('Programmée')).toBeTruthy()
+    expect(screen.getByText('Échue')).toBeTruthy()
+    expect(screen.getByText('Révoquée')).toBeTruthy()
+    expect(screen.getByText(/l’accès cesse à la date de fin/)).toBeTruthy()
+  })
+
+  it('l’échéance suit l’horloge : le mandat actif passe échu à sa date de fin', async () => {
+    vi.setSystemTime(new Date('2026-12-31T18:00:00Z'))
+    page('/console/sandbox?onglet=mandats')
+    expect(await screen.findAllByText('Échue')).toHaveLength(3)
+    expect(screen.queryByText('Active')).toBeNull()
+  })
+})
+
 describe('Sandbox GIMAC : services', () => {
+  it('état effectif simulé, comme MS-IAM', () => {
+    const d = DELEGATIONS_DEMO[0][0]
+    expect(etatEffectif({ ...d, etat: 'DEMANDEE' }, new Date('2026-10-22T08:00:00Z'))).toBe('DEMANDEE')
+    expect(etatEffectif({ ...d, etat: 'DEMANDEE' }, new Date('2027-01-01T00:00:00Z'))).toBe('ECHUE')
+    expect(etatEffectif({ ...d, etat: 'REFUSEE' })).toBe('REFUSEE')
+    expect(etatEffectif(d, new Date('2026-09-01T00:00:00Z'))).toBe('PROGRAMMEE')
+  })
+
   it('simulés : pages de 100 au plus, code invalide refusé, état d’un périmètre', async () => {
     const s = simules().sandbox
     expect(paginer([1, 2, 3], -1, 500)).toEqual({ contenu: [1, 2, 3], total: 3, page: 0, taille: 100 })
@@ -78,11 +129,16 @@ describe('Sandbox GIMAC : services', () => {
     await s.perimetres(0, 20)
     await s.perimetre('99/01')
     await s.protections(1, 10)
-    await waitFor(() => expect(spy).toHaveBeenCalledTimes(3))
+    await s.delegations('MANDAT', 0, 20)
+    await s.delegations(undefined, 2, 5)
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(5))
     expect(spy.mock.calls.map(([u, i]) => `${(i as RequestInit).method} ${new URL(String(u)).pathname}${new URL(String(u)).search}`)).toEqual([
       'GET /bff/console/iam/sandbox/perimetres?page=0&taille=20',
       'GET /bff/console/iam/sandbox/perimetres/99%2F01',
       'GET /bff/console/iam/sandbox/protections?page=1&taille=10',
+      'GET /bff/console/iam/sandbox/delegations?type=MANDAT&page=0&taille=20',
+      'GET /bff/console/iam/sandbox/delegations?page=2&taille=5',
     ])
+    expect((await simules().sandbox.delegations(undefined, 0, 20)).total).toBe(4)
   })
 })

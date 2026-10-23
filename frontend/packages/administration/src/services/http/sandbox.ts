@@ -9,5 +9,6 @@ export function sandboxHttp(): ServiceSandboxIam {
     perimetres: (page, taille) => http.get(`${S}/perimetres`, { query: { page, taille } }),
     perimetre: (code) => http.get(`${S}/perimetres/${encodeURIComponent(code)}`),
     protections: (page, taille) => http.get(`${S}/protections`, { query: { page, taille } }),
+    delegations: (type, page, taille) => http.get(`${S}/delegations`, { query: { type, page, taille } }),
   }
 }

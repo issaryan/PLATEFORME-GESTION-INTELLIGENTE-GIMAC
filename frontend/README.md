@@ -189,3 +189,4 @@ Enveloppe commune IHM-01, bibliothèque de composants IHM-02, navigation élagu�
 | 2026-10-20 | - | D-116 : module d’astreintes et de monitoring recentré (paquet @gimac/exploitation, trois nouvelles routes de l’application du département) |
 | 2026-10-20 | D-118 | Socle et système de conception : propriétés facultatives `habillage` (`PageConnexion`, `Enveloppe`) et `aiguillage` (`PageConnexion`, `Aiguillage`), `plateforme` et `classification` du `Footer`. La plateforme reste inchangée. |
 | 2026-10-22 | D-119 | Console : écran « Sandbox GIMAC » (`/console/sandbox`, `SandboxIamPage`, port `sandbox` des services de la console, HTTP et simulé), libellés FR, EN, ES, seuil vitest à 98 % ; captures Playwright (`e2e/captures/exi-iam/capturer.mjs`, port 5431) |
+| 2026-10-22 | D-119 | Console « Sandbox GIMAC » : onglet « Mandats de partenaire » (`composants/sandboxOnglets.tsx`) ; catalogue des droits : fonctionnalité `sandboxSup` |

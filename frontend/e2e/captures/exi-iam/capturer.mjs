@@ -16,7 +16,14 @@ export const RECITS = {
     profil: 'ROLE_SUPER_ADMIN',
     etapes: [
       ['01-perimetres-suspendus', async (p) => { await p.goto(`${BASE}/console/sandbox`); await p.getByRole('cell', { name: '99001' }).waitFor() }],
-      ['02-comptes-proteges', async (p) => { await p.getByRole('tab', { name: 'Comptes protégés' }).click(); await p.getByText('Awa Ndiaye').waitFor() }],
+      ['02-comptes-proteges', async (p) => { await p.getByRole('tab', { name: 'Comptes protégés' }).click(); await p.getByText('Awa Ndiaye', { exact: true }).waitFor() }],
+    ],
+  },
+  'exi-04': {
+    profil: 'ROLE_SUPER_ADMIN',
+    etapes: [
+      ['01-sandbox', async (p) => { await p.goto(`${BASE}/console/sandbox`); await p.getByRole('cell', { name: '99001' }).waitFor() }],
+      ['02-mandats', async (p) => { await p.getByRole('tab', { name: 'Mandats de partenaire' }).click(); await p.getByText('Révoquée', { exact: true }).waitFor() }],
     ],
   },
 }

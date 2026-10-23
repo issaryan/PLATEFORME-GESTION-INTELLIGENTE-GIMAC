@@ -2,6 +2,7 @@ package cm.gimac.des.iam.application.usecase.sandbox;
 
 import cm.gimac.des.iam.application.port.out.Annuaire;
 import cm.gimac.des.iam.application.port.out.EtapesIdempotentes;
+import cm.gimac.des.iam.application.port.out.sandbox.DelegationsSandbox;
 import cm.gimac.des.iam.application.port.out.sandbox.PerimetresSuspendus;
 import cm.gimac.des.iam.application.port.out.sandbox.ProtectionsAdministrateur;
 import cm.gimac.des.iam.application.port.out.sandbox.ProtectionsAdministrateur.Protection;
@@ -25,8 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
  * du CC de la sandbox), points d'entrée des sagas SUSPENSION et RETABLISSEMENT de SBX-ESPACE.
  *
  * <ul>
- *   <li>Suspension : l'indicateur est posé sur le périmètre, les sessions de chaque compte rattaché sont révoquées ;
- *       aucun état de compte n'est modifié.</li>
+ *   <li>Suspension : l'indicateur est posé sur le périmètre, les sessions de chaque compte rattaché et de chaque
+ *       titulaire d'un mandat sur ce périmètre sont révoquées ; aucun état de compte ni de mandat n'est modifié.</li>
  *   <li>Rétablissement : l'indicateur est levé ; chaque compte retrouve son propre état, un compte suspendu avant la
  *       suspension le reste.</li>
  *   <li>Étape rejouée avec la même clé d'idempotence : résultat d'origine, sans second effet (scénario 4).</li>
@@ -57,6 +58,7 @@ public class PerimetresSandboxService {
 
     private final PerimetresSuspendus perimetres;
     private final ProtectionsAdministrateur protections;
+    private final DelegationsSandbox delegations;
     private final Annuaire annuaire;
     private final EtapesIdempotentes etapes;
     private final JournalSandbox journal;
@@ -65,6 +67,7 @@ public class PerimetresSandboxService {
     public PerimetresSandboxService(
         PerimetresSuspendus perimetres,
         ProtectionsAdministrateur protections,
+        DelegationsSandbox delegations,
         Annuaire annuaire,
         EtapesIdempotentes etapes,
         JournalSandbox journal,
@@ -72,6 +75,7 @@ public class PerimetresSandboxService {
     ) {
         this.perimetres = perimetres;
         this.protections = protections;
+        this.delegations = delegations;
         this.annuaire = annuaire;
         this.etapes = etapes;
         this.journal = journal;
@@ -100,6 +104,8 @@ public class PerimetresSandboxService {
         Set<String> touches = new LinkedHashSet<>();
         List<Compte> comptes = annuaire.parInstitution(c);
         comptes.forEach(x -> touches.add(x.id()));
+        // Titulaires d'un mandat sur ce périmètre (US-EXI-04) : leurs sessions sont révoquées aussi.
+        touches.addAll(delegations.titulaires(c, clock.instant()));
         touches.forEach(annuaire::fermerSessions);
         if (pose) {
             journal.objet(acteur, "PERIMETRE_SUSPENDU", c, c, motif, List.of("sessions révoquées : " + touches.size()));
