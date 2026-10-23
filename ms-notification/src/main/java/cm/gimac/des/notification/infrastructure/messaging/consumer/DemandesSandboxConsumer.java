@@ -33,6 +33,10 @@ public class DemandesSandboxConsumer {
 
     public static final String GROUPE = "notification-sandbox";
 
+    /** Sujets des onze services, à défaut de gimac.consommateurs.sandbox.sujets. */
+    public static final String SUJETS =
+        "sbx-espace.notification-requested.v1,sbx-raccordement.notification-requested.v1,sbx-referentiel.notification-requested.v1,sbx-donnees.notification-requested.v1,sbx-simulation.notification-requested.v1,sbx-mobile.notification-requested.v1,sbx-iso20022.notification-requested.v1,sbx-carte.notification-requested.v1,sbx-campagne.notification-requested.v1,sbx-trace.notification-requested.v1,sbx-lecture.notification-requested.v1";
+
     /** Type d'une demande de notification de la sandbox ; le groupe 1 est le service émetteur. */
     public static final Pattern TYPE = Pattern.compile("^(sbx-[a-z0-9]+)\\.notification-requested\\.v1$");
 
@@ -50,7 +54,7 @@ public class DemandesSandboxConsumer {
 
     @KafkaListener(
         id = GROUPE,
-        topics = "#{'${gimac.consommateurs.sandbox.sujets}'.split(',')}",
+        topics = "#{'${gimac.consommateurs.sandbox.sujets:" + SUJETS + "}'.split(',')}",
         groupId = GROUPE,
         autoStartup = "${gimac.consommateurs.demarrage-automatique:true}"
     )
