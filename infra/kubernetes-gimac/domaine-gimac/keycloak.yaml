@@ -106,6 +106,12 @@ spec:
                 secretKeyRef:
                   name: gimac-clients-keycloak
                   key: reprise-service
+            # Sandbox GIMAC (D-119) : clients sbx-*.
+            - name: GIMAC_SECRET_SBX_ESPACE
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: sbx-espace
             - name: GIMAC_SECRET_INTERNAL
               valueFrom:
                 secretKeyRef:

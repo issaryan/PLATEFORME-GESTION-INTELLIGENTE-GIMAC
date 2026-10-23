@@ -236,6 +236,18 @@ spring:
                   args:
                     maxSize: 64KB
                 - RewritePath=/bff/portail/sbx-habilitations/(?<p>.*), /api/v1/administration-deleguee/${p}
+            # D-119 (lot IAM de l'épopée EXI, docs/lot1/sandbox-existant-adapte.md §6) : la sandbox dans la console de la
+            # plateforme (périmètres suspendus, comptes protégés, délégations, comptes de service), filtrée par OPA.
+            - id: console-iam-sandbox
+              uri: ${gimac.services.iam}
+              predicates:
+                - Path=/bff/console/iam/sandbox/**
+              filters:
+                - OpaAuthorize
+                - name: RequestSize
+                  args:
+                    maxSize: 64KB
+                - RewritePath=/bff/console/iam/sandbox/(?<p>.*), /api/v1/sandbox/${p}
             - id: console-iam
               uri: ${gimac.services.iam}
               predicates:

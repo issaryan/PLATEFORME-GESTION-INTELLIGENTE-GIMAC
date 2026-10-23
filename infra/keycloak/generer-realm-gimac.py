@@ -79,13 +79,19 @@ PERMISSIONS = {
                  # Mise en page PDF d'un document composé par un service (D-102, organigramme de MS-IAM).
                  "DOCUMENT_RENDER",
                  # Réception des alertes des sondes par MS-MONITORING (D-114 §4.2), jeton de service de la source.
-                 "MONITORING_ALERT_INGEST"],
+                 "MONITORING_ALERT_INGEST",
+                 # Sandbox GIMAC (D-119, docs/lot1/sandbox-existant-adapte.md §6) : étapes des sagas de SBX-ESPACE dans MS-IAM
+                 # (suspension de périmètre, protection, délégations) et introspection des jetons pour la sandbox.
+                 "IAM_SBX_SAGA", "IAM_SBX_INTROSPECT"],
 }
 # Sandbox GIMAC (D-115, docs/lot1/sandbox-existant-adapte.md §2, US-EXI-02) : SBX_<MODULE>_<FONCTION>, douze modules et cinq
 # fonctions (CA-SBX-GIMAC-02 UC-INS-04), soit soixante permissions contrôlées côté serveur par les services de la sandbox.
 SBX_MODULES = ["HAB", "RAC", "REF", "SCN", "DON", "SIM", "MOB", "ISO", "CAR", "CER", "TRA", "LEC"]
 SBX_FONCTIONS = ["ADMINISTRATION", "SIMULATION", "EXECUTION", "VALIDATION", "CONSULTATION"]
 PERMISSIONS["SBX"] = [f"{m}_{f}" for m in SBX_MODULES for f in SBX_FONCTIONS]
+# Treizième module (D-121, D-119) : supervision de la sandbox depuis la plateforme, consultation seule, attribuée par
+# profil depuis la console ; aucun profil livré ne la reçoit d'office. SBX-TRACE l'accepte sur ses routes de supervision.
+PERMISSIONS["SBX"].append("SUP_CONSULTATION")
 TOUTES = [f"{d}_{p}" for d, ps in PERMISSIONS.items() for p in ps]
 
 LECTURE_DES = ["HOM_REFERENTIEL_READ", "HOM_LIAISON_READ", "HOM_LIAISON_LIST", "HOM_DASHBOARD_READ", "CER_CIRCUIT_READ",
@@ -318,13 +324,18 @@ LIBELLES_PERMISSIONS = {"REF_METIER_ADMIN": "Administration des référentiels m
                         "MON_SHIFT_LEAD": "Habilitation de chef de quart : visa de la relève",
                         "MON_ROSTER_MANAGE": "Générer la grille d'astreinte et approuver les échanges",
                         "MON_ROSTER_PUBLISH": "Publier la grille d'astreinte (signature du chef du DES)",
-                        "INTERNAL_MONITORING_ALERT_INGEST": "Réception des alertes des sondes par MS-MONITORING"}
+                        "INTERNAL_MONITORING_ALERT_INGEST": "Réception des alertes des sondes par MS-MONITORING",
+                        "INTERNAL_IAM_SBX_SAGA": "Sandbox : étapes des sagas de SBX-ESPACE dans MS-IAM (périmètres, protections, délégations)",
+                        "INTERNAL_IAM_SBX_INTROSPECT": "Sandbox : introspection des jetons par MS-IAM (jeton interne réduit)"}
 _MODULES_SBX = {"HAB": "habilitations", "RAC": "raccordements", "REF": "référentiels", "SCN": "scénarios", "DON": "données de test",
                 "SIM": "simulation", "MOB": "interface mobile", "ISO": "interface ISO 20022", "CAR": "interface carte",
                 "CER": "campagnes", "TRA": "traces", "LEC": "contrat de lecture"}
 _FONCTIONS_SBX = {"ADMINISTRATION": "administration", "SIMULATION": "simulation", "EXECUTION": "exécution de campagne",
                   "VALIDATION": "validation de verdict", "CONSULTATION": "consultation"}
 LIBELLES_PERMISSIONS.update({f"SBX_{m}_{f}": f"Sandbox, {_MODULES_SBX[m]} : {_FONCTIONS_SBX[f]}" for m in SBX_MODULES for f in SBX_FONCTIONS})
+LIBELLES_PERMISSIONS["SBX_SUP_CONSULTATION"] = "Sandbox, supervision depuis la plateforme : consultation"
+assert len(PERMISSIONS["SBX"]) == 61 and not [n for n, ps in PROFILS.items() if "SBX_SUP_CONSULTATION" in ps], "SBX_SUP_CONSULTATION"
+
 # D-94 §3 : le conducteur de projet est le porteur de HOM_PROJECT_CONDUCT, donnée par défaut au profil conducteur seul.
 assert [n for n, ps in PROFILS.items() if "HOM_PROJECT_CONDUCT" in ps] == ["ROLE_CONDUCTEUR_PROJET"]
 # D-97 : permission de chaque fonction opérationnelle, donnée aux profils que le catalogue des fonctions (D-91,
@@ -385,7 +396,12 @@ SERVICES = {
     # PDF (D-102) : mise en page par MS-DOCUMENT (POST /api/v1/interne/rendus/pdf).
     "iam-service": ["INTERNAL_DOCUMENT_RENDER"],
     # Connexion sur la plateforme (D-65) : la passerelle lit l'état de connexion du compte sur MS-IAM.
-    "gateway-service": ["INTERNAL_IAM_READ"],
+    "gateway-service": ["INTERNAL_IAM_READ",
+                        # Introspection des jetons pour la sandbox (D-119) : décision de MS-IAM pour le jeton interne réduit.
+                        "INTERNAL_IAM_SBX_INTROSPECT"],
+    # Sandbox GIMAC (D-119) : SBX-ESPACE conduit ses sagas dans MS-IAM (INTERNAL_IAM_SBX_SAGA seul, sans INTERNAL_IAM_READ)
+    # et lit la fiche d'une institution dans MS-PARTICIPANT (US-EXI-21).
+    "sbx-espace": ["INTERNAL_IAM_SBX_SAGA", "INTERNAL_PARTICIPANT_READ"],
     # Reprise de l'existant (D-107) : outil infra/reprise/importer-reprise.py, jeton client_credentials, routes
     # /api/v1/interne/reprise/** de MS-PARTICIPANT et MS-HOMOLOGATION ; aucune autre permission.
     "reprise-service": ["REF_REPRISE_IMPORT"],
@@ -762,6 +778,10 @@ def main():
     comptes_service = {u.get("serviceAccountClientId"): u for u in realm["users"]}
     assert clients["gateway-service"]["serviceAccountsEnabled"] and "INTERNAL_IAM_READ" in comptes_service["gateway-service"]["realmRoles"]
     assert "manage-users" in comptes_service["iam-service"]["clientRoles"]["realm-management"]
+    # D-119 : étapes de saga de la sandbox réservées à SBX-ESPACE, sans lecture interne générale ; introspection à la passerelle.
+    assert [u["serviceAccountClientId"] for u in realm["users"] if "INTERNAL_IAM_SBX_SAGA" in (u.get("realmRoles") or [])] == ["sbx-espace"]
+    assert "INTERNAL_IAM_READ" not in comptes_service["sbx-espace"]["realmRoles"]
+    assert "INTERNAL_IAM_SBX_INTROSPECT" in comptes_service["gateway-service"]["realmRoles"]
     # ROLE_ADMIN (CRUD généré et /management des services) : jamais dans un profil, porté par le seul compte
     # de service de la supervision.
     assert "ROLE_ADMIN" in comptes_service["gateway-supervision"]["realmRoles"]

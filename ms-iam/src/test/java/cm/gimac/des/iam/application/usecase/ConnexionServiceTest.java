@@ -9,6 +9,8 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import cm.gimac.des.iam.application.usecase.sandbox.EtatEffectifSandbox;
+import cm.gimac.des.iam.application.usecase.sandbox.Memoires;
 import cm.gimac.des.iam.domain.IamException;
 import cm.gimac.des.iam.domain.compte.ActionRequise;
 import cm.gimac.des.iam.domain.compte.Courriel;
@@ -50,6 +52,9 @@ class ConnexionServiceTest {
     List<JetonLien> jetons;
     AtomicReference<Instant> maintenant;
     ConnexionService service;
+    Memoires.Perimetres perimetres;
+    Memoires.Activite activite;
+    EtatEffectifSandbox etatEffectif;
     String agent;
 
     @BeforeEach
@@ -75,7 +80,10 @@ class ConnexionServiceTest {
             }
         };
         LiensCourriel liens = new LiensCourriel(JetonsEnMemoire.creer(jetons), new CourrielsPlateforme(courriels), AdministrationComptesServiceTest.proprietes(), clock);
-        service = new ConnexionService(annuaire, liens, journal);
+        perimetres = new Memoires.Perimetres();
+        activite = new Memoires.Activite();
+        etatEffectif = new EtatEffectifSandbox(perimetres, activite, clock);
+        service = new ConnexionService(annuaire, liens, journal, etatEffectif);
         agent = annuaire.creer(new NouveauCompte("agent.sna", "Awa", "Mballa", "awa@gimac.test", null, null, null, Set.of("ROLE_SNA")), List.of(ActionRequise.MOT_DE_PASSE, ActionRequise.FICHE, ActionRequise.CHARTE));
     }
 
@@ -142,7 +150,7 @@ class ConnexionServiceTest {
             AdministrationComptesServiceTest.proprietes(),
             Clock.fixed(DEBUT, ZoneOffset.UTC)
         );
-        new ConnexionService(annuaire, liens, journal).motDePasseOublie("agent.sna", "des");
+        new ConnexionService(annuaire, liens, journal, etatEffectif).motDePasseOublie("agent.sna", "des");
         verify(journal).compte(any(), eq("MOT_DE_PASSE_OUBLIE_ECHEC"), eq(agent), eq("agent.sna"), isNull(), eq(List.of("IAM_SMTP_FAILED")));
     }
 

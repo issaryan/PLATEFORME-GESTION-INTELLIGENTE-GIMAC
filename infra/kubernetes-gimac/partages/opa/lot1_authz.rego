@@ -95,6 +95,9 @@ regles := [
 	{"m": "GET", "re": `^/bff/portail/sbx-habilitations/(roles|comptes(/[^/]+)?)$`, "p": "SBX_HAB_ADMINISTRATION"},
 	{"m": "POST", "re": `^/bff/portail/sbx-habilitations/comptes$`, "p": "SBX_HAB_ADMINISTRATION"},
 	{"m": "PUT", "re": `^/bff/portail/sbx-habilitations/comptes/[^/]+/(roles|etat)$`, "p": "SBX_HAB_ADMINISTRATION"},
+	# D-119 (lot IAM de l'épopée EXI, docs/lot1/sandbox-existant-adapte.md §6) : la sandbox dans la console, lectures
+	# (périmètres suspendus, comptes protégés) sous IAM_ACCOUNT_READ ; les écritures restent aux sagas de SBX-ESPACE.
+	{"m": "GET", "re": `^/bff/console/iam/sandbox/(perimetres(/[^/]+)?|protections)$`, "p": "IAM_ACCOUNT_READ"},
 	# Dépôts fragmentés depuis le portail (D-74, docs/lot1/depots-fragmentes.md §3) : ouverture, parties,
 	# état, fin et abandon ; institution exigée comme pour toute route du portail.
 	{"m": "POST", "re": `^/bff/portail/document/depots$`, "p": "HOM_PORTAL_SUBMIT"},
@@ -596,3 +599,8 @@ allow if {
 	some p in input.permissions
 	p in sbx_permissions
 }
+
+# D-122 (docs/lot1/sandbox-existant-adapte.md §7, HOM-06) : republication des états de liaison pour la Sandbox GIMAC,
+# POST /api/v1/interne/sandbox/liaisons/republication de MS-HOMOLOGATION, réservée au jeton de service portant
+# INTERNAL_HOMOLOGATION_REPUBLISH (contrôle du service). Route interne : jamais relayée par la passerelle, même avec
+# la permission (règle « interne » ci-dessus) ; aucune règle d'ouverture n'est ajoutée.

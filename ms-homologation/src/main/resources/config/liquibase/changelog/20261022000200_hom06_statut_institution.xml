@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        HOM-06 (D-122) : dernier statut de chaque institution appliqué aux liaisons (gel sur suspension ou retrait,
+        rétablissement au retour), ordonné par la version de statut du registre (D-120), à défaut par la date d'effet.
+    -->
+    <changeSet id="hom06-statut-institution-applique" author="gimac">
+        <createTable tableName="institution_statut_applique">
+            <column name="institution_id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_institution_statut_applique"/>
+            </column>
+            <column name="statut" type="varchar(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version_statut" type="bigint"/>
+            <column name="date_effet" type="${datetimeType}"/>
+            <column name="applique_le" type="${datetimeType}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

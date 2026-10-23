@@ -930,6 +930,9 @@
                                     <include>cm/gimac/des/homologation/domain/sandbox/**</include>
                                     <include>cm/gimac/des/homologation/application/usecase/sandbox/**</include>
                                     <include>cm/gimac/des/homologation/domain/event/LiaisonStatusChangedPayload*</include>
+                                    <!-- HOM-06 et republication (D-122). -->
+                                    <include>cm/gimac/des/homologation/infrastructure/messaging/consumer/StatutsInstitutionConsumer*</include>
+                                    <include>cm/gimac/des/homologation/web/rest/lot1/RepublicationSandboxResource*</include>
                                     <!-- Classes de la sandbox des récits suivants ajoutées ici. -->
                                 </includes>
                                 <excludes>

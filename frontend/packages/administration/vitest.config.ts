@@ -18,7 +18,11 @@ export default defineConfig({
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/i18n/**', 'src/index.ts', 'src/services/simule/catalogue.ts'],
       reporter: ['text-summary', 'html', 'lcov'],
-      thresholds: { statements: 80, branches: 80, functions: 80, lines: 80 },
+      thresholds: {
+        statements: 80, branches: 80, functions: 80, lines: 80,
+        // Sandbox GIMAC, lot IAM de l'épopée EXI (D-119) : fichiers ajoutés tenus à 98 %.
+        'src/**/{sandbox,SandboxIamPage}.{ts,tsx}': { statements: 98, branches: 98, functions: 98, lines: 98 },
+      },
     },
   },
 })

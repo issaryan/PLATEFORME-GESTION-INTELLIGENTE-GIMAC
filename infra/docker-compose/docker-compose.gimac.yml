@@ -251,6 +251,8 @@ services:
       - GIMAC_SECRET_MONITORING_SERVICE=${GIMAC_SECRET_MONITORING_SERVICE:?à définir dans .env}
       # Reprise de l'existant (D-107) : client reprise-service de l'outil infra/reprise/importer-reprise.py.
       - GIMAC_SECRET_REPRISE_SERVICE=${GIMAC_SECRET_REPRISE_SERVICE:?à définir dans .env}
+      # Sandbox GIMAC (D-119) : comptes de service des services de la sandbox (clients sbx-*).
+      - GIMAC_SECRET_SBX_ESPACE=${GIMAC_SECRET_SBX_ESPACE:?à définir dans .env}
       - GIMAC_SECRET_INTERNAL=${GIMAC_SECRET_INTERNAL:?à définir dans .env}
 
   prometheus:

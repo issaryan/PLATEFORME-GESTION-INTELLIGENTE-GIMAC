@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 
 import cm.gimac.des.iam.application.IamProprietes;
 import cm.gimac.des.iam.application.port.out.EtapesIdempotentes;
+import cm.gimac.des.iam.application.usecase.sandbox.Memoires;
 import cm.gimac.des.iam.domain.IamException;
 import cm.gimac.des.iam.domain.compte.Acteur;
 import cm.gimac.des.iam.domain.compte.ActionRequise;
@@ -67,6 +68,7 @@ class AdministrationDelegueeServiceTest {
     AnnuaireEnMemoire annuaire;
     AdministrationDelegueeService service;
     final Map<String, String> etapes = new LinkedHashMap<>();
+    final Memoires.Protections protections = new Memoires.Protections();
     String admin;
     String admin2;
     String testeur;
@@ -119,7 +121,7 @@ class AdministrationDelegueeServiceTest {
                 etapes.put(cle + "/" + operation, resultat);
             }
         };
-        service = new AdministrationDelegueeService(comptes, catalogue, annuaire, journal, memoire);
+        service = new AdministrationDelegueeService(comptes, catalogue, annuaire, journal, memoire, protections);
         admin = compte("admin.99001", INST, "ROLE_SBX_ADMIN_INSTITUTION");
         testeur = compte("testeur.99001", INST, "ROLE_SBX_TESTEUR", "ROLE_CORRESPONDANT");
         etranger = compte("testeur.99002", AUTRE, "ROLE_SBX_TESTEUR");
@@ -243,5 +245,21 @@ class AdministrationDelegueeServiceTest {
         // Administrateur suspendu privé de son rôle : pas de dernier administrateur à protéger.
         assertThat(service.definirRoles(acteur, INST, admin2, Set.of("ROLE_SBX_LECTEUR"), "x", null).profils()).containsExactly("ROLE_SBX_LECTEUR");
         assertThat(etapes).isEmpty();
+    }
+
+    @Test
+    @DisplayName("US-EXI-06 scénario 3 : la suspension du compte protégé, demandée par l'institution, est refusée avec motif et journalisée")
+    void suspensionCompteProtegeRefusee() {
+        String admin2 = compte("admin2.99001", INST, "ROLE_SBX_ADMIN_INSTITUTION");
+        protections.definir(admin2, INST, true, "service-account-sbx-espace", Instant.parse("2026-10-19T08:00:00Z"));
+        assertThatThrownBy(() -> service.definirActif(acteur, INST, admin2, false, "départ", null)).isInstanceOfSatisfying(IamException.class, e -> {
+            assertThat(e.code()).isEqualTo("IAM_SBX_COMPTE_PROTEGE");
+            assertThat(e.status()).isEqualTo(409);
+            assertThat(e.details()).containsEntry("motif", cm.gimac.des.iam.domain.sandbox.ReglesPerimetre.MOTIF_PROTECTION);
+        });
+        assertThat(annuaire.lire(admin2).orElseThrow().actif()).isTrue();
+        verify(journal).compte(eq(acteur), eq("TENTATIVE_SUSPENSION_COMPTE_PROTEGE"), eq(admin2), any(), eq("départ"), any());
+        // Rétablir un compte protégé reste possible.
+        assertThat(service.definirActif(acteur, INST, admin2, true, "retour", null).actif()).isTrue();
     }
 }

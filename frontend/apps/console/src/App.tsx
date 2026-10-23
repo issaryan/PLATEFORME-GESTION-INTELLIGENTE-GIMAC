@@ -40,6 +40,8 @@ const JournalisationPage = lazy(() => import('@gimac/administration/pages/Journa
 // Exploitation de l'infrastructure (D-78) : charges, journaux, gestes confirmés par la clé de sécurité.
 const InfrastructurePage = lazy(() => import('@gimac/administration/pages/InfrastructurePage'))
 const SupervisionPage = lazy(() => import('@gimac/administration/pages/SupervisionPage'))
+// Sandbox GIMAC (D-119) : périmètres suspendus, comptes protégés, délégations et comptes de service.
+const SandboxIamPage = lazy(() => import('@gimac/administration/pages/SandboxIamPage'))
 
 const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
 
@@ -137,6 +139,7 @@ function Pages({ session, correlationId, notifications }: { session: Session; co
                   <Route path="matrice-pouvoirs" element={G('consoleMatrice', <MatricePouvoirsPage />)} />
                   <Route path="organisation" element={G('consoleOrganisation', <OrganisationPage />)} />
                   <Route path="organigramme" element={G('consoleOrganigramme', <OrganigrammePage />)} />
+                  <Route path="sandbox" element={G('consoleSandbox', <SandboxIamPage />)} />
                   <Route path="politique-securite" element={G('consolePolitique', <PolitiqueSecuritePage />)} />
                   <Route path="messagerie" element={G('consoleMessagerie', <MessagerieInstantanee couche="console" />)} />
                   <Route path="notifications" element={G('consoleNotifications', <NotificationsPage />)} />
