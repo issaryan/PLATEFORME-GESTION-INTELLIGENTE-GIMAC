@@ -345,6 +345,17 @@ gimac:
         - monitoring.notification
         - homologation.operation
         - homologation.liaison
+        - sbx-espace.notification-requested.v1
+        - sbx-raccordement.notification-requested.v1
+        - sbx-referentiel.notification-requested.v1
+        - sbx-donnees.notification-requested.v1
+        - sbx-simulation.notification-requested.v1
+        - sbx-mobile.notification-requested.v1
+        - sbx-iso20022.notification-requested.v1
+        - sbx-carte.notification-requested.v1
+        - sbx-campagne.notification-requested.v1
+        - sbx-trace.notification-requested.v1
+        - sbx-lecture.notification-requested.v1
   consommateurs:
     notification:
       # pilotage.process : processus d'unité (D-87, type PROCESSUS).
@@ -353,3 +364,7 @@ gimac:
     homologation:
       # Parcours d'homologation (D-93, type HOMOLOGATION), groupe notification-homologation.
       sujets: homologation.operation,homologation.liaison
+    sandbox:
+      # Demandes de notification des onze services de la sandbox (US-EXI-09, type SANDBOX), groupe notification-sandbox ;
+      # chaque service publie sur le sujet nommé d'après le type de l'événement.
+      sujets: sbx-espace.notification-requested.v1,sbx-raccordement.notification-requested.v1,sbx-referentiel.notification-requested.v1,sbx-donnees.notification-requested.v1,sbx-simulation.notification-requested.v1,sbx-mobile.notification-requested.v1,sbx-iso20022.notification-requested.v1,sbx-carte.notification-requested.v1,sbx-campagne.notification-requested.v1,sbx-trace.notification-requested.v1,sbx-lecture.notification-requested.v1

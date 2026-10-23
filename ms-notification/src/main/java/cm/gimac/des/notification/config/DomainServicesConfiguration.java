@@ -2,6 +2,7 @@ package cm.gimac.des.notification.config;
 
 import cm.gimac.des.notification.domain.service.ReglesHomologation;
 import cm.gimac.des.notification.domain.service.ReglesNotifications;
+import cm.gimac.des.notification.domain.service.ReglesSandbox;
 import java.time.Clock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -26,5 +27,11 @@ public class DomainServicesConfiguration {
     @Bean
     public ReglesHomologation reglesHomologation() {
         return new ReglesHomologation();
+    }
+
+    /** Règles et gabarits des notifications de la Sandbox GIMAC (US-EXI-09). */
+    @Bean
+    public ReglesSandbox reglesSandbox() {
+        return new ReglesSandbox();
     }
 }

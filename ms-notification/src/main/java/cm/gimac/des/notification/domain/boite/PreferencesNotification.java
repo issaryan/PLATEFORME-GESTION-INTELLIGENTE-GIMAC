@@ -54,6 +54,9 @@ public class PreferencesNotification {
     @Column(name = "type_monitoring", nullable = false)
     private boolean monitoring = true;
 
+    @Column(name = "type_sandbox", nullable = false)
+    private boolean sandbox = true;
+
     @Column(name = "modifie_le", nullable = false)
     private Instant modifieLe;
 
@@ -96,6 +99,7 @@ public class PreferencesNotification {
             case PROCESSUS -> processus;
             case HOMOLOGATION -> homologation;
             case MONITORING -> monitoring;
+            case SANDBOX -> sandbox;
         };
     }
 
@@ -110,6 +114,7 @@ public class PreferencesNotification {
             case PROCESSUS -> processus = actif;
             case HOMOLOGATION -> homologation = actif;
             case MONITORING -> monitoring = actif;
+            case SANDBOX -> sandbox = actif;
         }
     }
 

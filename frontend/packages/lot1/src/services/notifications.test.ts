@@ -113,10 +113,10 @@ describe('notifications de démonstration du portail', () => {
     expect(page.contenu.find((x) => x.reference.type === 'LIAISON')).toMatchObject({ lien: '/portail/liaisons/LIA-2025-088', lueLe: expect.any(String) })
     expect(await n.compteur()).toEqual({ nonLues: actions.length })
   })
-  it('CER-13 : au portail, seules les préférences du parcours de ses liaisons ; un type interne est refusé', async () => {
+  it('CER-13 et US-EXI-09 : au portail, seules les préférences du parcours de ses liaisons et de la sandbox ; un type interne est refusé', async () => {
     const n = notificationsPortailDemo()
-    expect(Object.keys((await n.preferences()).types)).toEqual(['HOMOLOGATION'])
+    expect(Object.keys((await n.preferences()).types)).toEqual(['HOMOLOGATION', 'SANDBOX'])
     await expect(n.enregistrerPreferences({ types: { MESSAGE: false } })).rejects.toEqual(expect.objectContaining({ code: 'NOT_REQUETE_INVALIDE' }))
-    expect((await n.enregistrerPreferences({ types: { HOMOLOGATION: false } })).types).toEqual({ HOMOLOGATION: false })
+    expect((await n.enregistrerPreferences({ types: { HOMOLOGATION: false } })).types).toEqual({ HOMOLOGATION: false, SANDBOX: true })
   })
 })

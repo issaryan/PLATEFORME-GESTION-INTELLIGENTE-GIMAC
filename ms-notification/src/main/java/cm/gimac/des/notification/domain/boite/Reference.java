@@ -18,6 +18,7 @@ public class Reference {
     public static final String TRANSITION = "TRANSITION";
     public static final String HOMOLOGATION = "homologation";
     public static final String MONITORING = "monitoring";
+    public static final String SANDBOX = "sandbox";
     public static final String CONVERSATION = "CONVERSATION";
     public static final String MESSAGE = "MESSAGE";
     public static final String TACHE = "TACHE";
@@ -64,6 +65,11 @@ public class Reference {
 
     public static Reference rapport(String id) {
         return new Reference(PILOTAGE, RAPPORT, id);
+    }
+
+    /** Demande de notification de la sandbox (US-EXI-09) : modèle et identifiant de la demande. */
+    public static Reference sandbox(String modele, String id) {
+        return new Reference(SANDBOX, modele, id);
     }
 
     /** Objet du monitoring et des astreintes (D-116) : rapport, rapport quotidien d'une journée. */
