@@ -54,6 +54,8 @@ regles := [
 	# HOM_EVIDENCE_SUBMIT, comme le dépôt) reste au @PreAuthorize, le droit de dépôt étant décidé par le parcours.
 	{"m": "GET", "re": `^/bff/des/homologation/liaisons/[^/]+/chronologie$`, "p": "HOM_LIAISON_READ"},
 	{"m": "GET", "re": `^/bff/des/homologation/parcours/operations/[^/]+/pieces/[^/]+$`, "p": "HOM_LIAISON_READ"},
+	# US-EXI-17 (D-122) : résultats de la sandbox repris par MS-HOMOLOGATION, en lecture seule (onglet de DES-09).
+	{"m": "GET", "re": `^/bff/des/homologation/liaisons/[^/]+/sandbox(/campagnes/[^/]+/executions)?$`, "p": "HOM_LIAISON_READ"},
 	# D-98 : la preuve, comme le livrable, est ouverte à HOM_STEP_MANAGE ou HOM_EVIDENCE_SUBMIT (@PreAuthorize du service).
 	{"m": "PUT", "re": `^/bff/des/homologation/liaisons/[^/]+/ressources$`, "p": "HOM_STEP_MANAGE"},
 	{"m": "POST", "re": `^/bff/des/homologation/(liaisons/[^/]+/blocages|blocages/[^/]+/levee)$`, "p": "HOM_STEP_MANAGE"},
@@ -95,9 +97,21 @@ regles := [
 	{"m": "GET", "re": `^/bff/portail/sbx-habilitations/(roles|comptes(/[^/]+)?)$`, "p": "SBX_HAB_ADMINISTRATION"},
 	{"m": "POST", "re": `^/bff/portail/sbx-habilitations/comptes$`, "p": "SBX_HAB_ADMINISTRATION"},
 	{"m": "PUT", "re": `^/bff/portail/sbx-habilitations/comptes/[^/]+/(roles|etat)$`, "p": "SBX_HAB_ADMINISTRATION"},
+	# US-EXI-23 : la demande de déblocage de l'institution parvient à MS-IAM, qui la refuse et la journalise.
+	{"m": "POST", "re": `^/bff/portail/sbx-habilitations/comptes/[^/]+/deblocage$`, "p": "SBX_HAB_ADMINISTRATION"},
 	# D-119 (lot IAM de l'épopée EXI, docs/lot1/sandbox-existant-adapte.md §6) : la sandbox dans la console, lectures
 	# (périmètres suspendus, comptes protégés) sous IAM_ACCOUNT_READ ; les écritures restent aux sagas de SBX-ESPACE.
-	{"m": "GET", "re": `^/bff/console/iam/sandbox/(perimetres(/[^/]+)?|protections)$`, "p": "IAM_ACCOUNT_READ"},
+	{"m": "GET", "re": `^/bff/console/iam/sandbox/(perimetres(/[^/]+)?|protections|delegations)$`, "p": "IAM_ACCOUNT_READ"},
+	# US-EXI-10 (D-123) : registre d'audit de MS-AUDIT filtré sur la source sandbox (recherche, export CSV, rebut), lecture
+	# seule sous SBX_TRA_CONSULTATION et deux facteurs.
+	{"m": "GET", "re": `^/bff/console/audit/sandbox(/export|/rebut)?$`, "p": "SBX_TRA_CONSULTATION"},
+	# US-EXI-09 : règles de notification de la sandbox chez MS-NOTIFICATION, catalogue des modèles et résolution à blanc
+	# (NOT-05, rien n'est créé), sous SBX_HAB_ADMINISTRATION et deux facteurs ; comptes internes seulement.
+	{"m": "GET", "re": `^/bff/console/notification/sandbox/modeles$`, "p": "SBX_HAB_ADMINISTRATION"},
+	{"m": "POST", "re": `^/bff/console/notification/sandbox/resolution$`, "p": "SBX_HAB_ADMINISTRATION"},
+	# US-EXI-24 (D-123) : accès de prestataire de maintenance, demandé puis approuvé par le RSSI (quatre yeux, contrôle du
+	# service), refusé ou révoqué depuis la console, sous IAM_ACCOUNT_SECURITY et deux facteurs.
+	{"m": "POST", "re": `^/bff/console/iam/sandbox/delegations/(prestataire|[^/]+/(approbation|refus|revocation))$`, "p": "IAM_ACCOUNT_SECURITY"},
 	# Dépôts fragmentés depuis le portail (D-74, docs/lot1/depots-fragmentes.md §3) : ouverture, parties,
 	# état, fin et abandon ; institution exigée comme pour toute route du portail.
 	{"m": "POST", "re": `^/bff/portail/document/depots$`, "p": "HOM_PORTAL_SUBMIT"},
@@ -117,7 +131,9 @@ regles := [
 	{"m": "PUT", "re": `^/bff/(des|console)/iam/comptes/[^/]+$`, "p": "IAM_ACCOUNT_EDIT"},
 	{"m": "POST", "re": `^/bff/(des|console)/iam/comptes/[^/]+/(activation|desactivation)$`, "p": "IAM_ACCOUNT_STATUS"},
 	{"m": "DELETE", "re": `^/bff/(des|console)/iam/comptes/[^/]+$`, "p": "IAM_ACCOUNT_DELETE"},
-	{"m": "POST", "re": `^/bff/(des|console)/iam/comptes/[^/]+/(actions-requises|second-facteur/reinitialisation|mot-de-passe-provisoire|sessions/fermeture)$`, "p": "IAM_ACCOUNT_SECURITY"},
+	{"m": "POST", "re": `^/bff/(des|console)/iam/comptes/[^/]+/(actions-requises|second-facteur/reinitialisation|mot-de-passe-provisoire|sessions/fermeture|deblocage)$`, "p": "IAM_ACCOUNT_SECURITY"},
+	# US-EXI-23 (D-123) : verrouillage d'un compte (force brute) en lecture ; déblocage ci-dessus, réservé au GIMAC.
+	{"m": "GET", "re": `^/bff/(des|console)/iam/comptes/[^/]+/verrouillage$`, "p": "IAM_ACCOUNT_READ"},
 	{"m": "GET", "re": `^/bff/(des|console)/iam/configuration/politique-securite$`, "p": "PLATFORM_SECURITY_POLICY_READ"},
 	{"m": "PUT", "re": `^/bff/(des|console)/iam/configuration/politique-securite$`, "p": "PLATFORM_SECURITY_POLICY_EDIT"},
 	{"m": "GET", "re": `^/bff/console/iam/configuration/messagerie$`, "p": "PLATFORM_MESSAGING_EDIT"},

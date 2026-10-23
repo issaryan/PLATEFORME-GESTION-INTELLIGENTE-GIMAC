@@ -344,7 +344,11 @@ test_parcours_sans_permission if {
 }
 
 # D-109 : chronologie et pièce d'une opération en lecture (HOM_LIAISON_READ) ; refusées sans elle ou sans second facteur.
-routes_preuves := ["/bff/des/homologation/liaisons/l1/chronologie", "/bff/des/homologation/parcours/operations/o1/pieces/d1"]
+routes_preuves := [
+	"/bff/des/homologation/liaisons/l1/chronologie", "/bff/des/homologation/parcours/operations/o1/pieces/d1",
+	# US-EXI-17 : résultats de la sandbox repris, et exécutions d'une campagne.
+	"/bff/des/homologation/liaisons/l1/sandbox", "/bff/des/homologation/liaisons/l1/sandbox/campagnes/c1/executions",
+]
 
 test_preuves_lecture if {
 	every chemin in routes_preuves {
@@ -1632,7 +1636,25 @@ routes_sbx_console_iam := [
 	["GET", "/bff/console/iam/sandbox/perimetres"],
 	["GET", "/bff/console/iam/sandbox/perimetres/99001"],
 	["GET", "/bff/console/iam/sandbox/protections"],
+	["GET", "/bff/console/iam/sandbox/delegations"],
 ]
+
+# US-EXI-24 : accès de prestataire depuis la console, sous IAM_ACCOUNT_SECURITY et deux facteurs.
+routes_sbx_prestataire := [
+	"/bff/console/iam/sandbox/delegations/prestataire",
+	"/bff/console/iam/sandbox/delegations/d1/approbation",
+	"/bff/console/iam/sandbox/delegations/d1/refus",
+	"/bff/console/iam/sandbox/delegations/d1/revocation",
+]
+
+test_sbx_prestataire_console if {
+	every chemin in routes_sbx_prestataire {
+		authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["IAM_ACCOUNT_SECURITY"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["IAM_ACCOUNT_SECURITY"], "authentifie": true, "acr": "1"}
+	}
+	not authz.allow with input as {"method": "POST", "path": "/bff/console/iam/sandbox/delegations/d1/prolongation", "permissions": ["IAM_ACCOUNT_SECURITY"], "authentifie": true, "acr": "2"}
+}
 
 test_sbx_console_iam_lecture if {
 	every r in routes_sbx_console_iam {
@@ -1657,4 +1679,33 @@ test_sbx_document_console if {
 	not authz.allow with input as {"method": "GET", "path": "/bff/console/document/sandbox/types-pieces", "permissions": ["SBX_TRA_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
 	not authz.allow with input as {"method": "GET", "path": "/bff/console/document/sandbox/types-pieces", "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "1"}
 	not authz.allow with input as {"method": "DELETE", "path": "/bff/console/document/sandbox/types-pieces/SBX_TRACE_EXPORTEE/retention", "permissions": ["SBX_TRA_ADMINISTRATION"], "authentifie": true, "acr": "2"}
+}
+
+# US-EXI-23 : déblocage réservé au GIMAC (IAM_ACCOUNT_SECURITY), verrouillage lu sous IAM_ACCOUNT_READ ; la demande de
+# l'institution est relayée à MS-IAM, qui la refuse et la journalise.
+test_sbx_deblocage if {
+	authz.allow with input as {"method": "POST", "path": "/bff/console/iam/comptes/c1/deblocage", "permissions": ["IAM_ACCOUNT_SECURITY"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/console/iam/comptes/c1/deblocage", "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
+	authz.allow with input as {"method": "GET", "path": "/bff/console/iam/comptes/c1/verrouillage", "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
+	authz.allow with input as {"method": "POST", "path": "/bff/portail/sbx-habilitations/comptes/c1/deblocage", "permissions": ["SBX_HAB_ADMINISTRATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/console/iam/comptes/c1/deblocage", "permissions": ["SBX_HAB_ADMINISTRATION"], "authentifie": true, "acr": "2"}
+}
+
+# US-EXI-10 : registre d'audit de la sandbox dans la console, lecture seule sous SBX_TRA_CONSULTATION et deux facteurs.
+test_sbx_registre_audit if {
+	every chemin in ["/bff/console/audit/sandbox", "/bff/console/audit/sandbox/export", "/bff/console/audit/sandbox/rebut"] {
+		authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "1"}
+	}
+	not authz.allow with input as {"method": "DELETE", "path": "/bff/console/audit/sandbox", "permissions": ["SBX_TRA_ADMINISTRATION", "SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "2"}
+}
+
+test_sbx_notifications_regles if {
+	authz.allow with input as {"method": "GET", "path": "/bff/console/notification/sandbox/modeles", "permissions": ["SBX_HAB_ADMINISTRATION"], "authentifie": true, "acr": "2"}
+	authz.allow with input as {"method": "POST", "path": "/bff/console/notification/sandbox/resolution", "permissions": ["SBX_HAB_ADMINISTRATION"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/console/notification/sandbox/resolution", "permissions": ["NOT_INBOX_READ"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/console/notification/sandbox/resolution", "permissions": ["SBX_HAB_ADMINISTRATION"], "authentifie": true, "acr": "1"}
+	not authz.allow with input as {"method": "GET", "path": "/bff/console/notification/sandbox/modeles", "permissions": ["SBX_HAB_ADMINISTRATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": "/bff/portail/notification/sandbox/modeles", "permissions": ["SBX_HAB_ADMINISTRATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
 }

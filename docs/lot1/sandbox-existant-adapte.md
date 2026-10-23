@@ -101,12 +101,12 @@ Ordre de réalisation, composant par composant, serveur et écrans ensemble.
 
 | Ordre | Composant | Récits |
 |---|---|---|
-| 1 | MS-IAM et Keycloak | EXI-01, 02, 03 (faits), 04, 05, 06, 23, 24 |
+| 1 | MS-IAM et Keycloak | EXI-01, 02, 03, 04, 05, 06, 23, 24 (faits ; réexamen des accès d'EXI-23 en attente, §8.5) |
 | 2 | Passerelle et OPA | EXI-07 |
 | 3 | MS-PARTICIPANT | EXI-20, 21 |
-| 4 | MS-DOCUMENT, MS-NOTIFICATION, MS-AUDIT | EXI-08, 09, 10 |
+| 4 | MS-DOCUMENT, MS-NOTIFICATION, MS-AUDIT | EXI-08, 09, 10 (faits) |
 | 5 | Supervision de la sandbox (D-121) | EXI-11, 12, 13, 18, 19, 22 écartés : aucune adaptation de MS-MONITORING, MS-INCIDENT ni MS-REPORTING ; écran « Supervision de la sandbox » de l'espace sandbox du DES, sur SBX-TRACE, permission dédiée |
-| 6 | MS-HOMOLOGATION et MS-CERTIFICATION | EXI-14, 15, 16, 25 |
+| 6 | MS-HOMOLOGATION et MS-CERTIFICATION | EXI-14, 15, 16 (faits), 25 (en attente d'une décision, §12) |
 | 7 | Écrans du DES | EXI-17 |
 
 ## 4. Administration déléguée (US-EXI-03)
@@ -152,6 +152,15 @@ Règles :
 | US-EXI-21 | Fait (D-120, §6.6) | Ouverture d’un espace par SBX-ESPACE sur le registre réel, comptes de service sbx-* dans le domaine Keycloak |
 | US-EXI-04 | Fait (D-119, §8.3) | Saga MANDAT de SBX-ESPACE ; jeton délégué présenté par la passerelle à l'introspection de MS-IAM |
 | US-EXI-06 | Fait (D-119, §8.2) | Sagas SUSPENSION et RETABLISSEMENT de SBX-ESPACE ; refus immédiat sur le jeton réduit quand la passerelle interrogera l'introspection de MS-IAM |
+| US-EXI-14 | Fait (D-122, §7.4) | Relève de SBX-LECTURE réel (adaptateur `real`), reprise d'une campagne complète de 99001 |
+| US-EXI-15 | Fait (D-122, §7.5) | Publication de `sbx-lecture.campaign-published.v1` par SBX-LECTURE sur le sujet réservé |
+| US-EXI-17 | Fait (D-122, §7.6) | Onglet sur les résultats d'une campagne close reprise de SBX-LECTURE réel |
+| US-EXI-24 | Fait (D-123, §8.4) | Introspection par la passerelle (jeton réduit) et par SBX-TRACE pour le composant appelé |
+| US-EXI-05 | Fait (D-123, §9) | Jetons réduits entre services de la sandbox ; rattachement au certificat client au déploiement |
+| US-EXI-23 | Fait en partie (D-124, §8.5) | Réexamen périodique des accès (IAM-18) : campagne absente de MS-IAM, critère 2 en attente |
+| US-EXI-10 | Fait (D-124, §10) | Publication des événements à effet par les onze services, enveloppes conformes au §10 |
+| US-EXI-09 | Fait (D-124, §11) | Demandes `sbx-*.notification-requested.v1` des onze services ; canal courriel (§11, écart) |
+| US-EXI-25 | En attente (§12) | Décision sur le socle d'évaluation et la caducité des quitus dans MS-CERTIFICATION |
 
 ## 6. Passerelle, registre et services transverses (lot D-120)
 
@@ -356,7 +365,7 @@ Interface interne de MS-PARTICIPANT (jamais relayée par la passerelle), jeton d
 - **Code participant** : celui de l'interface interne de MS-PARTICIPANT ; registre injoignable : l'événement part sans code, le code est complété à la publication suivante.
 - **Schémas** : `ms-homologation/src/main/resources/contrats/sandbox/*.schema.json` (JSON Schema 2020-12).
 - **Aucune écriture de la sandbox** : aucune route d'écriture de MS-HOMOLOGATION n'admet de permission `SBX_*` (test de revue).
-- **À faire hors de ce lot** : droits de lecture du sujet `homologation.liaison` pour les comptes de service `sbx-campagne` et `sbx-lecture` (lot IAM). Le gel sur changement de statut de l'institution (HOM-06) est réalisé au §7.3.
+- **Droits de lecture du sujet** `homologation.liaison` pour `sbx-campagne` et `sbx-lecture` : le bus de la plateforme n'a pas encore d'ACL Kafka par compte (réglage du déploiement, avec l'authentification SASL des comptes de service du §9). Le gel sur changement de statut de l'institution (HOM-06) est réalisé au §7.3.
 
 ### 7.2 Espace sandbox du DES : « Espaces des institutions » (D-118 points 2 et 3)
 
@@ -404,8 +413,104 @@ Interface interne de MS-PARTICIPANT (jamais relayée par la passerelle), jeton d
   jamais publiée, ou dont le statut a changé sans publication, reçoit sa version suivante. Réponse
   `{liaisons, republiees, nouvelles, le}` ; appel journalisé avec son demandeur. À jouer à la mise en service de
   SBX-CAMPAGNE et de SBX-LECTURE.
-- **Besoin du lot IAM** : la permission `INTERNAL_HOMOLOGATION_REPUBLISH` sur le compte de service d'exploitation qui
-  joue la republication.
+- **Compte de service d'exploitation** : `exploitation-service`, seul porteur de `INTERNAL_HOMOLOGATION_REPUBLISH` (§9).
+
+### 7.4 Lecture du contrat de SBX-LECTURE (US-EXI-14)
+
+Client du contrat de lecture v1 (livrable L04, CC-SBX-GIMAC-02 annexe D) : port `LectureSandboxPort`, consultation seule
+(GET et HEAD), sans aucune méthode d'écriture. Il remplace, pour la sandbox, l'adaptateur de lecture du simulateur
+existant (HOM-13).
+
+| Chemin de SBX-LECTURE | Objet | Schéma (`ms-homologation/src/main/resources/contrats/sandbox/`) |
+|---|---|---|
+| `GET /v1/liaisons/{id}/campagnes` | Campagnes de la liaison ; une campagne en collision de code participant est remplacée par un signalement | `sbx-lecture.v1.campagnes.schema.json` |
+| `GET /v1/campagnes/{c}` | Détail : liaison, participant, interface, services, état, taux, version du bilan, version de la table | `sbx-lecture.v1.campagne.schema.json` |
+| `GET /v1/campagnes/{c}/executions?depuis=&taille=` | Enregistrements de position strictement supérieure au jeton `depuis`, au plus `taille` ; jeton suivant, page close si pleine | `sbx-lecture.v1.executions.schema.json` |
+| `GET /v1/campagnes/{c}/pieces` | Pièces (bilan, résultats détaillés, fichiers remis) avec empreinte SHA-256 et taille annoncées | `sbx-lecture.v1.pieces.schema.json` |
+| `HEAD` puis `GET /v1/campagnes/{c}/pieces/{nature}/{version}` | Empreinte annoncée (`Repr-Digest`), puis contenu | |
+
+- **Authentification** : jeton du compte de service de la plateforme (`homologation-service`, permission
+  `INTERNAL_SBX_LECTURE_READ`, §9), par la passerelle interne de service, sur liaison mutuellement authentifiée ; le
+  rattachement du jeton au certificat client (RFC 8705) est un réglage du déploiement.
+- **Relève** (`ReleveSandbox`, périodique toutes les cinq minutes, `gimac.sandbox.releve.periode-ms`) : pour chaque
+  liaison non close, les campagnes, le détail et les taux, puis les exécutions depuis la dernière position retenue. Les
+  appels à la sandbox sont faits hors transaction ; chaque page est enregistrée avec la position suivante dans une
+  même transaction : une indisponibilité laisse la position à la dernière page enregistrée, sans perte ni doublon.
+  Pour une exécution, l'enregistrement de plus haute position remplace le précédent (création PENDING, validation,
+  rectification). `homologation.campaign-result-imported.v1` (sujet `homologation.campaign`) est publié par l'outbox
+  quand une relève apporte un enregistrement ou une pièce.
+- **Indisponibilité** : 503 et 429 (avec `Retry-After`), comme un service injoignable, ne donnent aucune donnée ; la
+  relève de la liaison est reportée pendant le délai indicatif (cinq minutes à défaut), puis reprend de la position
+  retenue. Une réponse hors contrat (403, 404 d'une campagne hors périmètre, forme invalide) écarte la page entière.
+- **Pièces** : empreinte de la liste, empreinte du HEAD et empreinte des octets téléchargés doivent concorder
+  (`EMPREINTE_DIVERGENTE` sinon : rien n'est déposé) ; une pièce de même empreinte déjà conservée (bilan déposé par
+  SBX-CAMPAGNE à la clôture, US-EXI-08, lu par `GET /api/v1/interne/documents/empreintes/{sha256}` de MS-DOCUMENT, ou
+  relève antérieure) n'est jamais redéposée (`DEJA_CONSERVEE`) ; sinon dépôt par la chaîne existante, finalité
+  `SANDBOX_CAMPAGNE` (`DEPOSEE`).
+- **Rapprochement** : un scénario présent dans le référentiel d'opérations de la version de la liaison donne le code
+  de l'opération ; un scénario inconnu isole l'exécution parmi les scénarios non rapprochés (`unmatched_scenario`,
+  `A_QUALIFIER`). Aucune écriture n'est adressée à la sandbox.
+- **Aptitude** : pour une campagne `TERMINEE`, le taux de réussite restitué par service devient la mesure de
+  certification du service (table `coverage`, nature `CERTIFICATION`), sans recalcul ; une mesure plus ancienne ne
+  remplace jamais une plus récente. Le parcours ne certifie alors un service mesuré qu'à 100 %.
+- **Tables** (changeset `20261022000300_exi14_releve_sandbox`) : `sbx_releve_liaison` (dernière réussite, dernier
+  échec, reprise après), `sbx_campagne` (en-tête, taux, position retenue), `sbx_execution`, `sbx_piece`.
+- **Adaptateurs** : `gimac.adapters.sbx-lecture` vaut `stub` (substitut au contrat exact, aucune donnée tant qu'il
+  n'est pas alimenté) jusqu'à la mise en service de SBX-LECTURE, puis `real` (`gimac.services.sbx-lecture.url`).
+
+| Critère | Test |
+|---|---|
+| 1. Relève des exécutions, plus haute position retenue, événement publié | `ReleveSandboxIT.ca1ReleveDesExecutions` |
+| 2. Indisponibilité (503 au milieu de la relève, délai indicatif) | `ReleveSandboxIT.ca2IndisponibiliteDeLaSandbox`, `ContratLectureSandboxTest` |
+| 3. Pièce déjà conservée, empreinte divergente | `ReleveSandboxIT.ca3PieceDejaConservee`, `PiecesEtCouverturesSandboxTest` |
+| 4. Scénario inconnu isolé, aucune écriture | `ReleveSandboxIT.ca4ScenarioInconnu`, `ReleveSandboxTest` |
+| Contrat lisible par machine | `ContratLectureSandboxTest`, `TraducteurLectureSandboxTest`, `LectureSandboxStubAdapterTest` |
+
+### 7.5 Notification de fin de campagne (US-EXI-15)
+
+- **Sujet réservé** `sbx-lecture.campaign-published.v1` (nommé par le type, comme les sujets de la sandbox ; écriture par SBX-LECTURE seul, lecture par le compte de service de la
+  plateforme et par MS-AUDIT ; créé par `infra/kafka/creer-sujets-lot1.sh` avec sa file de rebut), consommateur
+  `FinCampagneSandboxConsumer` (groupe `homologation-fin-campagne-sandbox`, sujet configurable
+  `gimac.consommateurs.fin-campagne-sandbox.sujet`).
+- **Enveloppe** : CloudEvents 1.0, type `sbx-lecture.campaign-published.v1`, `data` = `{ identifiantCampagne, motif }`
+  (fin de campagne, rectification d'un verdict après clôture, annulation). Une notification sans identifiant ou sans
+  campagne est ignorée et journalisée.
+- **Effet** : relecture immédiate de la campagne désignée par le contrat de lecture (`ReleveSandbox.releverCampagneNotifiee`),
+  dont la liaison est prise dans le détail lu ; cette lecture vaut accusé de lecture pour SBX-LECTURE. Aucune écriture
+  vers la sandbox.
+- **Idempotence** : par identifiant d'événement (table des événements traités) ; une notification réémise à
+  l'identique est acquittée sans second traitement. La relecture est faite hors transaction englobante.
+- **Relève périodique maintenue** : elle reste la source de vérité ; une notification désactivée, perdue ou dont la
+  relecture échoue (sandbox indisponible : échec noté sur la relève de la liaison) est reprise par elle.
+
+| Critère | Test |
+|---|---|
+| 1. Relecture déclenchée, accusé constaté | `ReleveSandboxIT.exi15RelectureDeclenchee`, `FinCampagneSandboxConsumerTest.relectureDeclenchee`, `ReleveSandboxTest.relectureNotifiee` |
+| 2. Notification réémise sans second traitement | `ReleveSandboxIT.exi15RelectureDeclenchee`, `FinCampagneSandboxConsumerTest.notificationReemise` |
+| 3. Notification désactivée ou perdue : relève périodique | `ReleveSandboxIT.exi15ReleveSansNotification`, `ReleveSandboxTest.relectureNotifieeIndisponible` |
+
+### 7.6 Onglet « Résultats de la sandbox » du dossier de liaison (US-EXI-17, DES-09)
+
+- **Route** : `GET /bff/des/homologation/liaisons/{id}/sandbox` et `GET …/sandbox/campagnes/{c}/executions?page=&taille=`
+  (MS-HOMOLOGATION, `ResultatsSandboxResource`, `HOM_LIAISON_READ` ; règle OPA explicite, lecture seule). Aucune route
+  de l'application du département vers un service de la sandbox.
+- **Écran** : onglet `?onglet=sandbox` du dossier `/des/parcours/:id` (`@gimac/lot1`, `OngletSandbox`) : mention
+  permanente « Repris de la sandbox, jamais recalculé » ; dernière relève réussie ; campagnes reprises (liste
+  paginée, choix d'une campagne) ; pour la campagne choisie, version du bilan et version de la table des verdicts,
+  taux par service avec numérateur, dénominateur, version de formule et horodatage, exécutions retenues en pagination
+  serveur (verdict natif, verdict normalisé, version de la table, opération rapprochée ou « Non rapprochée »), pièces
+  avec leur empreinte copiable et leur conservation ; scénarios non rapprochés. Aucune action vers la sandbox.
+- **Sandbox indisponible** : bandeau « Dernière relève en échec » (date et motif) ; les résultats déjà repris restent
+  affichés avec la date de la dernière relève réussie.
+- FR, EN, ES (`i18n/ecrans/sandbox-resultats.ts`) ; services simulés au contrat exact (`services/simule/sandbox.ts`).
+- Captures : `docs/recette/captures/exi/homologation/exi-17/`.
+
+| Critère | Test |
+|---|---|
+| 1. Verdicts, version de la table, taux en lecture | `OngletSandbox.test.tsx` (critère 1), `ReleveSandboxIT.ca4ScenarioInconnu` (route) |
+| 2. Scénarios non rapprochés signalés | `OngletSandbox.test.tsx` (critère 2) |
+| 3. Sandbox indisponible, dernière relève réussie | `OngletSandbox.test.tsx` (critère 3) |
+| Mention permanente, aucune action d'écriture, accessibilité | `OngletSandbox.test.tsx` (critère 1, audit axe) |
 
 ## 8. MS-IAM : périmètres, délégations et comptes de service (lot IAM, D-119)
 
@@ -518,6 +623,205 @@ mandat sur le périmètre, et l'introspection refuse tout jeton délégué vers 
 | 4. Durée excessive, problème normalisé, sans état partiel | `SandboxDelegationsIT.dureeExcessive`, `DelegationsSandboxServiceTest.dureeExcessive`, `ReglesDelegationTest.dureeExcessive` |
 | Routes | `SandboxPerimetresRoutesTest.delegations` ; écran : `SandboxIamPage.test.tsx` |
 
+### 8.4 Accès de prestataire de maintenance (US-EXI-24, D-123)
+
+Délégation temporaire de type `PRESTATAIRE` (table `delegation_sandbox`), bornée aux composants techniques désignés
+(`SBX-ESPACE` … `SBX-LECTURE`, `MIFOS`), sans institution ni permission sur les données des institutions. Routes de la
+console (`/bff/console/iam/sandbox/**` vers `/api/v1/sandbox/**`, `IAM_ACCOUNT_SECURITY`, second facteur ; OPA bloc
+D-123) :
+
+| Méthode et route | Corps | Effet |
+|---|---|---|
+| `POST /delegations/prestataire` | `{ compteId, composants, debut, fin, motif }` | 201, délégation `DEMANDEE` : n'ouvre rien |
+| `POST /delegations/{id}/approbation` | | `ACCORDEE`, active de son début à sa fin ; 403 `IAM_SBX_APPROBATION_PROPRE` pour l'auteur de la demande |
+| `POST /delegations/{id}/refus` | `{ motif }` | `REFUSEE` |
+| `POST /delegations/{id}/revocation` | `{ motif }` | `REVOQUEE`, sessions du prestataire fermées |
+| `GET /delegations?type=PRESTATAIRE` | | Liste paginée (`IAM_ACCOUNT_READ`) |
+
+- **Contrôles** : compte actif (422 `IAM_SBX_COMPTE_INACTIF`) et sans institution (422
+  `IAM_SBX_PRESTATAIRE_INSTITUTION`) ; au moins un composant connu (400 `IAM_SBX_COMPOSANT_REQUIS`,
+  `IAM_SBX_COMPOSANT_INCONNU`) ; durée au plus `gimac.sandbox.prestataire-duree-max` (8 heures ; 422
+  `IAM_SBX_DUREE_EXCESSIVE`) ; demande déjà décidée ou échue : 409 `IAM_SBX_DELEGATION_CLOSE` ; un mandat n'est ni
+  approuvé ni révoqué par ces routes (404).
+- **Introspection** (§8.1) : la requête porte en plus `composant` (composant appelé). Le jeton d'un compte désigné
+  dans un accès de prestataire n'est admis que sous un accès actif à l'instant de la requête pour ce composant :
+  `{ active, sub, institution_id: null, permissions: [], type: PRESTATAIRE, delegation_id, composants, exp }`, `exp` au
+  plus tard à la fin de l'accès. Hors accès, échu (dès la date de fin, sans planificateur), révoqué, refusé ou autre
+  composant : `{ active: false }`. Une institution demandée par un prestataire est refusée et journalisée
+  (`TENTATIVE_ACCES_PRESTATAIRE`, `iam.account-administered.v1`).
+- **Traces** : `ACCES_PRESTATAIRE_DEMANDE`, `ACCES_PRESTATAIRE_ACCORDE`, `ACCES_PRESTATAIRE_REFUSE`,
+  `DELEGATION_REVOQUEE` au journal d'administration, avec `iam.account-administered.v1` (registre d'audit).
+- **Console** : onglet « Accès de prestataire » de `/console/sandbox` : liste paginée (titulaire, composants et motif,
+  période, état effectif), demande (compte, composants, début à l'heure de Douala, durée de une à huit heures, motif),
+  approbation, refus et révocation motivés pour les porteurs d'`IAM_ACCOUNT_SECURITY` ; lecture seule sinon. Captures :
+  `docs/recette/captures/exi/iam/exi-24/`.
+
+| Critère | Test |
+|---|---|
+| 1. Demande sur SBX-TRACE approuvée par le RSSI pour quatre heures, octroi journalisé | `SandboxDelegationsIT.accesPrestataire`, `DelegationsSandboxServiceTest.accesPrestataire`, `SandboxIamPage.test.tsx` (scénario 1) |
+| 2. Échéance : introspection refusée | `SandboxDelegationsIT.accesPrestataire`, `IntrospectionSandboxServiceTest.echeancePrestataire`, `SandboxIamPage.test.tsx` (scénario 2) |
+| 3. Données d'une institution : refus journalisé | `SandboxDelegationsIT.accesPrestataire`, `IntrospectionSandboxServiceTest.prestataireHorsDonnees` |
+| Routes, moindre privilège | `SandboxPerimetresRoutesTest.prestataire`, OPA `test_sbx_prestataire_console` |
+
+### 8.5 Verrouillage, déblocage et journal des connexions (US-EXI-23, D-124)
+
+Les comptes de la sandbox sont des comptes du domaine GIMAC : ils héritent tels quels du verrouillage après un nombre
+d'échecs paramétré (protection contre la force brute de Keycloak, `forceBruteEchecsMax` et `forceBruteAttenteMinutes`
+de la politique de sécurité de MS-IAM, console « Politique de sécurité »), du journal des connexions et des
+tentatives (`gateway.login-failed.v1`, événements de connexion du fournisseur d'identité) et de la désactivation des
+comptes inactifs (D-119). Ajouts :
+
+| Méthode et route | Permission | Effet |
+|---|---|---|
+| `GET /bff/console/iam/comptes/{id}/verrouillage` | `IAM_ACCOUNT_READ` | `{ verrouille, echecs, dernierEchec }` (Keycloak : `attack-detection/brute-force/users/{id}`) |
+| `POST /bff/console/iam/comptes/{id}/deblocage` | `IAM_ACCOUNT_SECURITY`, second facteur | `{ motif }` : verrouillage levé, compteur remis à zéro, journal `COMPTE_DEBLOQUE` (détail : nombre d'échecs) et `iam.account-administered.v1` ; jamais sur soi-même (403 `IAM_SELF_ADMINISTRATION`) ; motif exigé (400 `IAM_REASON_REQUIRED`) ; compte non verrouillé : sans effet ni trace |
+| `POST /bff/portail/sbx-habilitations/comptes/{id}/deblocage` | `SBX_HAB_ADMINISTRATION` (administrateur de l'institution) | Refus 403 `IAM_SBX_DEBLOCAGE_RESERVE` et tentative journalisée (`TENTATIVE_DEBLOCAGE`, détail : institution) ; compte hors de l'institution : 404 sans révéler son existence |
+
+- **Console** : fiche du compte (`/console/comptes/{id}`), bandeau « Compte verrouillé » (nombre d'échecs, dernier
+  échec) et action « Débloquer le compte » motivée, pour les porteurs d'`IAM_ACCOUNT_SECURITY`. Captures :
+  `docs/recette/captures/exi/iam/exi-23/`.
+- **Écart (critère 2)** : le réexamen périodique des accès (IAM-18) n'existe pas encore dans MS-IAM (seule l'entité
+  générée `AccessReview`, sans campagne ni écran) ; les habilitations `SBX_*` y seront présentées comme les autres
+  lorsque la campagne de réexamen sera réalisée. Récit tenu « fait en partie ».
+
+| Critère | Test |
+|---|---|
+| 1. Verrouillage après le nombre d'échecs, déblocage par l'administrateur du GIMAC | `AdministrationComptesServiceTest.verrouillageEtDeblocage`, `AdministrationDelegueeIT.verrouillageEtDeblocage`, `ComptePage.test.tsx` |
+| 2. Réexamen des accès portant sur les rôles de la sandbox | en attente (IAM-18) |
+| 3. Déblocage par l'administrateur de l'institution refusé et journalisé | `AdministrationDelegueeServiceTest.deblocageRefuse`, `AdministrationDelegueeIT.verrouillageEtDeblocage`, OPA `test_sbx_deblocage` |
+
+## 9. Comptes de service de la sandbox (US-EXI-05, D-123)
+
+Un client confidentiel du domaine Keycloak par service de la sandbox (`sbx-espace`, `sbx-raccordement`,
+`sbx-referentiel`, `sbx-donnees`, `sbx-simulation`, `sbx-mobile`, `sbx-iso20022`, `sbx-carte`, `sbx-campagne`,
+`sbx-trace`, `sbx-lecture`) et un compte dédié au cœur bancaire simulé Mifos (`sbx-mifos`, tenu par SBX-DONNEES pour
+ses seuls appels à Mifos). Secrets `GIMAC_SECRET_SBX_<SERVICE>` (Compose, `gimac-dev.sh`, Kubernetes, `creer-secrets.sh`,
+`diagnostiquer-serveur.sh`) ; aucun identifiant commun. Les autorisations d'appel sont dérivées du tableau des appels
+synchrones du CC-SBX-GIMAC-02 (tableau 5.3), une permission par opération appelée (`APPELS_SBX` du générateur) :
+
+| Appelant | Permission | Appelé, objet |
+|---|---|---|
+| sbx-espace | `INTERNAL_PARTICIPANT_READ`, `INTERNAL_IAM_SBX_SAGA` | MS-PARTICIPANT (fiche), MS-IAM (sagas) |
+| sbx-raccordement, sbx-referentiel | `INTERNAL_PARTICIPANT_READ` | MS-PARTICIPANT : code participant, nomenclature |
+| sbx-mobile, sbx-iso20022 | `INTERNAL_SBX_RACCORDEMENT_IDENTIFIANTS` | SBX-RACCORDEMENT : identifiant d'accès de test |
+| sbx-simulation | `INTERNAL_SBX_TRACE_REFERENCES`, `INTERNAL_SBX_DONNEES_ETATS`, `INTERNAL_SBX_RACCORDEMENT_LIAISONS` | SBX-TRACE, SBX-DONNEES, SBX-RACCORDEMENT |
+| sbx-mobile, sbx-iso20022, sbx-carte | `INTERNAL_SBX_DONNEES_MOUVEMENTS` | SBX-DONNEES : mouvements, comptes, cartes, PIN, clés |
+| sbx-carte | `INTERNAL_SBX_MOBILE_COUPONS` | SBX-MOBILE : coupon de retrait sans carte |
+| sbx-campagne, sbx-donnees | `INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE` | SBX-RACCORDEMENT : rattachabilité |
+| sbx-trace | `INTERNAL_SBX_CAMPAGNE_REFERENCES_TRACE`, `INTERNAL_SBX_SANTE` | SBX-CAMPAGNE (références protégées), points de santé des onze services |
+| sbx-campagne, sbx-trace, sbx-iso20022 | `INTERNAL_DOCUMENT_DEPOSIT` | MS-DOCUMENT : pièces de la sandbox (§6.7) |
+| sbx-mifos | `INTERNAL_SBX_MIFOS_API` | Mifos : interfaces publiques |
+| sbx-lecture | aucune | aucun appel sortant (CC §6.1.11) |
+| homologation-service (plateforme du DES) | `INTERNAL_SBX_LECTURE_READ` | SBX-LECTURE : contrat de lecture (§7.4) |
+| exploitation-service | `INTERNAL_HOMOLOGATION_REPUBLISH` | MS-HOMOLOGATION : republication des états (§7.3) |
+
+- **Vérifié par le générateur** : chaque compte `sbx-*` porte exactement les permissions du tableau ; aucune
+  permission `INTERNAL_SBX_*` hors du tableau ; aucune autorisation de la sandbox vers MS-CERTIFICATION ni
+  MS-HOMOLOGATION (US-EXI-25, critère 3) ; `INTERNAL_HOMOLOGATION_REPUBLISH` au seul compte d'exploitation.
+- **Refus hors tableau** (critère 3) : chaque service appelé de la sandbox n'accepte que la permission de l'opération
+  appelée et journalise la tentative vers MS-AUDIT (côté sandbox) ; côté plateforme, MS-PARTICIPANT journalise déjà
+  toute écriture tentée par un client `sbx-*` (§6.6).
+- **Réglages du déploiement** (hors code) : rattachement des jetons de compte de service au certificat client de
+  l'autorité de certification interne (RFC 8705, attribut `tls.client.certificate.bound.access.tokens` des clients,
+  passerelle interne de service en mTLS), rotation des secrets par `creer-secrets.sh` et reprise du domaine (fusion à
+  trois voies, sans interruption des autres clients). Le contrôle de l'empreinte du certificat est fait par
+  SBX-LECTURE (critère 4).
+- **Écart au CP** : `iam.user-changed.v1` « à chaque changement d'état du compte de service de la plateforme » n'est
+  pas publié : MS-IAM n'administre pas les comptes de service (domaine Keycloak généré) ; un changement passe par le
+  générateur et la reprise du domaine, tracés par la chaîne de livraison.
+
+| Critère | Test |
+|---|---|
+| 1. Appel autorisé entre services, pour cette seule opération | générateur (`APPELS_SBX`, assertions), `valider-infra.sh` (domaine régénéré identique) ; jeton réduit : côté sandbox |
+| 2. Jeton du compte de service de la plateforme, lecture des seules liaisons ouvertes | `homologation-service` porte `INTERNAL_SBX_LECTURE_READ` ; périmètre et empreinte : côté SBX-LECTURE |
+| 3. Appel hors du tableau refusé et journalisé | générateur (matrice exacte) ; refus et journal : côté sandbox |
+| 4. Jeton sans le certificat lié | réglage du déploiement, contrôle par SBX-LECTURE |
+
+## 10. Événements à effet de la sandbox dans MS-AUDIT (US-EXI-10, D-124)
+
+MS-AUDIT consomme les événements à effet des onze services de la sandbox par abonnement à un motif de sujets
+(`gimac.consommateurs.sandbox.motif`, défaut `sbx-[a-z0-9]+\.[a-z0-9-]+(\.v[0-9]+)?` : chaque service publie sur le
+sujet nommé d'après le type de l'événement ; les files `.dlq` et `.dlt` ne correspondent pas), groupe `audit-sandbox`,
+idempotent par identifiant d'événement.
+
+- **Contrôle de l'enveloppe** (`EnveloppeSandbox`, dans l'ordre) : `specversion` 1.0 (`SPECVERSION_INVALIDE`),
+  `id` (`ID_ABSENT`), `type` `sbx-<service>.<action>.v<n>` d'un des onze services (`TYPE_INVALIDE`), `source` dont le
+  dernier segment est le service (`/gimac/sandbox/sbx-campagne` ; `SOURCE_INVALIDE`), `time` ISO-8601
+  (`TIME_INVALIDE`), `data` présentes (`DATA_ABSENTES`), institution (extension `institutionid` ou
+  `data.codeParticipant`) au format d'un code participant (`INSTITUTION_INVALIDE`). Les demandes de notification
+  (`*.notification-requested.v1`, §11) ne sont pas des événements à effet : ignorées.
+- **Inscription** : registre inaltérable existant (feuille de l'arbre de Merkle, scellement de la période et preuve
+  d'inclusion inchangés), domaine `sandbox`, auteur (`data.acteur`, à défaut le service), horodatage de référence
+  (`time`), objet (`subject`), institution (colonne `institution_id`, indexée).
+- **Rebut** : enveloppe non conforme ou illisible inscrite dans `rebut_sandbox` (identifiant, sujet, motif, reçu le) ;
+  au-delà de `gimac.audit.sandbox.seuil-rebut` (10) entrées, l'alerte de retard de consommation est levée (indicateur
+  `alerte` de la lecture du rebut, journal `ALERTE_EXPLOITATION`).
+- **Console** (`/bff/console/audit/sandbox/**` vers `/api/v1/registre/sandbox`, route `console-audit-sandbox` de la
+  passerelle, `SBX_TRA_CONSULTATION`, second facteur) : recherche paginée filtrée par institution, export CSV (RFC 4180,
+  UTF-8, fichier `registre-sandbox-<institution>.csv`), rebut paginé. Onglet « Registre d'audit » de
+  `/console/sandbox`, visible des seuls porteurs de `SBX_TRA_CONSULTATION`. Captures :
+  `docs/recette/captures/exi/audit/exi-10/`.
+
+| Critère | Test |
+|---|---|
+| 1. Verdict validé inscrit (auteur, horodatage, objet), preuve après scellement | `EnveloppeSandboxTest`, `EvenementsSandboxConsumerTest.inscription`, `RegistreSandboxIT.registreDeLaSandbox` |
+| 2. Recherche par source sandbox et institution 99001, export au format ouvert | `RegistreSandboxIT.registreDeLaSandbox`, `RegistreSandboxQueriesTest`, `SandboxIamPage.test.tsx` (registre), OPA `test_sbx_registre_audit` |
+| 3. Enveloppe non conforme au rebut avec son motif, alerte au-delà du seuil | `EnveloppeSandboxTest.nonConformes`, `EvenementsSandboxConsumerTest.rebut`, `RegistreSandboxIT` |
+| Abonnement par motif, redélivrance sans effet | `RegistreSandboxIT.kafka` |
+
+## 11. Notifications de la sandbox dans MS-NOTIFICATION (US-EXI-09, D-124)
+
+Les services de la sandbox ne notifient personne directement : ils publient `sbx-<service>.notification-requested.v1`
+sur le sujet du même nom (CloudEvents 1.0, source `/gimac/sandbox/sbx-<service>`, clé : code participant), données
+`{ modele, destinataires, codeParticipant, codeEspace, le }` ; un destinataire est un compte nommé ou un rôle
+`ROLE:<rôle>`. Forme de SBX-DONNEES également admise : `gabarit` pour le modèle, `destinataire` unique (nom de rôle :
+`RSSI`, `EXPLOITATION`, `PRODUCTION_MONETIQUE`), code participant pris de l'extension `partitionkey`. MS-NOTIFICATION
+s'abonne aux onze sujets (`gimac.consommateurs.sandbox.sujets`, groupe
+`notification-sandbox`, idempotent par identifiant d'événement, files `.dlt` créées au démarrage) et crée une
+notification de type `SANDBOX` par destinataire résolu, jamais regroupée, avec `notification.inapp-created.v1`.
+
+- **Règles** (`ReglesSandbox`, service de domaine) : chaque modèle (`SBX_ESP_*` invitations, suspension,
+  rétablissement, mandats et échéances ; `SBX_RAC_*` échéance de certificat, collision ; `SBX_CER_*` ouverture,
+  affectation, anomalie, clôture de campagne ; `SBX_LEC_*` et `SBX_TRA_ALERTE` signalements et alertes ; `SBX_DON_*`
+  restauration en échec, clés de test, plages BIN, refus hors plage répétés) fixe titre,
+  sous-titre et portée : `INSTITUTION` (comptes de l'institution, lien `/portail`), `GIMAC` (comptes du GIMAC, lien
+  `/des/sandbox/espaces/{code}`) ou `MIXTE`. Rôles : `ADMINISTRATEUR_INSTITUTION`, `CHEF_DE_PROJET`, `DEVELOPPEUR`,
+  `TESTEUR` (profils `ROLE_SBX_*` des comptes de l'institution) ; `ADMINISTRATEUR_GIMAC` (`SBX_HAB_ADMINISTRATION`),
+  `RSSI` (`SBX_LEC_ADMINISTRATION`), `CERTIFICATEUR` (`SBX_CER_VALIDATION`), `EXPLOITANT` ou `EXPLOITATION`
+  (`SBX_TRA_ADMINISTRATION`), `PRODUCTION_MONETIQUE` (`SBX_DON_ADMINISTRATION`).
+- **Cloisonnement** : un compte nommé n'est retenu que s'il appartient à l'institution de la demande (MS-IAM,
+  `GET /api/v1/interne/collaborateurs?institution=` puis `?permission=`, cache de 60 s), sauf l'intervenant désigné
+  d'un mandat de partenaire (modèles `SBX_ESP_MANDAT_*`, identifiant de compte) ; un rôle n'est résolu que dans
+  la portée du modèle. Le type `SANDBOX` est servi au portail (`TypeNotification.PORTAIL`) ; préférence `SANDBOX`
+  (active par défaut) dans « Mon compte ».
+- **Sans donnée sensible** : gabarits fixes, seul le code participant (format contrôlé, sinon « ? ») y figure ; jamais
+  d'identifiant de connexion, de secret, de donnée de test ni de numéro de carte (test des gabarits).
+- **Sans règle** : modèle inconnu mis au rebut (`rebut_notification_sandbox`, motif `MODELE_SANS_REGLE`) et alerte
+  d'exploitation journalisée (`ALERTE_EXPLOITATION`) ; MS-IAM injoignable : rejeu puis `<sujet>.dlt`.
+- **Résolution à blanc** (NOT-05) : `GET /bff/console/notification/sandbox/modeles` (catalogue) et
+  `POST /bff/console/notification/sandbox/resolution` `{ modele, destinataires, codeParticipant }` (destinataires,
+  titres et liens qui seraient remis, rien n'est créé), `SBX_HAB_ADMINISTRATION` et second facteur (OPA).
+- **Écart (critère 1, courriel)** : la remise est faite sur le canal de la plateforme (notification du portail et du
+  DES) ; le courriel minimal renvoyant vers la plateforme attend la lecture des adresses chez MS-IAM (l'annuaire
+  interne ne sert aucune donnée de contact) et l'activation du relais SMTP (`gimac.notification.courriel.actif`).
+
+| Critère | Test |
+|---|---|
+| 1. Invitation du premier administrateur résolue, renvoi vers la plateforme sans identifiant ni secret | `ReglesSandboxTest.invitation`, `ReglesSandboxTest.gabaritsSansDonneeSensible`, `DemandesSandboxKafkaIT.parcours` |
+| 2. Redélivrance : aucune seconde remise | `DemandesSandboxConsumerTest.doublon`, `DemandesSandboxKafkaIT.parcours` |
+| 3. Demande sans règle au rebut avec son motif, alerte | `NotificationsSandboxServiceTest.sansRegle`, `DemandesSandboxKafkaIT.parcours` |
+| Portée, cloisonnement par institution, préférences | `ReglesSandboxTest`, `NotificationsSandboxServiceTest` |
+| Résolution à blanc | `NotificationsSandboxServiceTest.simulation`, `DemandesSandboxKafkaIT.resolutionABlanc`, OPA `test_sbx_notifications_regles` |
+
+## 12. Bilan repris, socle du circuit des quitus (US-EXI-25) : en attente
+
+Le critère 3 est tenu par le générateur du domaine (§9 : aucune autorisation de la sandbox vers MS-CERTIFICATION ni
+MS-HOMOLOGATION). Les critères 1 et 2 supposent dans MS-CERTIFICATION un circuit des quitus ouvert sur un socle
+d'évaluation désignant le bilan repris par son empreinte, et une règle de caducité des quitus antérieurs (CER-06) :
+le lot 1 de MS-CERTIFICATION verrouille le procès-verbal et ses approbations sans socle d'évaluation ni caducité. Une
+décision est attendue (rattacher l'empreinte du bilan de §7.4 au procès-verbal, et rendre caducs procès-verbal et
+approbations sur une nouvelle version du bilan) avant réalisation.
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -534,3 +838,6 @@ mandat sur le périmètre, et l'introspection refuse tout jeton délégué vers 
 | 2026-10-22 | - | §8.1 et §8.2 : routes internes du lot IAM, suspension d'institution et protection du dernier administrateur (US-EXI-06, D-119) |
 | 2026-10-22 | - | §6.7 : types de pièces, rétention, dépôt contrôlé et document.document-sealed.v1 de la sandbox dans MS-DOCUMENT, pièce par empreinte (US-EXI-08, D-120) |
 | 2026-10-22 | - | §2.1 : treizième module SUP (`SBX_SUP_CONSULTATION`) ; §8.3 : mandats de partenaire (US-EXI-04, D-119) |
+| 2026-10-23 | - | §7.4 et §7.5 : lecture de SBX-LECTURE et notification de fin de campagne par MS-HOMOLOGATION (US-EXI-14, US-EXI-15) ; §7.6 : onglet « Résultats de la sandbox » du dossier de liaison (US-EXI-17) |
+| 2026-10-23 | - | §8.4 : accès de prestataire de maintenance (US-EXI-24, D-123) ; §9 : comptes de service de la sandbox et matrice des appels synchrones (US-EXI-05, D-123) |
+| 2026-10-23 | - | §8.5 : verrouillage et déblocage des comptes de la sandbox (US-EXI-23) ; §10 : événements à effet dans MS-AUDIT (US-EXI-10) ; §11 : notifications de la sandbox dans MS-NOTIFICATION (US-EXI-09) ; §12 : US-EXI-25 en attente (D-124) |
