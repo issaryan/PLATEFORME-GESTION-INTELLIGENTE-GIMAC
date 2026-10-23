@@ -90,3 +90,6 @@ export type EtatRattachement = { unite: string | null; responsableId: string | n
 export type ResultatAffectation = { id: string; nomAffiche: string; avant: EtatRattachement; apres: EtatRattachement }
 /** GET …/organisation/organigramme.pdf (D-102 §4) : branche (absente : toute l'organisation), papier, annexe des membres. */
 export type OptionsOrganigrammePdf = { racine?: string | null; format: 'A4' | 'A3'; orientation: 'paysage' | 'portrait'; membres: boolean }
+
+/** Verrouillage d'un compte par la protection contre la force brute (MS-IAM, US-EXI-23) : levé par le seul GIMAC. */
+export type Verrouillage = { verrouille: boolean; echecs: number; dernierEchec: string | null }

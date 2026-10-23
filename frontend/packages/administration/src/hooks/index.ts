@@ -69,6 +69,8 @@ export const useIndicateursComptes = (actif = true) => useLecture(cles.indicateu
 export const useJournal = (f: FiltreJournal, actif = true) => useLecture(cles.journal(f), (s) => s.comptes.journal(f), { enabled: actif })
 export const useCompte = (id: string, actif = true) => useLecture(cles.compte(id), (s) => s.comptes.lire(id), { enabled: actif && !!id })
 export const useSessionsCompte = (id: string) => useLecture(cles.compte(id, 'sessions'), (s) => s.comptes.sessions(id))
+/** US-EXI-23 : verrouillage du compte par la protection contre la force brute. */
+export const useVerrouillageCompte = (id: string) => useLecture(cles.compte(id, 'verrouillage'), (s) => s.comptes.verrouillage(id))
 /**
  * Catalogue des fonctionnalités servi par MS-IAM (D-94) : toutes les applications, relu à chaque modification (clé
  * sous « iam ») ; barre latérale, gardes, tableau de bord et éditeur de profil en dérivent.

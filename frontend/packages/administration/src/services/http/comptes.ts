@@ -22,5 +22,8 @@ export function comptesHttp(couche: 'des' | 'console'): ServiceComptes {
     reinitialiserSecondFacteur: (x, motif) => http.post(`${id(x)}/second-facteur/reinitialisation`, { body: { motif } }),
     motDePasseProvisoire: (x, motif) => http.post(`${id(x)}/mot-de-passe-provisoire`, { body: { motif } }),
     fermerSessions: (x, motif) => http.post(`${id(x)}/sessions/fermeture`, { body: { motif } }),
+    // US-EXI-23 : verrouillage (force brute) et déblocage par l'administrateur du GIMAC.
+    verrouillage: (x) => http.get(`${id(x)}/verrouillage`),
+    debloquer: (x, motif) => http.post(`${id(x)}/deblocage`, { body: { motif } }),
   }
 }

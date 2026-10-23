@@ -221,3 +221,27 @@ describe('Actes motivés', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 })
+
+describe('Fiche d’un compte : verrouillage (US-EXI-23)', () => {
+  it('scénario 1 : compte verrouillé après cinq échecs, débloqué par l’administrateur du GIMAC ; lecteur : sans geste', async () => {
+    fiche('u-correspondant?onglet=sessions')
+    expect(await screen.findByText('Compte verrouillé après 5 échecs de connexion')).toBeTruthy()
+    expect(screen.getByText(/Dernier échec le/)).toBeTruthy()
+    fireEvent.click(bouton('Débloquer le compte'))
+    await confirmer('Débloquer le compte', 'Appel du titulaire au support')
+    expect(await screen.findByText('Compte débloqué.')).toBeTruthy()
+    await waitFor(() => expect(screen.queryByText('Compte verrouillé après 5 échecs de connexion')).toBeNull())
+    cleanup()
+    fiche('u-correspondant?onglet=sessions', { permissions: LECTEUR })
+    expect(await screen.findByText('Compte verrouillé après 5 échecs de connexion')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Débloquer le compte' })).toBeNull()
+  })
+
+  it('services simulés : compte non verrouillé, déblocage sans effet, refus sur soi-même et sans motif', async () => {
+    const c = simules().comptes
+    expect(await c.verrouillage('u-sna')).toEqual({ verrouille: false, echecs: 0, dernierEchec: null })
+    expect((await c.debloquer('u-sna', 'Contrôle de routine')).verrouille).toBe(false)
+    await expect(c.debloquer('u-correspondant', ' ')).rejects.toMatchObject({ code: 'IAM_REASON_REQUIRED' })
+    await expect(c.verrouillage('inconnu')).rejects.toMatchObject({ code: 'IAM_ACCOUNT_NOT_FOUND' })
+  })
+})

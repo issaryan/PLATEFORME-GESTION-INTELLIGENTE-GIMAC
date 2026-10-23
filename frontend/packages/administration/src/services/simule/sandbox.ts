@@ -1,5 +1,5 @@
 import type { ApiError } from '@gimac/socle'
-import type { CompteProtege, Delegation, EtatEffectifDelegation, PageSandbox, PerimetreSuspendu, VueDelegation } from '../../modele/sandbox'
+import { COMPOSANTS_SANDBOX, type CompteProtege, type Delegation, type EntreeRegistreSandbox, type EtatEffectifDelegation, type PageSandbox, type PerimetreSuspendu, type RebutSandbox, type VueDelegation } from '../../modele/sandbox'
 import type { ServiceSandboxIam } from '../portsSandbox'
 
 // Sandbox GIMAC simulée (D-119) : mêmes formes et mêmes refus que MS-IAM. Données fictives : institutions de
@@ -33,6 +33,46 @@ export const DELEGATIONS_DEMO: [Delegation, string][] = [
   mandat('d-mandat-revoque', 'u-editeur', 'Chantal Owona (Éditeur monétique)', '2026-09-01T08:00:00Z', '2026-11-30T18:00:00Z', 'REVOQUEE', ['SBX_CER_EXECUTION'], '2026-09-01T08:00:00Z'),
 ]
 
+/** Auteur des demandes faites depuis la console simulée : il n'approuve jamais sa propre demande (quatre yeux). */
+export const SESSION_CONSOLE = 'session-console'
+const HEURE = 3_600_000
+const DUREE_MAX_PRESTATAIRE = 8 * HEURE
+
+/** Accès de prestataire de démonstration (US-EXI-24), datés autour de l'instant donné : demandé, actif, échu. */
+export function prestatairesDemo(maintenant = new Date()): [Delegation, string][] {
+  const t = maintenant.getTime()
+  const iso = (d: number) => new Date(t + d).toISOString().replace(/\.\d{3}Z$/, 'Z')
+  const acces = (id: string, compteId: string, debut: number, fin: number, etat: Delegation['etat'], composants: string[], motif: string, approbateurId: string | null): Delegation => ({
+    id, type: 'PRESTATAIRE', compteId, institutionId: null, permissions: [], composants, debut: iso(debut), fin: iso(fin), etat,
+    demandeurId: 'demo-exploitant', approbateurId, motif, creeLe: iso(Math.min(debut, 0) - HEURE), closeLe: null,
+  })
+  return [
+    [acces('d-presta-demande', 'u-presta', 24 * HEURE, 28 * HEURE, 'DEMANDEE', ['SBX-TRACE'], 'Montée de version de SBX-TRACE', null), 'Jean Mbarga (Prestataire de maintenance)'],
+    [acces('d-presta-actif', 'u-presta', -HEURE, 3 * HEURE, 'ACCORDEE', ['SBX-DONNEES', 'MIFOS'], 'Correctif du connecteur Mifos', 'demo-rssi'), 'Jean Mbarga (Prestataire de maintenance)'],
+    [acces('d-presta-echu', 'u-presta-2', -76 * HEURE, -72 * HEURE, 'ACCORDEE', ['SBX-ISO20022'], 'Diagnostic de la façade ISO 20022', 'demo-rssi'), 'Clarisse Atangana (Prestataire réseau)'],
+  ]
+}
+
+/** Registre d'audit de démonstration (US-EXI-10) : événements à effet des services de la sandbox pour 99001 et 99002. */
+export const REGISTRE_DEMO: EntreeRegistreSandbox[] = [
+  ['sbx-espace.space-opened.v1', '99001', 'demo-admin-gimac'], ['sbx-espace.mandate-granted.v1', '99002', 'u-admin-99002'],
+  ['sbx-raccordement.access-issued.v1', '99001', 'u-dev-99001'], ['sbx-campagne.campaign-opened.v1', '99001', 'u-chef-99001'],
+  ['sbx-campagne.execution-recorded.v1', '99001', 'u-testeur-99001'], ['sbx-campagne.verdict-validated.v1', '99001', 'u-certificateur'],
+  ['sbx-lecture.access-recorded.v1', '99001', 'service-account-homologation-service'], ['sbx-trace.trace-purged.v1', null, 'sbx-trace'],
+  ['sbx-campagne.campaign-closed.v1', '99001', 'u-chef-99001'], ['sbx-donnees.dataset-generated.v1', '99002', 'u-dev-99002'],
+  ['sbx-raccordement.access-refused.v1', '99002', 'u-integrateur'], ['sbx-campagne.verdict-validated.v1', '99002', 'u-certificateur'],
+].map(([type, institution, acteur], i) => ({
+  index: 1200 + i, eventId: `0192f0aa-0000-7000-8000-${String(900000 + i).padStart(12, '0')}`, survenueLe: `2026-10-22T0${7 + Math.floor(i / 6)}:${String((i * 7) % 60).padStart(2, '0')}:00Z`,
+  inscritLe: `2026-10-22T0${7 + Math.floor(i / 6)}:${String((i * 7) % 60).padStart(2, '0')}:01Z`, acteur: acteur as string, type: type as string, institution: institution as string | null,
+  empreinte: (i * 2654435761 >>> 0).toString(16).padStart(8, '0').repeat(8),
+}))
+
+/** Enveloppes de démonstration écartées au rebut (AUD-07). */
+export const REBUT_DEMO: RebutSandbox[] = [
+  { id: 1, eventId: 'evt-sans-time', sujet: 'sbx-lecture.access', motif: 'TIME_INVALIDE', recuLe: '2026-10-22T08:12:00Z' },
+  { id: 2, eventId: null, sujet: 'sbx-campagne.campaign', motif: 'JSON_ILLISIBLE', recuLe: '2026-10-22T08:20:00Z' },
+]
+
 /** État effectif à l'instant, comme ReglesDelegation de MS-IAM. */
 export function etatEffectif(d: Delegation, maintenant = new Date()): EtatEffectifDelegation {
   const t = maintenant.getTime()
@@ -51,7 +91,26 @@ export function paginer<T>(l: T[], page: number, taille: number): PageSandbox<T>
   return { contenu: l.slice(p * t, p * t + t), total: l.length, page: p, taille: t }
 }
 
-export function sandboxSimulee(o: OptionsSandboxSimulee, perimetres = PERIMETRES_DEMO, protections = PROTECTIONS_DEMO, delegations = DELEGATIONS_DEMO): ServiceSandboxIam {
+export function sandboxSimulee(o: OptionsSandboxSimulee, perimetres = PERIMETRES_DEMO, protections = PROTECTIONS_DEMO, initiales?: [Delegation, string][]): ServiceSandboxIam {
+  const delegations: [Delegation, string][] = (initiales ?? [...DELEGATIONS_DEMO, ...prestatairesDemo()]).map(([d, n]) => [{ ...d }, n])
+  const vue = ([d, nomCompte]: [Delegation, string]): VueDelegation => ({ delegation: d, etat: etatEffectif(d), nomCompte, rejouee: false })
+  /** Accès de prestataire existant (404 IAM_SBX_DELEGATION_INTROUVABLE sinon). */
+  const acces = (id: string) => {
+    const l = delegations.find(([d]) => d.id === id && d.type === 'PRESTATAIRE')
+    if (!l) throw o.refus(404, 'IAM_SBX_DELEGATION_INTROUVABLE', 'Délégation introuvable')
+    return l
+  }
+  /** Demande encore ouverte (409 IAM_SBX_DELEGATION_CLOSE sinon). */
+  const ouverte = (l: [Delegation, string]) => {
+    const e = etatEffectif(l[0])
+    if (e !== 'DEMANDEE') throw o.refus(409, 'IAM_SBX_DELEGATION_CLOSE', 'Demande déjà décidée ou échue', { etat: e })
+    return l
+  }
+  const changer = (l: [Delegation, string], m: Partial<Delegation>) => {
+    l[0] = { ...l[0], ...m }
+    return vue(l)
+  }
+  const maintenant = () => new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
   return {
     perimetres: (page, taille) => o.attendre(() => paginer([...perimetres].sort((a, b) => b.depuis.localeCompare(a.depuis)), page, taille)),
     perimetre: (code) =>
@@ -67,10 +126,49 @@ export function sandboxSimulee(o: OptionsSandboxSimulee, perimetres = PERIMETRES
           delegations
             .filter(([d]) => !type || d.type === type)
             .sort(([a], [b]) => b.creeLe.localeCompare(a.creeLe))
-            .map(([d, nomCompte]): VueDelegation => ({ delegation: d, etat: etatEffectif(d), nomCompte, rejouee: false })),
+            .map(vue),
           page,
           taille,
         ),
       ),
+    // US-EXI-24 : mêmes contrôles que DelegationsSandboxService de MS-IAM.
+    demanderPrestataire: (d) =>
+      o.attendre(() => {
+        if (!d.composants.length) throw o.refus(400, 'IAM_SBX_COMPOSANT_REQUIS', 'Au moins un composant technique')
+        const inconnus = d.composants.filter((c) => !(COMPOSANTS_SANDBOX as readonly string[]).includes(c))
+        if (inconnus.length) throw o.refus(400, 'IAM_SBX_COMPOSANT_INCONNU', 'Composant technique inconnu', { composants: inconnus })
+        const debut = Date.parse(d.debut)
+        const fin = Date.parse(d.fin)
+        if (!(debut < fin)) throw o.refus(422, 'IAM_SBX_PERIODE_INVALIDE', 'La date de début précède la date de fin')
+        if (fin <= Date.now()) throw o.refus(422, 'IAM_SBX_PERIODE_ECHUE', 'La date de fin est déjà passée')
+        if (fin - debut > DUREE_MAX_PRESTATAIRE) throw o.refus(422, 'IAM_SBX_DUREE_EXCESSIVE', 'Durée supérieure au maximum paramétré', { dureeMax: 'PT8H' })
+        const n: [Delegation, string] = [{
+          id: `d-presta-${delegations.length + 1}`, type: 'PRESTATAIRE', compteId: d.compteId, institutionId: null, permissions: [], composants: [...d.composants].sort(),
+          debut: d.debut, fin: d.fin, etat: 'DEMANDEE', demandeurId: SESSION_CONSOLE, approbateurId: null, motif: d.motif, creeLe: maintenant(), closeLe: null,
+        }, d.compteId]
+        delegations.push(n)
+        return vue(n)
+      }),
+    approuverPrestataire: (id) =>
+      o.attendre(() => {
+        const l = ouverte(acces(id))
+        if (l[0].demandeurId === SESSION_CONSOLE) throw o.refus(403, 'IAM_SBX_APPROBATION_PROPRE', 'L’auteur de la demande ne l’approuve pas')
+        return changer(l, { etat: 'ACCORDEE', approbateurId: SESSION_CONSOLE })
+      }),
+    refuserPrestataire: (id, motif) => o.attendre(() => changer(ouverte(acces(id)), { etat: 'REFUSEE', motif, closeLe: maintenant() })),
+    registre: (institution, page, taille) =>
+      o.attendre(() => paginer([...REGISTRE_DEMO].filter((e) => !institution || e.institution === institution.trim()).sort((a, b) => b.index - a.index), page, taille)),
+    // Le fichier est composé après le délai simulé : un Blob ne se clone pas avec les réponses simulées.
+    exporterRegistre: async (institution) => {
+      const lignes = await o.attendre(() => REGISTRE_DEMO.filter((e) => !institution || e.institution === institution.trim()))
+      const csv = ['index,identifiant,survenu_le,inscrit_le,acteur,type,institution,empreinte_feuille', ...lignes.map((e) => [e.index, e.eventId, e.survenueLe, e.inscritLe, e.acteur, e.type, e.institution ?? '', e.empreinte].join(','))]
+      return new Blob([csv.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' })
+    },
+    rebut: (page, taille) => o.attendre(() => ({ ...paginer([...REBUT_DEMO].sort((a, b) => b.recuLe.localeCompare(a.recuLe)), page, taille), seuil: 10, alerte: REBUT_DEMO.length > 10 })),
+    revoquerPrestataire: (id, motif) =>
+      o.attendre(() => {
+        const l = acces(id)
+        return l[0].etat === 'REVOQUEE' ? vue(l) : changer(l, { etat: 'REVOQUEE', motif, closeLe: maintenant() })
+      }),
   }
 }
