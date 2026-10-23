@@ -348,3 +348,7 @@ gimac:
     # <réf.>/AFFECTER/<FONCTION> est affectée à la fonction sur la liaison (D-94, effet-reel-referentiels.md §8.8).
     taches:
       sujet: pilotage.task
+    # Fin de campagne de la sandbox (SBX-LECTURE, US-EXI-15) : sujet réservé nommé par le type, comme tous ceux de la sandbox, relecture
+    # immédiate de la campagne ; la relève périodique reste la source de vérité.
+    fin-campagne-sandbox:
+      sujet: sbx-lecture.campaign-published.v1

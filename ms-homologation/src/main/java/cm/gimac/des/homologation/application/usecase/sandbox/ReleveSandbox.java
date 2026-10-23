@@ -147,7 +147,46 @@ public class ReleveSandbox {
      * vaut acquittement de la notification. Rend le nombre d'enregistrements lus.
      */
     public int releverCampagne(UUID liaisonId, String campagneId) {
-        Campagne c = lecture.campagne(campagneId);
+        return reprendre(liaisonId, lecture.campagne(campagneId));
+    }
+
+    /**
+     * Relecture immédiate d'une campagne désignée par sbx-lecture.campaign-published.v1 (US-EXI-15, algorithme 6.53) :
+     * la notification ne porte que l'identifiant de la campagne ; sa liaison est celle du détail lu (lecture qui vaut
+     * acquittement). Une indisponibilité est notée sur la relève de la liaison quand elle est connue ; la relève
+     * périodique, indépendante de la notification, reste la source de vérité et reprend sans perte.
+     */
+    public Bilan releverCampagneNotifiee(String campagneId) {
+        UUID liaisonId = null;
+        try {
+            Campagne c = lecture.campagne(campagneId);
+            liaisonId = liaisonDe(c);
+            return new Bilan(Issue.REUSSIE, 1, reprendre(liaisonId, c));
+        } catch (Indisponible e) {
+            LOG.warn("Relecture notifiée de la campagne {} interrompue : {} (reprise par la relève périodique)", campagneId, e.getMessage());
+            if (liaisonId != null) {
+                noter(liaisonId, r -> r.echec(clock.instant(), e.getMessage(), e.delai()));
+            }
+            return new Bilan(Issue.ECHEC, 0, 0);
+        } catch (HorsContrat e) {
+            LOG.warn("Relecture notifiée de la campagne {} écartée : {}", campagneId, e.getMessage());
+            return new Bilan(Issue.ECHEC, 0, 0);
+        }
+    }
+
+    private UUID liaisonDe(Campagne c) {
+        String l = c.identifiantLiaison();
+        if (l != null && l.matches("[0-9a-fA-F-]{36}")) {
+            UUID id = UUID.fromString(l);
+            if (liaisons.existsById(id)) {
+                return id;
+            }
+        }
+        throw new HorsContrat("campagne " + c.identifiantCampagne() + " d'une liaison inconnue");
+    }
+
+    private int reprendre(UUID liaisonId, Campagne c) {
+        String campagneId = c.identifiantCampagne();
         if (!liaisonId.toString().equals(c.identifiantLiaison())) {
             throw new HorsContrat("campagne " + campagneId + " d'une autre liaison");
         }

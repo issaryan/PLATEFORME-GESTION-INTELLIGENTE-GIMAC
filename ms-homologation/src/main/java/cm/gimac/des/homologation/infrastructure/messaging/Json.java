@@ -18,4 +18,14 @@ public final class Json {
             throw new IllegalArgumentException("JSON invalide", e);
         }
     }
+
+    /** Valeur textuelle d'un champ : nulle s'il est absent, nul, non textuel ou vide. */
+    public static String texte(JsonNode n, String champ) {
+        JsonNode v = n == null ? null : n.get(champ);
+        if (v == null || !v.isValueNode() || v.isNull()) {
+            return null;
+        }
+        String s = v.asString();
+        return s.isBlank() ? null : s;
+    }
 }

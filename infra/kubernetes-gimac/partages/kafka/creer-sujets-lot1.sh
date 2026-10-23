@@ -51,6 +51,11 @@ for t in homologation.referential homologation.liaison homologation.operation ho
          collaboration.message pilotage.task pilotage.report pilotage.process notification.inapp iam.request iam.account iam.configuration; do
   creer "$t" 6 --config retention.ms=2592000000 --config min.insync.replicas="$MIN_ISR"
 done
+# US-EXI-15 (D-122) : sujet réservé de la notification de fin de campagne de SBX-LECTURE, nommé par le type comme les
+# sujets de la sandbox (écriture par SBX-LECTURE seul,
+# lecture par MS-HOMOLOGATION, groupe homologation-fin-campagne-sandbox, et MS-AUDIT), et sa file de rebut.
+creer sbx-lecture.campaign-published.v1 6 --config retention.ms=2592000000 --config min.insync.replicas="$MIN_ISR"
+creer sbx-lecture.campaign-published.v1.dlq 3
 for t in participant.subscription participant.status document.document iam.user iam.role homologation.liaison \
          homologation.operation homologation.coverage certification.quitus certification.dossier certification.attestation \
          certification.proces-verbal certification.approbation collaboration.message pilotage.task pilotage.report pilotage.process \

@@ -28,6 +28,11 @@ export const useMesFonctions = (actif = true) => useLecture(['parcours', 'moi-fo
 export const useFicheSuivi = (id: string) => useLecture(cles.parcoursDossier(id, 'fiche-suivi'), (s) => s.decision.ficheSuivi(id), { enabled: Boolean(id) })
 /** D-109 : chronologie réelle de la liaison, relue à chaque geste (sujet « parcours »). */
 export const useChronologieParcours = (id: string, actif = true) => useLecture(cles.parcoursDossier(id, 'chronologie'), (s) => s.parcours.chronologie(id), { enabled: Boolean(id) && actif })
+/** US-EXI-17 : résultats de la sandbox repris pour la liaison (lecture seule, MS-HOMOLOGATION). */
+export const useResultatsSandbox = (id: string, actif = true) => useLecture(cles.parcoursDossier(id, 'sandbox'), (s) => s.parcours.resultatsSandbox(id), { enabled: Boolean(id) && actif })
+/** US-EXI-17 : exécutions retenues d'une campagne reprise, pagination serveur. */
+export const useExecutionsSandbox = (id: string, campagneId: string | undefined, page: number, taille: number) =>
+  useLecture(cles.parcoursDossier(id, `sandbox:${campagneId ?? ''}:${page}:${taille}`), (s) => s.parcours.executionsSandbox(id, campagneId ?? '', page, taille), { enabled: Boolean(id && campagneId) })
 /** D-109 : pièce d'une opération (empreinte inscrite, revérifiée par le service puis par le navigateur). */
 export const useTelechargerPieceParcours = () => useEffet((s, v: { operationId: string; documentId: string }) => s.parcours.telechargerPiece(v.operationId, v.documentId), [])
 

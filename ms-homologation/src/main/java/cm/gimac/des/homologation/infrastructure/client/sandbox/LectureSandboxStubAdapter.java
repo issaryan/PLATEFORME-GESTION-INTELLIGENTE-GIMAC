@@ -106,6 +106,8 @@ public class LectureSandboxStubAdapter implements LectureSandboxPort {
     }
 
     private final Map<String, CampagneServie> campagnes = new ConcurrentHashMap<>();
+    /** Lectures du détail par campagne : l'accusé de la notification de fin de campagne (US-EXI-15) les constate. */
+    private final Map<String, Integer> lecturesDetail = new ConcurrentHashMap<>();
     private volatile int indisponibles;
     private volatile int avantPanne;
     private volatile int statut = 503;
@@ -139,6 +141,7 @@ public class LectureSandboxStubAdapter implements LectureSandboxPort {
 
     public void vider() {
         campagnes.clear();
+        lecturesDetail.clear();
         indisponibles = 0;
         avantPanne = 0;
     }
@@ -171,7 +174,14 @@ public class LectureSandboxStubAdapter implements LectureSandboxPort {
 
     /** Réponse JSON de GET /v1/campagnes/{c}. */
     public byte[] jsonCampagne(String campagneId) {
-        return octets(servie(campagneId).entete);
+        byte[] r = octets(servie(campagneId).entete);
+        lecturesDetail.merge(campagneId, 1, Integer::sum);
+        return r;
+    }
+
+    /** Nombre de lectures du détail de la campagne servies (accusé de lecture constaté par SBX-LECTURE). */
+    public int lecturesDetail(String campagneId) {
+        return lecturesDetail.getOrDefault(campagneId, 0);
     }
 
     @Override
@@ -278,8 +288,13 @@ public class LectureSandboxStubAdapter implements LectureSandboxPort {
     }
 
     static byte[] sha256(byte[] b) {
+        return condense(b, "SHA-256");
+    }
+
+    /** Condensé par l'algorithme nommé ; algorithme absent de la plateforme Java : IllegalStateException. */
+    static byte[] condense(byte[] b, String algorithme) {
         try {
-            return MessageDigest.getInstance("SHA-256").digest(b);
+            return MessageDigest.getInstance(algorithme).digest(b);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException(e);
         }

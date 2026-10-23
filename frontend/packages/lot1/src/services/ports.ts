@@ -10,6 +10,7 @@ import type {
   Telechargement, TypeDemande,
 } from '../modele/certification'
 import type { PortailCertification, PortailLiaison, PortailOperation } from '../modele/portail'
+import type { PageExecutionsSandbox, ResultatsSandbox } from '../modele/sandbox'
 import type { EtatPresence, OptionsTeleversement, Televersement } from '@gimac/socle'
 import type { Conversation, Correspondant, Envoi, FilMessages, LecteurMessage, Message, NouvelleConversation, PageMessagerie } from '../modele/messagerie'
 import type {
@@ -208,6 +209,10 @@ export interface ServiceParcours {
   telechargerPiece(operationId: string, documentId: string): Promise<{ blob: Blob; empreinte: string | null }>
   /** D-109 : chronologie réelle de la liaison (dépôts, sans objet, renvois, signatures, clôtures, reprises, blocages). */
   chronologie(liaisonId: string): Promise<EvenementPreuve[]>
+  /** US-EXI-17 : résultats de la sandbox repris par MS-HOMOLOGATION (lecture seule, jamais recalculés). */
+  resultatsSandbox(liaisonId: string): Promise<ResultatsSandbox>
+  /** US-EXI-17 : exécutions retenues d'une campagne reprise, paginées (page à partir de 0, 1 à 100 par page). */
+  executionsSandbox(liaisonId: string, campagneId: string, page: number, taille: number): Promise<PageExecutionsSandbox>
   validerOperation(operationId: string, assertion?: Assertion): Promise<void>
   /** D-93 : renvoi motivé par le validateur (l'opération revient à faire, tâche rouverte à R). */
   renvoyer(operationId: string, motif: string): Promise<void>

@@ -86,10 +86,15 @@ public class ConservationPiecesSandbox {
     }
 
     static String sha256(byte[] octets) {
+        return condense(octets, "SHA-256");
+    }
+
+    /** Condensé hexadécimal par l'algorithme nommé ; algorithme absent de la plateforme Java : IllegalStateException. */
+    static String condense(byte[] octets, String algorithme) {
         try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(octets));
+            return HexFormat.of().formatHex(MessageDigest.getInstance(algorithme).digest(octets));
         } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 indisponible", e);
+            throw new IllegalStateException(algorithme + " indisponible", e);
         }
     }
 }
