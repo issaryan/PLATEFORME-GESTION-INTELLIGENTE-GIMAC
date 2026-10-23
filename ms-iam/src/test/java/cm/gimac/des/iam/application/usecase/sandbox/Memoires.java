@@ -139,4 +139,50 @@ public final class Memoires {
             lignes.put(cle + "/" + operation, resultat);
         }
     }
+
+    /** Délégations en mémoire (mêmes requêtes que l'adaptateur JDBC). */
+    public static final class Delegations implements cm.gimac.des.iam.application.port.out.sandbox.DelegationsSandbox {
+
+        public final Map<String, cm.gimac.des.iam.domain.sandbox.Delegation> lignes = new LinkedHashMap<>();
+
+        @Override
+        public void enregistrer(cm.gimac.des.iam.domain.sandbox.Delegation d) {
+            lignes.put(d.id(), d);
+        }
+
+        @Override
+        public void mettreAJour(cm.gimac.des.iam.domain.sandbox.Delegation d) {
+            lignes.put(d.id(), d);
+        }
+
+        @Override
+        public Optional<cm.gimac.des.iam.domain.sandbox.Delegation> lire(String id) {
+            return Optional.ofNullable(lignes.get(id));
+        }
+
+        @Override
+        public List<cm.gimac.des.iam.domain.sandbox.Delegation> enCours(String compteId, cm.gimac.des.iam.domain.sandbox.Delegation.TypeDelegation type, Instant t) {
+            return lignes.values().stream()
+                .filter(d -> d.compteId().equals(compteId) && d.type() == type && d.etat() == cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation.ACCORDEE && d.fin().isAfter(t))
+                .toList();
+        }
+
+        @Override
+        public List<String> titulaires(String institutionId, Instant t) {
+            return lignes.values().stream()
+                .filter(d -> institutionId.equals(d.institutionId()) && d.type() == cm.gimac.des.iam.domain.sandbox.Delegation.TypeDelegation.MANDAT && d.etat() == cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation.ACCORDEE && d.fin().isAfter(t))
+                .map(cm.gimac.des.iam.domain.sandbox.Delegation::compteId).distinct().sorted().toList();
+        }
+
+        @Override
+        public List<cm.gimac.des.iam.domain.sandbox.Delegation> lister(cm.gimac.des.iam.domain.sandbox.Delegation.TypeDelegation type, int page, int taille) {
+            return lignes.values().stream().filter(d -> type == null || d.type() == type)
+                .sorted(Comparator.comparing(cm.gimac.des.iam.domain.sandbox.Delegation::creeLe).reversed()).skip((long) page * taille).limit(taille).toList();
+        }
+
+        @Override
+        public long compter(cm.gimac.des.iam.domain.sandbox.Delegation.TypeDelegation type) {
+            return lignes.values().stream().filter(d -> type == null || d.type() == type).count();
+        }
+    }
 }

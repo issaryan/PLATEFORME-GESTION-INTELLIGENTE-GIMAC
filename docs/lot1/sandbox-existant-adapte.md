@@ -150,6 +150,7 @@ Règles :
 | US-EXI-16 | Fait (D-122, §7) | Consommation par SBX-CAMPAGNE et SBX-LECTURE à leur arrivée (projection de référence en test de contrat) |
 | US-EXI-20 | Fait (D-120, §6.5) | Événement périmé écarté par SBX-ESPACE, à son raccordement au bus |
 | US-EXI-21 | Fait (D-120, §6.6) | Ouverture d’un espace par SBX-ESPACE sur le registre réel, comptes de service sbx-* dans le domaine Keycloak |
+| US-EXI-04 | Fait (D-119, §8.3) | Saga MANDAT de SBX-ESPACE ; jeton délégué présenté par la passerelle à l'introspection de MS-IAM |
 | US-EXI-06 | Fait (D-119, §8.2) | Sagas SUSPENSION et RETABLISSEMENT de SBX-ESPACE ; refus immédiat sur le jeton réduit quand la passerelle interrogera l'introspection de MS-IAM |
 
 ## 6. Passerelle, registre et services transverses (lot D-120)
@@ -471,8 +472,51 @@ générateur) et `INTERNAL_PARTICIPANT_READ` ; `gateway-service` reçoit `INTERN
 | 4. Reprise idempotente de l'étape pivot | `SandboxPerimetresIT.repriseIdempotente` (trois reprises concurrentes), `PerimetresSandboxServiceTest.repriseIdempotente` |
 | Routes et moindre privilège | `SandboxPerimetresRoutesTest`, OPA `test_sbx_console_iam_lecture`, `test_sbx_console_iam_refus` |
 
-Délégations de mandat comprises dans le refus (critère 1) : vérifiées avec US-EXI-04 (§8.3), qui ajoute les
-délégations au périmètre suspendu.
+Délégations de mandat comprises dans le refus (critère 1) : la suspension révoque aussi les sessions des titulaires d'un
+mandat sur le périmètre, et l'introspection refuse tout jeton délégué vers un périmètre suspendu (§8.3 ;
+`PerimetresSandboxServiceTest.titulairesDeMandat`, `SandboxDelegationsIT.prolongationEtSuspension`).
+
+### 8.3 Mandats de partenaire (US-EXI-04)
+
+| Opération du port | Méthode et route MS-IAM (`INTERNAL_IAM_SBX_SAGA`) | Corps | Réponse |
+|---|---|---|---|
+| `accorderDelegation(compte, code, perimetre, debut, fin, cle)` | `POST /api/v1/interne/sandbox/delegations` | `{ compteId, institution, permissions, debut, fin }` (ISO 8601) | 201, ou 200 pour une étape rejouée : `{ delegation, etat, nomCompte, rejouee }` ; `delegation.id` est l'identifiant rendu par le port |
+| `revoquerDelegation(id, cle)` | `DELETE /api/v1/interne/sandbox/delegations/{id}?motif=` | | même forme, `etat: REVOQUEE` |
+| prolongation (algorithme 6.3, étape 7) | `PUT /api/v1/interne/sandbox/delegations/{id}/fin` | `{ fin }` | même forme |
+| lecture | `GET /api/v1/interne/sandbox/delegations/{id}` | | même forme |
+
+- **Droits** : codes `SBX_<MODULE>_<FONCTION>` (le `Permission(module, fonction)` de SBX-ESPACE se transmet ainsi),
+  inclus dans les droits accordables par un rôle de portée institution (union des compositions des profils externes à
+  permission SBX), jamais `*_VALIDATION` (422 `IAM_SBX_VALIDATION_RESERVEE`) ; hors portée : 403
+  `IAM_SBX_PERIMETRE_HORS_PORTEE` ; aucun : 400 `IAM_SBX_PERIMETRE_REQUIS`.
+- **Bornes** : début avant la fin (422 `IAM_SBX_PERIODE_INVALIDE`), fin à venir (422 `IAM_SBX_PERIODE_ECHUE`), durée au
+  plus `gimac.sandbox.mandat-duree-max` (90 jours ; 422 `IAM_SBX_DUREE_EXCESSIVE`, `details.dureeMax`). Un refus ne
+  laisse aucun état : ni délégation, ni clé d'idempotence (la saga compense).
+- **Intervenant** : compte actif (422 `IAM_SBX_COMPTE_INACTIF`), extérieur à l'institution mandante (422
+  `IAM_SBX_MANDAT_PROPRE_INSTITUTION`) ; périmètre mandant suspendu : 403 `IAM_SBX_PERIMETRE_SUSPENDU`.
+- **Jeton délégué** : la passerelle (ou un service) présente le jeton du partenaire à l'introspection avec
+  `institution` = code mandant. MS-IAM l'admet sous un mandat actif à l'instant de la requête et rend `institution_id`
+  mandante, `permissions` = droits du mandat seulement, `type: MANDAT`, `delegation_id`, `exp` = plus proche de la fin
+  du jeton et de la fin du mandat. Hors mandat, mandat programmé, échu (dès la date de fin, sans le planificateur de
+  SBX-ESPACE), révoqué, ou périmètre mandant suspendu : `{ active: false }`.
+- **Révocation** : délégation close (`REVOQUEE`, date et motif), sessions Keycloak du titulaire fermées, introspection
+  refusée dès la validation. Rejeu ou délégation déjà révoquée : sans effet.
+- **Prolongation** : délégation active ou programmée (409 `IAM_SBX_DELEGATION_CLOSE` sinon), nouvelle fin après
+  l'actuelle (422 `IAM_SBX_PROLONGATION_INVALIDE`), durée totale sous le maximum.
+- **Traces** : `MANDAT_ACCORDE`, `DELEGATION_REVOQUEE`, `DELEGATION_PROLONGEE` au journal d'administration, sur le
+  compte de l'intervenant, avec `iam.account-administered.v1`. Table `delegation_sandbox` (l'entité `Delegation` de
+  JHipster n'est pas reprise).
+- **Console** : onglet « Mandats de partenaire » de `/console/sandbox` (`GET /api/v1/sandbox/delegations?type=MANDAT`),
+  état effectif à l'instant (programmé, actif, échu, révoqué), lecture seule. Captures :
+  `docs/recette/captures/exi/iam/exi-04/`.
+
+| Critère | Test |
+|---|---|
+| 1. Jeton délégué : institution mandante, seuls droits du mandat, dates | `SandboxDelegationsIT.octroi`, `IntrospectionSandboxServiceTest.jetonDelegue`, `DelegationsSandboxServiceTest.octroi` |
+| 2. Échéance malgré un planificateur en retard | `SandboxDelegationsIT.echeanceSansPlanificateur`, `IntrospectionSandboxServiceTest.echeanceSansPlanificateur`, `ReglesDelegationTest.etatEffectif` |
+| 3. Révocation anticipée, sessions révoquées | `SandboxDelegationsIT.revocation`, `DelegationsSandboxServiceTest.revocation` |
+| 4. Durée excessive, problème normalisé, sans état partiel | `SandboxDelegationsIT.dureeExcessive`, `DelegationsSandboxServiceTest.dureeExcessive`, `ReglesDelegationTest.dureeExcessive` |
+| Routes | `SandboxPerimetresRoutesTest.delegations` ; écran : `SandboxIamPage.test.tsx` |
 
 ## Journal des mises à jour
 
@@ -489,3 +533,4 @@ délégations au périmètre suspendu.
 | 2026-10-22 | - | §7.3 : gel des liaisons sur changement de statut de l'institution (HOM-06) et republication des états (D-122) |
 | 2026-10-22 | - | §8.1 et §8.2 : routes internes du lot IAM, suspension d'institution et protection du dernier administrateur (US-EXI-06, D-119) |
 | 2026-10-22 | - | §6.7 : types de pièces, rétention, dépôt contrôlé et document.document-sealed.v1 de la sandbox dans MS-DOCUMENT, pièce par empreinte (US-EXI-08, D-120) |
+| 2026-10-22 | - | §2.1 : treizième module SUP (`SBX_SUP_CONSULTATION`) ; §8.3 : mandats de partenaire (US-EXI-04, D-119) |

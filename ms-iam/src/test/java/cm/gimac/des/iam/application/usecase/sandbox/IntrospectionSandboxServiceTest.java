@@ -22,6 +22,8 @@ class IntrospectionSandboxServiceTest {
 
     AnnuaireEnMemoire annuaire;
     Memoires.Perimetres perimetres;
+    Memoires.Delegations delegations;
+    Memoires.Horloge horloge;
     Map<String, Map<String, Object>> jetons;
     IntrospectionSandboxService service;
     String testeur;
@@ -31,7 +33,9 @@ class IntrospectionSandboxServiceTest {
         annuaire = new AnnuaireEnMemoire(AnnuaireEnMemoire.catalogueParDefaut(Set.of("ROLE_SBX_TESTEUR")));
         perimetres = new Memoires.Perimetres();
         jetons = new HashMap<>();
-        service = new IntrospectionSandboxService(j -> Optional.ofNullable(jetons.get(j)), annuaire, perimetres);
+        delegations = new Memoires.Delegations();
+        horloge = new Memoires.Horloge(Instant.parse("2026-10-22T08:00:00Z"));
+        service = new IntrospectionSandboxService(j -> Optional.ofNullable(jetons.get(j)), annuaire, perimetres, delegations, horloge);
         testeur = annuaire.creer(new NouveauCompte("testeur.99001", "Awa", "N", "awa@t.test", null, null, "99001", Set.of("ROLE_SBX_TESTEUR")), List.of());
         jetons.put("j-testeur", Map.of("sub", testeur, "roles", List.of("ROLE_SBX_TESTEUR", "SBX_CER_EXECUTION", "offline_access"), "exp", EXP, "institution_id", "99001"));
         jetons.put("j-rssi", Map.of("sub", "demo-rssi", "roles", List.of("ROLE_RSSI"), "exp", EXP));
@@ -74,9 +78,64 @@ class IntrospectionSandboxServiceTest {
         Introspection inconnu = service.introspecter("j-inconnu", null);
         assertThat(inconnu.motifRefus()).isEqualTo("COMPTE_INCONNU");
         assertThat(inconnu.sujet()).isEqualTo("inconnu");
-        assertThat(service.introspecter("j-testeur", "99002").motifRefus()).isEqualTo("HORS_PERIMETRE");
+        assertThat(service.introspecter("j-testeur", "99002").motifRefus()).isEqualTo("HORS_MANDAT");
         annuaire.definirActif(testeur, false);
         assertThat(service.introspecter("j-testeur", null).motifRefus()).isEqualTo("COMPTE_INACTIF");
         assertThat(IntrospectionSandboxService.expiration(Map.of("exp", "x"))).isNull();
+    }
+
+    cm.gimac.des.iam.domain.sandbox.Delegation mandat(String id, Instant debut, Instant fin, cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation etat) {
+        var d = new cm.gimac.des.iam.domain.sandbox.Delegation(id, cm.gimac.des.iam.domain.sandbox.Delegation.TypeDelegation.MANDAT, testeur, "99002",
+            Set.of("SBX_RAC_CONSULTATION"), Set.of(), debut, fin, etat, "sa", null, null, debut, null);
+        delegations.enregistrer(d);
+        return d;
+    }
+
+    @Test
+    @DisplayName("US-EXI-04 scénario 1 : jeton délégué projeté sur l'institution mandante, avec les seuls droits du mandat, jusqu'à sa fin")
+    void jetonDelegue() {
+        Instant t = horloge.instant();
+        mandat("m1", t.minusSeconds(3600), t.plusSeconds(120), cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation.ACCORDEE);
+        Introspection i = service.introspecter("j-testeur", "99002");
+        assertThat(i.active()).isTrue();
+        assertThat(i.institutionId()).isEqualTo("99002");
+        assertThat(i.permissions()).containsExactly("SBX_RAC_CONSULTATION");
+        assertThat(i.type()).isEqualTo("MANDAT");
+        assertThat(i.delegationId()).isEqualTo("m1");
+        assertThat(i.expiration()).isEqualTo(t.plusSeconds(120));
+        // Jeton qui expire avant la fin du mandat : échéance du jeton.
+        mandat("m2", t.minusSeconds(3600), t.plusSeconds(86400), cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation.ACCORDEE);
+        delegations.lignes.remove("m1");
+        assertThat(service.introspecter("j-testeur", "99002").expiration()).isEqualTo(EXP);
+        jetons.put("j-sans-exp", Map.of("sub", testeur));
+        assertThat(service.introspecter("j-sans-exp", "99002").expiration()).isEqualTo(t.plusSeconds(86400));
+    }
+
+    @Test
+    @DisplayName("US-EXI-04 scénario 2 : introspection refusée dès la date de fin, même si le planificateur n'a rien constaté")
+    void echeanceSansPlanificateur() {
+        Instant t = horloge.instant();
+        mandat("m1", t.minusSeconds(3600), t.plusSeconds(60), cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation.ACCORDEE);
+        assertThat(service.introspecter("j-testeur", "99002").active()).isTrue();
+        horloge.avancer(java.time.Duration.ofSeconds(60));
+        Introspection i = service.introspecter("j-testeur", "99002");
+        assertThat(i.active()).isFalse();
+        assertThat(i.motifRefus()).isEqualTo("HORS_MANDAT");
+        assertThat(delegations.lignes.get("m1").etat()).isEqualTo(cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation.ACCORDEE);
+    }
+
+    @Test
+    @DisplayName("Mandat programmé, révoqué ou d'une autre institution, périmètre mandant suspendu : refus")
+    void mandatsRefuses() {
+        Instant t = horloge.instant();
+        mandat("p", t.plusSeconds(60), t.plusSeconds(3600), cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation.ACCORDEE);
+        assertThat(service.introspecter("j-testeur", "99002").active()).isFalse();
+        mandat("r", t.minusSeconds(60), t.plusSeconds(3600), cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation.REVOQUEE);
+        assertThat(service.introspecter("j-testeur", "99002").active()).isFalse();
+        mandat("a", t.minusSeconds(60), t.plusSeconds(3600), cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation.ACCORDEE);
+        assertThat(service.introspecter("j-testeur", "99003").active()).isFalse();
+        assertThat(service.introspecter("j-testeur", "99002").active()).isTrue();
+        perimetres.poser("99002", "sa", null, t);
+        assertThat(service.introspecter("j-testeur", "99002").motifRefus()).isEqualTo("PERIMETRE_SUSPENDU");
     }
 }

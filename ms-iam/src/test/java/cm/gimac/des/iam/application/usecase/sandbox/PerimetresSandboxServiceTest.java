@@ -44,6 +44,7 @@ class PerimetresSandboxServiceTest {
     Memoires.Perimetres perimetres;
     Memoires.Protections protections;
     Memoires.Etapes etapes;
+    Memoires.Delegations delegations;
     Memoires.Horloge horloge;
     PerimetresSandboxService service;
     String admin;
@@ -62,7 +63,8 @@ class PerimetresSandboxServiceTest {
         protections = new Memoires.Protections();
         etapes = new Memoires.Etapes();
         horloge = new Memoires.Horloge(T);
-        service = new PerimetresSandboxService(perimetres, protections, annuaire, etapes, journal, horloge);
+        delegations = new Memoires.Delegations();
+        service = new PerimetresSandboxService(perimetres, protections, delegations, annuaire, etapes, journal, horloge);
         admin = compte("admin.99001", INST, "ROLE_SBX_ADMIN_INSTITUTION");
         testeur = compte("testeur.99001", INST, "ROLE_SBX_TESTEUR");
         suspenduAvant = compte("ancien.99001", INST, "ROLE_SBX_TESTEUR");
@@ -188,5 +190,16 @@ class PerimetresSandboxServiceTest {
     void protectionCompteDisparu() {
         protections.definir("disparu", INST, true, "sa", T);
         assertThat(service.protections(0, 20).contenu().get(0).nom()).isEqualTo("disparu");
+    }
+
+    @Test
+    @DisplayName("US-EXI-06 scénario 1 (délégations de mandat comprises) : les sessions du titulaire d'un mandat sur le périmètre sont révoquées")
+    void titulairesDeMandat() {
+        delegations.enregistrer(new cm.gimac.des.iam.domain.sandbox.Delegation("m1", cm.gimac.des.iam.domain.sandbox.Delegation.TypeDelegation.MANDAT, autre, INST,
+            Set.of("SBX_RAC_CONSULTATION"), Set.of(), T.minusSeconds(60), T.plusSeconds(3600), cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation.ACCORDEE, "sa", null, null, T, null));
+        EtatPerimetre e = service.suspendre(SAGA, INST, true, null, null);
+        assertThat(e.sessionsRevoquees()).isEqualTo(4);
+        assertThat(annuaire.sessions(autre)).isEmpty();
+        assertThat(delegations.lignes.get("m1").etat()).isEqualTo(cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation.ACCORDEE);
     }
 }

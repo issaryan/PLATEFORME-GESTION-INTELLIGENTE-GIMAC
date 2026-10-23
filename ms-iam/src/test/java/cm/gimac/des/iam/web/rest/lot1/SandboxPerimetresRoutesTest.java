@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -13,7 +14,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import cm.gimac.des.iam.application.usecase.AvatarService;
+import cm.gimac.des.iam.application.usecase.sandbox.DelegationsSandboxService;
+import cm.gimac.des.iam.application.usecase.sandbox.DelegationsSandboxService.VueDelegation;
 import cm.gimac.des.iam.application.usecase.sandbox.IntrospectionSandboxService;
+import cm.gimac.des.iam.domain.sandbox.Delegation;
+import cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation;
+import cm.gimac.des.iam.domain.sandbox.Delegation.EtatEffectif;
+import cm.gimac.des.iam.domain.sandbox.Delegation.TypeDelegation;
 import cm.gimac.des.iam.application.usecase.sandbox.PerimetresSandboxService;
 import cm.gimac.des.iam.application.usecase.sandbox.PerimetresSandboxService.CompteProtege;
 import cm.gimac.des.iam.application.usecase.sandbox.PerimetresSandboxService.EtatPerimetre;
@@ -66,6 +73,15 @@ class SandboxPerimetresRoutesTest {
     @MockitoBean
     AvatarService avatars;
 
+    @MockitoBean
+    DelegationsSandboxService delegations;
+
+    static VueDelegation vue(boolean rejouee) {
+        return new VueDelegation(
+            new Delegation("0f0e0d0c-0000-4000-8000-000000000001", TypeDelegation.MANDAT, "p1", "99001", Set.of("SBX_CER_EXECUTION"), Set.of(), T, T.plusSeconds(86400), EtatDelegation.ACCORDEE, "sa", null, null, T, null),
+            EtatEffectif.ACTIVE, "Paul Ebode", rejouee);
+    }
+
     static RequestPostProcessor service(String... permissions) {
         return jwt().jwt(j -> j.subject("sa-sbx-espace").claim("preferred_username", "service-account-sbx-espace")).authorities(java.util.Arrays.stream(permissions).map(SimpleGrantedAuthority::new).toArray(org.springframework.security.core.GrantedAuthority[]::new));
     }
@@ -82,6 +98,12 @@ class SandboxPerimetresRoutesTest {
         when(perimetres.proteger(any(), eq("c1"), eq(true), eq("saga-2/1"))).thenReturn(new EtatProtection("c1", "99001", true, false));
         when(perimetres.suspendus(anyInt(), anyInt())).thenReturn(new PagePerimetres(List.of(new PerimetreSuspendu("99001", T, "sa", "m")), 1, 0, 20));
         when(perimetres.protections(anyInt(), anyInt())).thenReturn(new PageProtections(List.of(new CompteProtege("c1", "Awa N", "99001", T)), 1, 0, 20));
+        when(delegations.accorderMandat(any(), eq("p1"), eq("99001"), eq(Set.of("SBX_CER_EXECUTION")), eq(T), eq(T.plusSeconds(86400)), eq("saga-m/4"))).thenReturn(vue(false));
+        when(delegations.accorderMandat(any(), eq("p1"), eq("99001"), eq(Set.of("SBX_CER_EXECUTION")), eq(T), eq(T.plusSeconds(86400)), eq("saga-m/5"))).thenReturn(vue(true));
+        when(delegations.lire("d1")).thenReturn(vue(false));
+        when(delegations.revoquer(any(), eq("d1"), eq("Fin"), eq("saga-r/1"))).thenReturn(vue(false));
+        when(delegations.prolonger(any(), eq("d1"), eq(T.plusSeconds(172800)), isNull())).thenReturn(vue(false));
+        when(delegations.lister(eq(TypeDelegation.MANDAT), anyInt(), anyInt())).thenReturn(new DelegationsSandboxService.PageDelegations(List.of(vue(false)), 1, 0, 20));
         when(introspection.introspecter("j1", "99001")).thenReturn(Introspection.refusee("s", "PERIMETRE_SUSPENDU"));
         when(introspection.introspecter("j2", null)).thenReturn(new Introspection(true, "s", "99001", Set.of("SBX_CER_EXECUTION"), "COMPTE", null, T, Set.of(), null));
     }
@@ -142,5 +164,29 @@ class SandboxPerimetresRoutesTest {
         mvc.perform(get("/api/v1/sandbox/protections").with(console("2", "IAM_ACCOUNT_READ"))).andExpect(status().isOk()).andExpect(jsonPath("$.contenu[0].nom").value("Awa N"));
         mvc.perform(get("/api/v1/sandbox/perimetres").with(console("1", "IAM_ACCOUNT_READ"))).andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/sandbox/protections").with(console("2", "SBX_HAB_CONSULTATION"))).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("US-EXI-04 : saga MANDAT (201, 200 rejouée), lecture, révocation, prolongation ; liste de la console")
+    void delegations() throws Exception {
+        String corps = "{\"compteId\":\"p1\",\"institution\":\"99001\",\"permissions\":[\"SBX_CER_EXECUTION\"],\"debut\":\"" + T + "\",\"fin\":\"" + T.plusSeconds(86400) + "\"}";
+        mvc
+            .perform(post("/api/v1/interne/sandbox/delegations").with(service("INTERNAL_IAM_SBX_SAGA")).header("Idempotency-Key", "saga-m/4").contentType(MediaType.APPLICATION_JSON).content(corps))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.delegation.institutionId").value("99001"))
+            .andExpect(jsonPath("$.etat").value("ACTIVE"));
+        mvc
+            .perform(post("/api/v1/interne/sandbox/delegations").with(service("INTERNAL_IAM_SBX_SAGA")).header("Idempotency-Key", "saga-m/5").contentType(MediaType.APPLICATION_JSON).content(corps))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.rejouee").value(true));
+        mvc.perform(post("/api/v1/interne/sandbox/delegations").with(service("INTERNAL_IAM_SBX_SAGA")).contentType(MediaType.APPLICATION_JSON).content("{\"compteId\":\"p1\"}")).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/interne/sandbox/delegations").with(service("INTERNAL_IAM_READ")).contentType(MediaType.APPLICATION_JSON).content(corps)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/interne/sandbox/delegations/d1").with(service("INTERNAL_IAM_SBX_SAGA"))).andExpect(status().isOk()).andExpect(jsonPath("$.nomCompte").value("Paul Ebode"));
+        mvc.perform(delete("/api/v1/interne/sandbox/delegations/d1?motif=Fin").with(service("INTERNAL_IAM_SBX_SAGA")).header("Idempotency-Key", "saga-r/1")).andExpect(status().isOk());
+        mvc
+            .perform(put("/api/v1/interne/sandbox/delegations/d1/fin").with(service("INTERNAL_IAM_SBX_SAGA")).contentType(MediaType.APPLICATION_JSON).content("{\"fin\":\"" + T.plusSeconds(172800) + "\"}"))
+            .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/sandbox/delegations?type=MANDAT").with(console("2", "IAM_ACCOUNT_READ"))).andExpect(status().isOk()).andExpect(jsonPath("$.contenu[0].delegation.type").value("MANDAT"));
+        mvc.perform(get("/api/v1/sandbox/delegations").with(console("2", "SBX_HAB_ADMINISTRATION"))).andExpect(status().isForbidden());
     }
 }
