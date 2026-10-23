@@ -238,6 +238,15 @@ spring:
                 - RewritePath=/bff/portail/sbx-habilitations/(?<p>.*), /api/v1/administration-deleguee/${p}
             # D-119 (lot IAM de l'épopée EXI, docs/lot1/sandbox-existant-adapte.md §6) : la sandbox dans la console de la
             # plateforme (périmètres suspendus, comptes protégés, délégations, comptes de service), filtrée par OPA.
+            # US-EXI-10 (D-123) : registre d'audit filtré sur la source sandbox (recherche, export CSV, rebut), lecture
+            # seule depuis la console, SBX_TRA_CONSULTATION (OPA).
+            - id: console-audit-sandbox
+              uri: ${gimac.services.audit}
+              predicates:
+                - Path=/bff/console/audit/sandbox/**
+              filters:
+                - OpaAuthorize
+                - RewritePath=/bff/console/audit/sandbox(?<p>/?.*), /api/v1/registre/sandbox${p}
             - id: console-iam-sandbox
               uri: ${gimac.services.iam}
               predicates:

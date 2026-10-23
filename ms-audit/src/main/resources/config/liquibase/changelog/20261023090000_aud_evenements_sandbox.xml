@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Événements à effet de la Sandbox GIMAC au registre d'audit (US-EXI-10, docs/lot1/sandbox-existant-adapte.md §10) :
+     institution de l'événement, index de recherche par source et institution, rebut des enveloppes non conformes. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="aud-exi10-institution" author="lot1">
+        <addColumn tableName="audit_event">
+            <column name="institution_id" type="varchar(64)"/>
+        </addColumn>
+        <createIndex tableName="audit_event" indexName="ix_audit_event_domaine_institution">
+            <column name="domain"/>
+            <column name="institution_id"/>
+            <column name="log_index"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="aud-exi10-rebut-sandbox" author="lot1">
+        <createTable tableName="rebut_sandbox">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="event_id" type="varchar(200)"/>
+            <column name="sujet" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="motif" type="varchar(300)"><constraints nullable="false"/></column>
+            <column name="enveloppe" type="varchar(4000)"/>
+            <column name="recu_le" type="${datetimeType}"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="rebut_sandbox" indexName="ix_rebut_sandbox_recu_le"><column name="recu_le"/></createIndex>
+    </changeSet>
+</databaseChangeLog>

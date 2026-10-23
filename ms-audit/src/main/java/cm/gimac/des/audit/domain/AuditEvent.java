@@ -99,6 +99,14 @@ public class AuditEvent implements Serializable {
     @Column(name = "leaf_hash", length = 64, nullable = false)
     private String leafHash;
 
+    /**
+     * Institution concernée par un événement de la sandbox (extension CloudEvents {@code institutionid} ou
+     * {@code codeParticipant} des données, US-EXI-10) ; nulle pour les autres entrées.
+     */
+    @Size(max = 64)
+    @Column(name = "institution_id", length = 64)
+    private String institutionId;
+
     // jhipster-needle-entity-add-field - JHipster will add fields here
 
     public UUID getId() {
@@ -255,6 +263,14 @@ public class AuditEvent implements Serializable {
 
     public void setLeafHash(String leafHash) {
         this.leafHash = leafHash;
+    }
+
+    public String getInstitutionId() {
+        return this.institutionId;
+    }
+
+    public void setInstitutionId(String institutionId) {
+        this.institutionId = institutionId;
     }
 
     // jhipster-needle-entity-add-getters-setters - JHipster will add getters and setters here
