@@ -150,4 +150,9 @@ public class DelegationsSandboxJdbc implements DelegationsSandbox {
             0L
         );
     }
+
+    @Override
+    public boolean designe(String compteId, TypeDelegation type) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from delegation_sandbox where compte_id = ? and type = ?)", Boolean.class, compteId, type.name()));
+    }
 }

@@ -262,4 +262,13 @@ class AdministrationDelegueeServiceTest {
         // Rétablir un compte protégé reste possible.
         assertThat(service.definirActif(acteur, INST, admin2, true, "retour", null).actif()).isTrue();
     }
+
+    @Test
+    @DisplayName("US-EXI-23 scénario 3 : déblocage demandé par l'institution, refusé et journalisé ; compte étranger : 404 sans trace")
+    void deblocageRefuse() {
+        refus(() -> service.refuserDeblocage(acteur, INST, testeur, "Le testeur est bloqué"), "IAM_SBX_DEBLOCAGE_RESERVE", 403);
+        verify(journal).compte(eq(acteur), eq("TENTATIVE_DEBLOCAGE"), eq(testeur), eq("testeur.99001"), eq("Le testeur est bloqué"), eq(List.of(INST)));
+        refus(() -> service.refuserDeblocage(acteur, INST, etranger, null), "IAM_ACCOUNT_NOT_FOUND", 404);
+        verify(journal, never()).compte(any(), eq("TENTATIVE_DEBLOCAGE"), eq(etranger), any(), any(), any());
+    }
 }

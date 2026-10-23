@@ -188,4 +188,56 @@ class SandboxDelegationsIT extends AbstractIamIT {
             assertThat(delegations.enCours(partenaire, TypeDelegation.PRESTATAIRE, t)).isEmpty();
         });
     }
+
+    String introspectionPrestataire(String jetonPrestataire, String institution, String composant) throws Exception {
+        String corps = "{\"jeton\":\"" + jetonPrestataire + "\"" + (institution == null ? "" : ",\"institution\":\"" + institution + "\"") + ",\"composant\":\"" + composant + "\"}";
+        return mvc
+            .perform(post("/api/v1/interne/sandbox/introspection").with(SandboxPerimetresIT.passerelleIntrospection()).contentType(MediaType.APPLICATION_JSON).content(corps))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    }
+
+    @Test
+    @DisplayName("US-EXI-24 (intégration) : demande sur SBX-TRACE approuvée par le RSSI, octroi journalisé, introspection bornée au composant, données d'institution refusées, fin à l'échéance")
+    void accesPrestataire() throws Exception {
+        String prestataire = annuaire.creer(new NouveauCompte("presta." + mandant, "Jean", "Mbarga", "jean." + mandant + "@presta.test", null, null, null, Set.of()), List.of());
+        String jetonPrestataire = "jeton-prestataire-" + mandant;
+        Instant t = Instant.now();
+        when(decodeur.decode(jetonPrestataire)).thenReturn(Jwt.withTokenValue(jetonPrestataire).header("alg", "RS256").subject(prestataire).claim("roles", List.of("SBX_TRA_CONSULTATION")).issuedAt(t).expiresAt(t.plusSeconds(300)).build());
+        Instant debut = t.truncatedTo(ChronoUnit.SECONDS).minusSeconds(60);
+        String corps = "{\"compteId\":\"" + prestataire + "\",\"composants\":[\"SBX-TRACE\"],\"debut\":\"" + debut + "\",\"fin\":\"" + debut.plus(Duration.ofHours(4)) + "\",\"motif\":\"Correctif\"}";
+        String r = mvc.perform(post("/api/v1/sandbox/delegations/prestataire").with(utilisateur(SUPER_ADMIN, "IAM_ACCOUNT_SECURITY")).contentType(MediaType.APPLICATION_JSON).content(corps))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.etat").value("DEMANDEE")).andReturn().getResponse().getContentAsString();
+        String id = JsonPath.read(r, "$.delegation.id");
+        // Demande en attente : aucun accès ; l'auteur de la demande ne l'approuve pas.
+        assertThat((Boolean) JsonPath.read(introspectionPrestataire(jetonPrestataire, null, "SBX-TRACE"), "$.active")).isFalse();
+        mvc.perform(post("/api/v1/sandbox/delegations/{id}/approbation", id).with(utilisateur(SUPER_ADMIN, "IAM_ACCOUNT_SECURITY"))).andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("IAM_SBX_APPROBATION_PROPRE"));
+        mvc.perform(post("/api/v1/sandbox/delegations/{id}/approbation", id).with(utilisateur("demo-rssi", "IAM_ACCOUNT_SECURITY"))).andExpect(status().isOk())
+            .andExpect(jsonPath("$.etat").value("ACTIVE")).andExpect(jsonPath("$.delegation.approbateurId").value("demo-rssi"));
+        assertThat(jdbc.queryForObject("select count(*) from outbox_event where aggregate_id = ? and payload::text like '%ACCES_PRESTATAIRE_ACCORDE%'", Integer.class, prestataire)).isEqualTo(1);
+        String i = introspectionPrestataire(jetonPrestataire, null, "SBX-TRACE");
+        assertThat((Boolean) JsonPath.read(i, "$.active")).isTrue();
+        assertThat((String) JsonPath.read(i, "$.type")).isEqualTo("PRESTATAIRE");
+        assertThat((List<String>) JsonPath.read(i, "$.composants")).containsExactly("SBX-TRACE");
+        assertThat((List<String>) JsonPath.read(i, "$.permissions")).isEmpty();
+        assertThat((Boolean) JsonPath.read(introspectionPrestataire(jetonPrestataire, null, "SBX-CAMPAGNE"), "$.active")).isFalse();
+        // Critère 3 : données d'une institution demandées, refus journalisé.
+        assertThat((Boolean) JsonPath.read(introspectionPrestataire(jetonPrestataire, "99001", "SBX-TRACE"), "$.active")).isFalse();
+        assertThat(jdbc.queryForObject("select count(*) from outbox_event where aggregate_id = ? and payload::text like '%TENTATIVE_ACCES_PRESTATAIRE%'", Integer.class, prestataire)).isEqualTo(1);
+        // Critère 2 : à l'échéance, l'introspection est refusée.
+        transactions.executeWithoutResult(x -> jdbc.update("update delegation_sandbox set fin = ? where id = ?", java.sql.Timestamp.from(Instant.now().minusSeconds(1)), UUID.fromString(id)));
+        assertThat((Boolean) JsonPath.read(introspectionPrestataire(jetonPrestataire, null, "SBX-TRACE"), "$.active")).isFalse();
+        mvc.perform(get("/api/v1/sandbox/delegations?type=PRESTATAIRE&taille=100").with(utilisateur(SUPER_ADMIN, "IAM_ACCOUNT_READ"))).andExpect(status().isOk())
+            .andExpect(jsonPath("$.contenu[?(@.delegation.id == '" + id + "')].etat").value("ECHUE"));
+        mvc.perform(post("/api/v1/sandbox/delegations/{id}/revocation", id).with(utilisateur("demo-rssi", "IAM_ACCOUNT_SECURITY")).contentType(MediaType.APPLICATION_JSON).content("{\"motif\":\"Clos\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.etat").value("REVOQUEE"));
+        // Refus d'une autre demande.
+        String r2 = mvc.perform(post("/api/v1/sandbox/delegations/prestataire").with(utilisateur(SUPER_ADMIN, "IAM_ACCOUNT_SECURITY")).contentType(MediaType.APPLICATION_JSON).content(corps.replace(debut.toString(), Instant.now().truncatedTo(ChronoUnit.SECONDS).toString())))
+            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        mvc.perform(post("/api/v1/sandbox/delegations/{id}/refus", (String) JsonPath.read(r2, "$.delegation.id")).with(utilisateur("demo-rssi", "IAM_ACCOUNT_SECURITY")).contentType(MediaType.APPLICATION_JSON).content("{\"motif\":\"Non\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.etat").value("REFUSEE"));
+    }
 }

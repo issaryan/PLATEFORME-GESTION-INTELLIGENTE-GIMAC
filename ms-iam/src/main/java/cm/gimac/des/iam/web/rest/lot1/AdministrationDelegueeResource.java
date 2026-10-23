@@ -101,6 +101,15 @@ public class AdministrationDelegueeResource {
         return service.definirRoles(ActeurCourant.de(auth), institution(auth), id, r.roles(), r.motif(), cle);
     }
 
+    /** Motif d'une demande de déblocage. */
+    public record DeblocageRequest(@Size(max = 500) String motif) {}
+
+    /** US-EXI-23 : déblocage réservé au GIMAC ; la demande de l'institution est refusée et journalisée (403). */
+    @PostMapping("/comptes/{id}/deblocage")
+    public Compte deblocage(@PathVariable String id, @RequestBody(required = false) DeblocageRequest r, Authentication auth) {
+        return service.refuserDeblocage(ActeurCourant.de(auth), institution(auth), id, r == null ? null : r.motif());
+    }
+
     @PutMapping("/comptes/{id}/etat")
     public Compte etat(@PathVariable String id, @Valid @RequestBody EtatRequest r, @RequestHeader(name = CLE, required = false) String cle, Authentication auth) {
         return service.definirActif(ActeurCourant.de(auth), institution(auth), id, r.actif(), r.motif(), cle);

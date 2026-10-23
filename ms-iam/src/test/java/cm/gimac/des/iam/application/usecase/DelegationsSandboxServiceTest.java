@@ -184,4 +184,64 @@ class DelegationsSandboxServiceTest {
         assertThat(service.lister(TypeDelegation.PRESTATAIRE, 0, 20).total()).isZero();
         assertThat(delegations.lignes.values()).allMatch(d -> d.etat() == EtatDelegation.ACCORDEE);
     }
+
+    static final Acteur EXPLOITANT = new Acteur("exploitant", "Exploitant", Set.of("IAM_ACCOUNT_SECURITY"));
+    static final Acteur RSSI = new Acteur("rssi", "RSSI", Set.of("IAM_ACCOUNT_SECURITY"));
+
+    String prestataire() {
+        return annuaire.creer(new NouveauCompte("presta.maintenance", "Jean", "Mbarga", "jean@presta.test", null, null, null, Set.of()), List.of());
+    }
+
+    @Test
+    @DisplayName("US-EXI-24 scénario 1 : demande sur SBX-TRACE approuvée par le RSSI pour quatre heures, octroi journalisé")
+    void accesPrestataire() {
+        String compte = prestataire();
+        VueDelegation d = service.demanderAccesPrestataire(EXPLOITANT, compte, List.of("SBX-TRACE"), T, T.plus(Duration.ofHours(4)), "Correctif de SBX-TRACE");
+        assertThat(d.etat()).isEqualTo(EtatEffectif.DEMANDEE);
+        assertThat(d.delegation().type()).isEqualTo(TypeDelegation.PRESTATAIRE);
+        assertThat(d.delegation().institutionId()).isNull();
+        assertThat(d.delegation().permissions()).isEmpty();
+        assertThat(d.delegation().composants()).containsExactly("SBX-TRACE");
+        verify(journal).compte(eq(EXPLOITANT), eq("ACCES_PRESTATAIRE_DEMANDE"), eq(compte), eq("presta.maintenance"), eq("Correctif de SBX-TRACE"), any());
+        // Quatre yeux : l'auteur de la demande ne l'approuve pas.
+        refus(() -> service.approuverAccesPrestataire(EXPLOITANT, d.delegation().id()), "IAM_SBX_APPROBATION_PROPRE", 403);
+        VueDelegation a = service.approuverAccesPrestataire(RSSI, d.delegation().id());
+        assertThat(a.etat()).isEqualTo(EtatEffectif.ACTIVE);
+        assertThat(a.delegation().approbateurId()).isEqualTo("rssi");
+        verify(journal).compte(eq(RSSI), eq("ACCES_PRESTATAIRE_ACCORDE"), eq(compte), eq(compte), eq("Correctif de SBX-TRACE"), any());
+        // Demande déjà décidée.
+        refus(() -> service.approuverAccesPrestataire(RSSI, d.delegation().id()), "IAM_SBX_DELEGATION_CLOSE", 409);
+        refus(() -> service.refuserAccesPrestataire(RSSI, d.delegation().id(), "x"), "IAM_SBX_DELEGATION_CLOSE", 409);
+        // Révocation depuis la console : sessions fermées, introspection refusée.
+        annuaire.ouvrirSession(compte, "10.0.0.7");
+        VueDelegation r = service.revoquerAccesPrestataire(RSSI, d.delegation().id(), "Intervention terminée");
+        assertThat(r.etat()).isEqualTo(EtatEffectif.REVOQUEE);
+        assertThat(annuaire.sessions(compte)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("US-EXI-24 : refus motivé, échéance d'une demande, durée et composants bornés, prestataire hors institution")
+    void controlesPrestataire() {
+        String compte = prestataire();
+        VueDelegation d = service.demanderAccesPrestataire(EXPLOITANT, compte, List.of("SBX-TRACE", "MIFOS"), T, T.plus(Duration.ofHours(2)), "Mise à jour");
+        VueDelegation r = service.refuserAccesPrestataire(RSSI, d.delegation().id(), "Fenêtre non validée");
+        assertThat(r.etat()).isEqualTo(EtatEffectif.REFUSEE);
+        assertThat(r.delegation().closeLe()).isEqualTo(T);
+        verify(journal).compte(eq(RSSI), eq("ACCES_PRESTATAIRE_REFUSE"), eq(compte), any(), eq("Fenêtre non validée"), any());
+        VueDelegation e = service.demanderAccesPrestataire(EXPLOITANT, compte, List.of("SBX-TRACE"), T, T.plus(Duration.ofHours(1)), "Mise à jour");
+        horloge.avancer(Duration.ofHours(2));
+        refus(() -> service.approuverAccesPrestataire(RSSI, e.delegation().id()), "IAM_SBX_DELEGATION_CLOSE", 409);
+        Instant t = horloge.instant();
+        refus(() -> service.demanderAccesPrestataire(EXPLOITANT, compte, List.of("SBX-TRACE"), t, t.plus(Duration.ofHours(9)), "x"), "IAM_SBX_DUREE_EXCESSIVE", 422);
+        refus(() -> service.demanderAccesPrestataire(EXPLOITANT, compte, List.of("SBX-INCONNU"), t, t.plusSeconds(60), "x"), "IAM_SBX_COMPOSANT_INCONNU", 400);
+        refus(() -> service.demanderAccesPrestataire(EXPLOITANT, compte, List.of(), t, t.plusSeconds(60), "x"), "IAM_SBX_COMPOSANT_REQUIS", 400);
+        refus(() -> service.demanderAccesPrestataire(EXPLOITANT, membre, List.of("SBX-TRACE"), t, t.plusSeconds(60), "x"), "IAM_SBX_PRESTATAIRE_INSTITUTION", 422);
+        refus(() -> service.demanderAccesPrestataire(EXPLOITANT, "inconnu", List.of("SBX-TRACE"), t, t.plusSeconds(60), "x"), "IAM_ACCOUNT_NOT_FOUND", 404);
+        // Un mandat n'est ni approuvé ni révoqué comme un accès de prestataire.
+        String mandat = accorder(null).delegation().id();
+        refus(() -> service.approuverAccesPrestataire(RSSI, mandat), "IAM_SBX_DELEGATION_INTROUVABLE", 404);
+        refus(() -> service.revoquerAccesPrestataire(RSSI, mandat, "x"), "IAM_SBX_DELEGATION_INTROUVABLE", 404);
+        annuaire.definirActif(compte, false);
+        refus(() -> service.demanderAccesPrestataire(EXPLOITANT, compte, List.of("SBX-TRACE"), t, t.plusSeconds(60), "x"), "IAM_SBX_COMPTE_INACTIF", 422);
+    }
 }

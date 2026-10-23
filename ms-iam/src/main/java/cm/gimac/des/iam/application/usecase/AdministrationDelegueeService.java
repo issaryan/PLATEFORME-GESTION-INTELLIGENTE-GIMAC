@@ -179,6 +179,19 @@ public class AdministrationDelegueeService {
         return lire(inst, id);
     }
 
+    /**
+     * Déblocage d'un compte verrouillé demandé par l'institution (US-EXI-23, critère 3) : refusé (403
+     * IAM_SBX_DEBLOCAGE_RESERVE), seul l'administrateur du GIMAC débloque depuis la console ; la tentative est journalisée
+     * (TENTATIVE_DEBLOCAGE). Compte hors de l'institution : 404 indistinguable, sans trace sur un compte étranger.
+     */
+    @Transactional(noRollbackFor = IamException.class)
+    public Compte refuserDeblocage(Acteur acteur, String institutionActeur, String id, String motif) {
+        String inst = ReglesAdministrationDeleguee.institution(institutionActeur);
+        Compte c = lire(inst, id);
+        journal.compte(acteur, "TENTATIVE_DEBLOCAGE", id, c.identifiant(), motif, List.of(inst));
+        throw IamException.interdit("IAM_SBX_DEBLOCAGE_RESERVE", "Le déblocage d'un compte est réservé à l'administrateur du GIMAC", Map.of());
+    }
+
     private long administrateursActifs(String inst, Map<String, Set<String>> compositions) {
         return tous(inst).stream().filter(x -> x.actif() && ReglesAdministrationDeleguee.administrateur(x.profils(), compositions)).count();
     }

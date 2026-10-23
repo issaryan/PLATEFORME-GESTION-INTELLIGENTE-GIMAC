@@ -573,6 +573,26 @@ public class KeycloakAnnuaire implements Annuaire {
     }
 
     @Override
+    public cm.gimac.des.iam.domain.compte.Verrouillage verrouillage(String id) {
+        return appel(() -> {
+            r().users().get(id).toRepresentation();
+            Map<String, Object> e = r().attackDetection().bruteForceUserStatus(id);
+            boolean verrouille = Boolean.TRUE.equals(e.get("disabled"));
+            int n = e.get("numFailures") instanceof Number x ? x.intValue() : 0;
+            Instant dernier = e.get("lastFailure") instanceof Number x && x.longValue() > 0 ? Instant.ofEpochMilli(x.longValue()) : null;
+            return new cm.gimac.des.iam.domain.compte.Verrouillage(verrouille, n, dernier);
+        });
+    }
+
+    @Override
+    public void debloquer(String id) {
+        faire(() -> {
+            r().users().get(id).toRepresentation();
+            r().attackDetection().clearBruteForceForUser(id);
+        });
+    }
+
+    @Override
     public void fermerSessions(String id) {
         faire(() -> r().users().get(id).logout());
     }

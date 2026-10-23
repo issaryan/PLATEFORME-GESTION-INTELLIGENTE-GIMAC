@@ -29,7 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Délégations temporaires de la sandbox dans MS-IAM (D-119) : mandats de partenaire (US-EXI-04, saga MANDAT de
- * SBX-ESPACE, algorithme 6.3 du CC) ; révocation et prolongation communes aux accès de prestataire (US-EXI-24). Étapes
+ * SBX-ESPACE, algorithme 6.3 du CC) ; accès de prestataire demandés puis approuvés par le RSSI (US-EXI-24) ; révocation
+ * et prolongation communes aux deux types. Étapes
  * rejouables par leur clé d'idempotence ; chaque acte est journalisé sur le compte de l'intervenant
  * (iam.account-administered.v1).
  */
@@ -124,6 +125,74 @@ public class DelegationsSandboxService {
         delegations.enregistrer(d);
         journal.compte(acteur, "MANDAT_ACCORDE", compteId, c.identifiant(), null, List.of(inst, debut + " / " + fin, String.join(" ", perimetre)));
         return vue(d, false);
+    }
+
+    /**
+     * Demande d'accès de prestataire de maintenance (US-EXI-24) : délégation DEMANDEE, bornée aux composants techniques
+     * désignés, sans aucune institution ni permission sur les données. Le compte du prestataire est actif (422
+     * IAM_SBX_COMPTE_INACTIF) et n'appartient à aucune institution (422 IAM_SBX_PRESTATAIRE_INSTITUTION) ; durée au plus
+     * {@code gimac.sandbox.prestataire-duree-max}. L'accès n'ouvre rien tant que le RSSI ne l'a pas approuvé.
+     */
+    @Transactional
+    public VueDelegation demanderAccesPrestataire(Acteur acteur, String compteId, Collection<String> composants, Instant debut, Instant fin, String motif) {
+        Compte c = compte(compteId);
+        if (!c.actif()) {
+            throw IamException.nonTraitable("IAM_SBX_COMPTE_INACTIF", "Le compte désigné est inactif", Map.of("id", compteId));
+        }
+        if (!c.interne()) {
+            throw IamException.nonTraitable("IAM_SBX_PRESTATAIRE_INSTITUTION", "Un prestataire n'appartient à aucune institution", Map.of("id", compteId));
+        }
+        Instant maintenant = clock.instant();
+        ReglesDelegation.verifierBornes(debut, fin, maintenant, dureeMax(TypeDelegation.PRESTATAIRE));
+        Set<String> cibles = ReglesDelegation.verifierComposants(composants);
+        Delegation d = new Delegation(UUID.randomUUID().toString(), TypeDelegation.PRESTATAIRE, compteId, null, Set.of(), cibles, debut, fin, EtatDelegation.DEMANDEE, acteur.id(), null, motif, maintenant, null);
+        delegations.enregistrer(d);
+        journal.compte(acteur, "ACCES_PRESTATAIRE_DEMANDE", compteId, c.identifiant(), motif, List.of(String.join(" ", cibles), debut + " / " + fin));
+        return vue(d, false);
+    }
+
+    /**
+     * Approbation par le RSSI (US-EXI-24, quatre yeux) : la demande ouverte devient une délégation ACCORDEE, active de son
+     * début à sa fin. L'auteur de la demande ne l'approuve jamais (403 IAM_SBX_APPROBATION_PROPRE) ; demande décidée ou
+     * échue : 409 IAM_SBX_DELEGATION_CLOSE. L'octroi est journalisé (iam.account-administered.v1, registre d'audit).
+     */
+    @Transactional
+    public VueDelegation approuverAccesPrestataire(Acteur acteur, String id) {
+        Delegation d = exigerPrestataire(id);
+        ReglesDelegation.verifierDemandeOuverte(d, clock.instant());
+        if (acteur.id().equals(d.demandeurId())) {
+            throw IamException.interdit("IAM_SBX_APPROBATION_PROPRE", "L'auteur de la demande ne l'approuve pas", Map.of());
+        }
+        Delegation a = d.avecEtat(EtatDelegation.ACCORDEE, acteur.id(), null, clock.instant());
+        delegations.mettreAJour(a);
+        journal.compte(acteur, "ACCES_PRESTATAIRE_ACCORDE", d.compteId(), d.compteId(), d.motif(), List.of(id, String.join(" ", d.composants()), d.debut() + " / " + d.fin()));
+        return vue(a, false);
+    }
+
+    /** Refus motivé d'une demande ouverte (409 IAM_SBX_DELEGATION_CLOSE sinon). */
+    @Transactional
+    public VueDelegation refuserAccesPrestataire(Acteur acteur, String id, String motif) {
+        Delegation d = exigerPrestataire(id);
+        ReglesDelegation.verifierDemandeOuverte(d, clock.instant());
+        Delegation r = d.avecEtat(EtatDelegation.REFUSEE, acteur.id(), motif, clock.instant());
+        delegations.mettreAJour(r);
+        journal.compte(acteur, "ACCES_PRESTATAIRE_REFUSE", d.compteId(), d.compteId(), motif, List.of(id));
+        return vue(r, false);
+    }
+
+    /** Révocation d'un accès de prestataire depuis la console : comme {@link #revoquer}, réservée à ce type. */
+    @Transactional
+    public VueDelegation revoquerAccesPrestataire(Acteur acteur, String id, String motif) {
+        exigerPrestataire(id);
+        return revoquer(acteur, id, motif, null);
+    }
+
+    private Delegation exigerPrestataire(String id) {
+        Delegation d = exiger(id);
+        if (d.type() != TypeDelegation.PRESTATAIRE) {
+            throw IamException.introuvable("IAM_SBX_DELEGATION_INTROUVABLE", id);
+        }
+        return d;
     }
 
     /**

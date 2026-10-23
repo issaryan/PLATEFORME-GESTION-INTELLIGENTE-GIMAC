@@ -331,4 +331,31 @@ class AdministrationComptesServiceTest {
         assertThat(bornee.taille()).isEqualTo(100);
         assertThat(service.annuaireInterne(null, 9, 0).contenu()).isEmpty();
     }
+
+    @Test
+    @DisplayName("US-EXI-23 scénario 1 : verrouillage après le nombre d'échecs paramétré, déblocage par l'administrateur du GIMAC, journalisé")
+    void verrouillageEtDeblocage() {
+        String id = annuaire.creer(new NouveauCompte("testeur.99001", "Awa", "N", "awa@99001.test", null, null, "99001", Set.of("ROLE_CORRESPONDANT")), List.of());
+        annuaire.definirMotDePasse(id, "Juste-Mot2passe!");
+        assertThat(service.verrouillage(id)).isEqualTo(cm.gimac.des.iam.domain.compte.Verrouillage.AUCUN);
+        // Sans échec : déblocage sans effet ni trace.
+        assertThat(service.debloquer(SUPER, id, "Contrôle").verrouille()).isFalse();
+        for (int i = 0; i < 5; i++) {
+            assertThat(annuaire.verifierMotDePasse("testeur.99001", "faux")).isFalse();
+        }
+        assertThat(service.verrouillage(id).verrouille()).isTrue();
+        assertThat(service.verrouillage(id).echecs()).isEqualTo(5);
+        assertThat(service.verrouillage(id).dernierEchec()).isNotNull();
+        // Verrouillé : même le bon mot de passe est refusé.
+        assertThat(annuaire.verifierMotDePasse("testeur.99001", "Juste-Mot2passe!")).isFalse();
+        refus(() -> service.debloquer(SUPER, id, " "), "IAM_REASON_REQUIRED");
+        assertThat(service.debloquer(SUPER, id, "Appel du testeur au support").verrouille()).isFalse();
+        org.mockito.Mockito.verify(journal).compte(org.mockito.ArgumentMatchers.eq(SUPER), org.mockito.ArgumentMatchers.eq("COMPTE_DEBLOQUE"), org.mockito.ArgumentMatchers.eq(id),
+            org.mockito.ArgumentMatchers.eq("testeur.99001"), org.mockito.ArgumentMatchers.eq("Appel du testeur au support"), org.mockito.ArgumentMatchers.eq(List.of("5")));
+        assertThat(annuaire.verifierMotDePasse("testeur.99001", "Juste-Mot2passe!")).isTrue();
+        assertThat(annuaire.verifierMotDePasse("inconnu", "x")).isFalse();
+        refus(() -> service.debloquer(new Acteur(id, "Awa", Set.of()), id, "moi"), "IAM_SELF_ADMINISTRATION");
+        refus(() -> service.verrouillage("inconnu"), "IAM_ACCOUNT_NOT_FOUND");
+        refus(() -> annuaire.debloquer("inconnu"), "IAM_ACCOUNT_NOT_FOUND");
+    }
 }

@@ -24,11 +24,14 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasAuthority('INTERNAL_IAM_SBX_INTROSPECT')")
 public class SandboxIntrospectionResource {
 
-    /** Jeton présenté (jamais tracé) et, s'il y a lieu, institution demandée. */
-    public record IntrospectionRequest(@NotBlank @Size(max = 16384) String jeton, @Size(max = 64) String institution) {
+    /**
+     * Jeton présenté (jamais tracé), et s'il y a lieu institution demandée et composant appelé (accès de prestataire,
+     * US-EXI-24).
+     */
+    public record IntrospectionRequest(@NotBlank @Size(max = 16384) String jeton, @Size(max = 64) String institution, @Size(max = 64) String composant) {
         @Override
         public String toString() {
-            return "IntrospectionRequest[jeton=****, institution=" + institution + "]";
+            return "IntrospectionRequest[jeton=****, institution=" + institution + ", composant=" + composant + "]";
         }
     }
 
@@ -40,7 +43,7 @@ public class SandboxIntrospectionResource {
 
     @PostMapping("/introspection")
     public Map<String, Object> introspecter(@Valid @RequestBody IntrospectionRequest r) {
-        return vue(service.introspecter(r.jeton(), r.institution()));
+        return vue(service.introspecter(r.jeton(), r.institution(), r.composant()));
     }
 
     static Map<String, Object> vue(Introspection i) {

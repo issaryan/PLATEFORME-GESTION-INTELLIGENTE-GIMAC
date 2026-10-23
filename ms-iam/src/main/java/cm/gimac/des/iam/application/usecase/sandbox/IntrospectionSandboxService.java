@@ -4,6 +4,7 @@ import cm.gimac.des.iam.application.port.out.Annuaire;
 import cm.gimac.des.iam.application.port.out.sandbox.DelegationsSandbox;
 import cm.gimac.des.iam.application.port.out.sandbox.LecteurJeton;
 import cm.gimac.des.iam.application.port.out.sandbox.PerimetresSuspendus;
+import cm.gimac.des.iam.domain.compte.Acteur;
 import cm.gimac.des.iam.domain.compte.Compte;
 import cm.gimac.des.iam.domain.sandbox.Delegation;
 import cm.gimac.des.iam.domain.sandbox.Delegation.EtatEffectif;
@@ -12,6 +13,7 @@ import cm.gimac.des.iam.domain.sandbox.Introspection;
 import cm.gimac.des.iam.security.SecurityUtils;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -21,10 +23,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Introspection des jetons pour la sandbox (D-119, US-EXI-06, US-EXI-04) : MS-IAM décide, à l'instant de la requête et sans
- * cache, si un jeton du fournisseur d'identité du GIMAC est encore admis, et rend sa portée effective pour le jeton
- * interne réduit. Refus : jeton invalide ou échu, compte inconnu ou inactif, périmètre de l'institution suspendu,
- * institution demandée hors de celle du compte.
+ * Introspection des jetons pour la sandbox (D-119, US-EXI-06, US-EXI-04, US-EXI-24) : MS-IAM décide, à l'instant de la
+ * requête et sans cache, si un jeton du fournisseur d'identité du GIMAC est encore admis, et rend sa portée effective pour
+ * le jeton interne réduit. Refus : jeton invalide ou échu, compte inconnu ou inactif, périmètre de l'institution suspendu,
+ * institution demandée hors de celle du compte, accès de prestataire échu ou hors de ses composants.
  */
 @Service
 public class IntrospectionSandboxService {
@@ -33,18 +35,29 @@ public class IntrospectionSandboxService {
     private final Annuaire annuaire;
     private final PerimetresSuspendus perimetres;
     private final DelegationsSandbox delegations;
+    private final JournalSandbox journal;
     private final Clock clock;
 
-    public IntrospectionSandboxService(LecteurJeton lecteur, Annuaire annuaire, PerimetresSuspendus perimetres, DelegationsSandbox delegations, Clock clock) {
+    public IntrospectionSandboxService(LecteurJeton lecteur, Annuaire annuaire, PerimetresSuspendus perimetres, DelegationsSandbox delegations, JournalSandbox journal, Clock clock) {
         this.lecteur = lecteur;
         this.annuaire = annuaire;
         this.perimetres = perimetres;
         this.delegations = delegations;
+        this.journal = journal;
         this.clock = clock;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Introspection introspecter(String jeton, String institutionDemandee) {
+        return introspecter(jeton, institutionDemandee, null);
+    }
+
+    /**
+     * @param composant composant technique appelé (SBX-TRACE…), présenté par la passerelle ou le service ; il borne un
+     *     accès de prestataire (US-EXI-24)
+     */
+    @Transactional
+    public Introspection introspecter(String jeton, String institutionDemandee, String composant) {
         Optional<Map<String, Object>> claims = lecteur.lire(jeton);
         if (claims.isEmpty()) {
             return Introspection.refusee(null, "JETON_INVALIDE");
@@ -63,6 +76,9 @@ public class IntrospectionSandboxService {
             return Introspection.refusee(sujet, "PERIMETRE_SUSPENDU");
         }
         String demandee = institutionDemandee == null || institutionDemandee.isBlank() ? null : institutionDemandee.strip();
+        if (k.interne() && delegations.designe(sujet, TypeDelegation.PRESTATAIRE)) {
+            return prestataire(k, demandee, composant, expiration(c));
+        }
         if (demandee != null && !demandee.equals(k.institutionId())) {
             return mandat(sujet, demandee, expiration(c));
         }
@@ -90,6 +106,33 @@ public class IntrospectionSandboxService {
         Delegation d = m.orElseThrow();
         Instant exp = expJeton == null || d.fin().isBefore(expJeton) ? d.fin() : expJeton;
         return new Introspection(true, sujet, demandee, d.permissions(), TypeDelegation.MANDAT.name(), d.id(), exp, Set.of(), null);
+    }
+
+    /**
+     * Accès de prestataire de maintenance (US-EXI-24) : admis seulement sous une délégation PRESTATAIRE active à l'instant
+     * de la requête (la date de fin s'applique sans planificateur), pour un des composants désignés ; jamais pour les
+     * données d'une institution (tentative refusée et journalisée), sans aucune permission projetée, jusqu'à la fin de
+     * l'accès au plus.
+     */
+    Introspection prestataire(Compte k, String demandee, String composant, Instant expJeton) {
+        String sujet = k.id();
+        if (demandee != null) {
+            journal.compte(new Acteur(sujet, k.identifiant(), Set.of()), "TENTATIVE_ACCES_PRESTATAIRE", sujet, k.identifiant(), "Données d'une institution", List.of(demandee, String.valueOf(composant)));
+            return Introspection.refusee(sujet, "PRESTATAIRE_HORS_DONNEES");
+        }
+        Instant t = clock.instant();
+        String cible = composant == null || composant.isBlank() ? null : composant.strip();
+        Optional<Delegation> a = delegations
+            .enCours(sujet, TypeDelegation.PRESTATAIRE, t)
+            .stream()
+            .filter(d -> d.etatA(t) == EtatEffectif.ACTIVE && (cible == null || d.composants().contains(cible)))
+            .findFirst();
+        if (a.isEmpty()) {
+            return Introspection.refusee(sujet, cible == null ? "ACCES_PRESTATAIRE_INACTIF" : "COMPOSANT_HORS_ACCES");
+        }
+        Delegation d = a.orElseThrow();
+        Instant exp = expJeton == null || d.fin().isBefore(expJeton) ? d.fin() : expJeton;
+        return new Introspection(true, sujet, null, Set.of(), TypeDelegation.PRESTATAIRE.name(), d.id(), exp, d.composants(), null);
     }
 
     static Set<String> permissions(Map<String, Object> claims) {

@@ -184,5 +184,10 @@ public final class Memoires {
         public long compter(cm.gimac.des.iam.domain.sandbox.Delegation.TypeDelegation type) {
             return lignes.values().stream().filter(d -> type == null || d.type() == type).count();
         }
+
+        @Override
+        public boolean designe(String compteId, cm.gimac.des.iam.domain.sandbox.Delegation.TypeDelegation type) {
+            return lignes.values().stream().anyMatch(d -> d.compteId().equals(compteId) && d.type() == type);
+        }
     }
 }

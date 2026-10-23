@@ -109,6 +109,12 @@ public interface Annuaire {
      */
     boolean verifierMotDePasse(String identifiant, String motDePasse);
 
+    /** État de verrouillage par la protection contre la force brute (US-EXI-23) ; compte inconnu : 404. */
+    cm.gimac.des.iam.domain.compte.Verrouillage verrouillage(String id);
+
+    /** Lève le verrouillage temporaire et remet à zéro le compteur d'échecs (US-EXI-23) ; compte inconnu : 404. */
+    void debloquer(String id);
+
     /** Supprime les codes TOTP configurés (identifiants OTP du fournisseur d'identité). */
     void reinitialiserSecondFacteur(String id);
 

@@ -388,6 +388,28 @@ public class AdministrationComptesService {
         return mdp;
     }
 
+    /** Verrouillage du compte par la protection contre la force brute (US-EXI-23). */
+    public cm.gimac.des.iam.domain.compte.Verrouillage verrouillage(String id) {
+        return annuaire.verrouillage(id);
+    }
+
+    /**
+     * Déblocage par l'administrateur du GIMAC (US-EXI-23) : verrouillage levé, compteur d'échecs remis à zéro, journal
+     * COMPTE_DEBLOQUE (iam.account-administered.v1). Jamais sur soi-même ; compte non verrouillé : sans effet ni trace.
+     */
+    public cm.gimac.des.iam.domain.compte.Verrouillage debloquer(Acteur acteur, String id, String motif) {
+        ReglesAdministration.verifierPasSoiMeme(acteur, id);
+        ReglesAdministration.exigerMotif(motif);
+        Compte c = lire(id);
+        cm.gimac.des.iam.domain.compte.Verrouillage v = annuaire.verrouillage(id);
+        if (!v.verrouille() && v.echecs() == 0) {
+            return v;
+        }
+        annuaire.debloquer(id);
+        journal.compte(acteur, "COMPTE_DEBLOQUE", id, c.identifiant(), motif, List.of(String.valueOf(v.echecs())));
+        return annuaire.verrouillage(id);
+    }
+
     public void fermerSessions(Acteur acteur, String id, String motif) {
         ReglesAdministration.exigerMotif(motif);
         Compte c = lire(id);

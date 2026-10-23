@@ -683,6 +683,78 @@
         "clientRole": false
       },
       {
+        "name": "INTERNAL_HOMOLOGATION_REPUBLISH",
+        "description": "Sandbox : republication des états des liaisons par MS-HOMOLOGATION",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "INTERNAL_SBX_RACCORDEMENT_IDENTIFIANTS",
+        "description": "Sandbox, appel de SBX-RACCORDEMENT : vérification d'un identifiant d'accès de test",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "INTERNAL_SBX_RACCORDEMENT_LIAISONS",
+        "description": "Sandbox, appel de SBX-RACCORDEMENT : disponibilité des liaisons de test",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE",
+        "description": "Sandbox, appel de SBX-RACCORDEMENT : rattachabilité d'un participant",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "INTERNAL_SBX_DONNEES_ETATS",
+        "description": "Sandbox, appel de SBX-DONNEES : restauration de l'état initial et relevé des soldes",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "INTERNAL_SBX_DONNEES_MOUVEMENTS",
+        "description": "Sandbox, appel de SBX-DONNEES : mouvements, comptes, cartes, PIN et clés de travail",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "INTERNAL_SBX_MOBILE_COUPONS",
+        "description": "Sandbox, appel de SBX-MOBILE : coupons de retrait sans carte",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "INTERNAL_SBX_TRACE_REFERENCES",
+        "description": "Sandbox, appel de SBX-TRACE : référence de trace d'un essai",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "INTERNAL_SBX_CAMPAGNE_REFERENCES_TRACE",
+        "description": "Sandbox, appel de SBX-CAMPAGNE : références de trace protégées",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "INTERNAL_SBX_SANTE",
+        "description": "Sandbox : lecture des points de santé des onze services par SBX-TRACE",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "INTERNAL_SBX_MIFOS_API",
+        "description": "Sandbox : interfaces publiques du cœur bancaire simulé Mifos",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "INTERNAL_SBX_LECTURE_READ",
+        "description": "Sandbox : lecture du contrat SBX-LECTURE par la plateforme du DES",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "SBX_HAB_ADMINISTRATION",
         "description": "Sandbox, habilitations : administration",
         "composite": false,
@@ -2304,7 +2376,8 @@
         "INTERNAL_DOCUMENT_READ",
         "INTERNAL_DOCUMENT_DEPOSIT",
         "INTERNAL_IAM_READ",
-        "INTERNAL_PILOTAGE_TASK_CREATE"
+        "INTERNAL_PILOTAGE_TASK_CREATE",
+        "INTERNAL_SBX_LECTURE_READ"
       ]
     },
     {
@@ -2412,6 +2485,15 @@
       ]
     },
     {
+      "username": "service-account-exploitation-service",
+      "enabled": true,
+      "serviceAccountClientId": "exploitation-service",
+      "realmRoles": [
+        "default-roles-gimac",
+        "INTERNAL_HOMOLOGATION_REPUBLISH"
+      ]
+    },
+    {
       "username": "service-account-reprise-service",
       "enabled": true,
       "serviceAccountClientId": "reprise-service",
@@ -2427,6 +2509,113 @@
       "realmRoles": [
         "default-roles-gimac",
         "ROLE_ADMIN"
+      ]
+    },
+    {
+      "username": "service-account-sbx-raccordement",
+      "enabled": true,
+      "serviceAccountClientId": "sbx-raccordement",
+      "realmRoles": [
+        "default-roles-gimac",
+        "INTERNAL_PARTICIPANT_READ"
+      ]
+    },
+    {
+      "username": "service-account-sbx-referentiel",
+      "enabled": true,
+      "serviceAccountClientId": "sbx-referentiel",
+      "realmRoles": [
+        "default-roles-gimac",
+        "INTERNAL_PARTICIPANT_READ"
+      ]
+    },
+    {
+      "username": "service-account-sbx-donnees",
+      "enabled": true,
+      "serviceAccountClientId": "sbx-donnees",
+      "realmRoles": [
+        "default-roles-gimac",
+        "INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE"
+      ]
+    },
+    {
+      "username": "service-account-sbx-simulation",
+      "enabled": true,
+      "serviceAccountClientId": "sbx-simulation",
+      "realmRoles": [
+        "default-roles-gimac",
+        "INTERNAL_SBX_TRACE_REFERENCES",
+        "INTERNAL_SBX_DONNEES_ETATS",
+        "INTERNAL_SBX_RACCORDEMENT_LIAISONS"
+      ]
+    },
+    {
+      "username": "service-account-sbx-mobile",
+      "enabled": true,
+      "serviceAccountClientId": "sbx-mobile",
+      "realmRoles": [
+        "default-roles-gimac",
+        "INTERNAL_SBX_RACCORDEMENT_IDENTIFIANTS",
+        "INTERNAL_SBX_DONNEES_MOUVEMENTS"
+      ]
+    },
+    {
+      "username": "service-account-sbx-iso20022",
+      "enabled": true,
+      "serviceAccountClientId": "sbx-iso20022",
+      "realmRoles": [
+        "default-roles-gimac",
+        "INTERNAL_SBX_RACCORDEMENT_IDENTIFIANTS",
+        "INTERNAL_SBX_DONNEES_MOUVEMENTS",
+        "INTERNAL_DOCUMENT_DEPOSIT"
+      ]
+    },
+    {
+      "username": "service-account-sbx-carte",
+      "enabled": true,
+      "serviceAccountClientId": "sbx-carte",
+      "realmRoles": [
+        "default-roles-gimac",
+        "INTERNAL_SBX_DONNEES_MOUVEMENTS",
+        "INTERNAL_SBX_MOBILE_COUPONS"
+      ]
+    },
+    {
+      "username": "service-account-sbx-campagne",
+      "enabled": true,
+      "serviceAccountClientId": "sbx-campagne",
+      "realmRoles": [
+        "default-roles-gimac",
+        "INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE",
+        "INTERNAL_DOCUMENT_DEPOSIT"
+      ]
+    },
+    {
+      "username": "service-account-sbx-trace",
+      "enabled": true,
+      "serviceAccountClientId": "sbx-trace",
+      "realmRoles": [
+        "default-roles-gimac",
+        "INTERNAL_SBX_CAMPAGNE_REFERENCES_TRACE",
+        "INTERNAL_DOCUMENT_DEPOSIT",
+        "INTERNAL_SBX_SANTE"
+      ]
+    },
+    {
+      "username": "service-account-sbx-lecture",
+      "enabled": true,
+      "serviceAccountClientId": "sbx-lecture",
+      "realmRoles": [
+        "default-roles-gimac"
+      ]
+    },
+    {
+      "username": "service-account-sbx-mifos",
+      "enabled": true,
+      "serviceAccountClientId": "sbx-mifos",
+      "realmRoles": [
+        "default-roles-gimac",
+        "INTERNAL_SBX_MIFOS_API"
       ]
     }
   ],
@@ -3267,6 +3456,29 @@
       ]
     },
     {
+      "clientId": "exploitation-service",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_EXPLOITATION_SERVICE}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
       "clientId": "reprise-service",
       "enabled": true,
       "publicClient": false,
@@ -3295,6 +3507,259 @@
       "publicClient": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "${GIMAC_SECRET_GATEWAY_SUPERVISION}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "sbx-raccordement",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_SBX_RACCORDEMENT}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "sbx-referentiel",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_SBX_REFERENTIEL}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "sbx-donnees",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_SBX_DONNEES}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "sbx-simulation",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_SBX_SIMULATION}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "sbx-mobile",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_SBX_MOBILE}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "sbx-iso20022",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_SBX_ISO20022}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "sbx-carte",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_SBX_CARTE}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "sbx-campagne",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_SBX_CAMPAGNE}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "sbx-trace",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_SBX_TRACE}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "sbx-lecture",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_SBX_LECTURE}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "sbx-mifos",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_SBX_MIFOS}",
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
