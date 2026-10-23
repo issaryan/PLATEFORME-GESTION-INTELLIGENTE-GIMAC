@@ -45,6 +45,18 @@ public record Preuve(
         return Boolean.TRUE.equals(reprise);
     }
 
+    /** Mention d'une opération reprise faite sans pièce numérisée (D-107), en tête de son commentaire. */
+    public static final String SANS_PIECE = "Reprise, pièce non numérisée";
+
+    /**
+     * Opération reprise comme faite sans pièce numérisée (D-107) : seule exception admise au contrôle des preuves et
+     * livrables exigés (D-109), tracée par ce marqueur et signalée comme telle sur la liaison.
+     */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public boolean estRepriseSansPiece() {
+        return estReprise() && (documentRef == null || documentRef.isBlank());
+    }
+
     public static Preuve piece(String documentRef, String nom, String empreinte, LocalDate le, String par) {
         return new Preuve(documentRef, nom, empreinte, le, par, null, null, null);
     }
