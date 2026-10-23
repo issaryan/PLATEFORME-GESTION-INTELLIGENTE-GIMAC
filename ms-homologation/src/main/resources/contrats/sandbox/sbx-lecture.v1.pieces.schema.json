@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gimac.cm/contrats/sbx-lecture/v1/pieces",
+  "title": "SBX-LECTURE v1 : pièces d'une campagne",
+  "description": "Réponse de GET /v1/campagnes/{c}/pieces (L04, D.6) : bilan figé, résultats détaillés, fichiers remis au participant, chacun avec sa version, son empreinte SHA-256 (hexadécimale) et sa taille annoncées avant tout téléchargement par /v1/campagnes/{c}/pieces/{n}/{v} ; HEAD sur cette adresse annonce l'empreinte dans l'en-tête Repr-Digest (RFC 9530).",
+  "type": "object",
+  "required": ["pieces"],
+  "properties": {
+    "pieces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["nature", "version", "empreinte", "taille"],
+        "properties": {
+          "nature": { "type": "string", "enum": ["BILAN", "RESULTATS_DETAILLES", "FICHIER_REMIS"] },
+          "version": { "type": "integer", "minimum": 1 },
+          "empreinte": { "type": "string" },
+          "taille": { "type": "integer", "minimum": 0 },
+          "nom": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

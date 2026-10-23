@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        US-EXI-14 (D-122) : résultats de la sandbox repris en lecture seule de SBX-LECTURE (contrat L04). État de la relève
+        par liaison, campagnes (en-tête, taux restitués, position de lecture), exécutions (plus haute position lue, une
+        ligne par campagne et exécution), pièces (empreinte, document conservé). Unicité des scénarios non rapprochés par
+        liaison, campagne et scénario : relèves concurrentes (périodique et sur notification) sans doublon.
+    -->
+    <changeSet id="exi14-releve-sandbox" author="gimac">
+        <createTable tableName="sbx_releve_liaison">
+            <column name="liaison_id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_sbx_releve_liaison"/>
+            </column>
+            <column name="derniere_releve_reussie" type="${datetimeType}"/>
+            <column name="dernier_echec" type="${datetimeType}"/>
+            <column name="motif_echec" type="varchar(300)"/>
+            <column name="reprendre_apres" type="${datetimeType}"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="sbx_releve_liaison" baseColumnNames="liaison_id" constraintName="fk_sbx_releve_liaison"
+                                 referencedTableName="liaison" referencedColumnNames="id" onDelete="CASCADE"/>
+
+        <createTable tableName="sbx_campagne">
+            <column name="campagne_id" type="varchar(80)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_sbx_campagne"/>
+            </column>
+            <column name="liaison_id" type="${uuidType}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="code" type="varchar(80)"/>
+            <column name="etat" type="varchar(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="interface_test" type="varchar(40)"/>
+            <column name="services" type="jsonb"/>
+            <column name="taux" type="jsonb"/>
+            <column name="version_bilan" type="integer"/>
+            <column name="version_table" type="varchar(20)"/>
+            <column name="signalement" type="varchar(300)"/>
+            <column name="position" type="varchar(300)"/>
+            <column name="releve_le" type="${datetimeType}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="sbx_campagne" baseColumnNames="liaison_id" constraintName="fk_sbx_campagne_liaison"
+                                 referencedTableName="liaison" referencedColumnNames="id" onDelete="CASCADE"/>
+        <createIndex tableName="sbx_campagne" indexName="ix_sbx_campagne_liaison">
+            <column name="liaison_id"/>
+        </createIndex>
+
+        <createTable tableName="sbx_execution">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_sbx_execution"/>
+            </column>
+            <column name="campagne_id" type="varchar(80)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="liaison_id" type="${uuidType}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="identifiant_execution" type="varchar(80)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="identifiant_cas" type="varchar(80)"/>
+            <column name="identifiant_scenario" type="varchar(80)"/>
+            <column name="version_scenario" type="varchar(40)"/>
+            <column name="date_execution" type="${datetimeType}"/>
+            <column name="verdict_natif" type="varchar(10)"/>
+            <column name="verdict_normalise" type="varchar(20)"/>
+            <column name="motif" type="varchar(500)"/>
+            <column name="mode_execution" type="varchar(20)"/>
+            <column name="reference_trace" type="varchar(120)"/>
+            <column name="position" type="varchar(300)"/>
+            <column name="nature" type="varchar(15)"/>
+            <column name="version_table" type="varchar(20)"/>
+            <column name="origine" type="varchar(12)"/>
+            <column name="operation_code" type="varchar(40)"/>
+            <column name="releve_le" type="${datetimeType}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="sbx_execution" baseColumnNames="campagne_id" constraintName="fk_sbx_execution_campagne"
+                                 referencedTableName="sbx_campagne" referencedColumnNames="campagne_id" onDelete="CASCADE"/>
+        <addUniqueConstraint tableName="sbx_execution" columnNames="campagne_id, identifiant_execution" constraintName="uk_sbx_execution"/>
+
+        <createTable tableName="sbx_piece">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_sbx_piece"/>
+            </column>
+            <column name="campagne_id" type="varchar(80)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="nature" type="varchar(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="integer">
+                <constraints nullable="false"/>
+            </column>
+            <column name="empreinte" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="taille" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="nom" type="varchar(200)"/>
+            <column name="document_id" type="${uuidType}"/>
+            <column name="statut" type="varchar(25)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="releve_le" type="${datetimeType}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="sbx_piece" baseColumnNames="campagne_id" constraintName="fk_sbx_piece_campagne"
+                                 referencedTableName="sbx_campagne" referencedColumnNames="campagne_id" onDelete="CASCADE"/>
+        <addUniqueConstraint tableName="sbx_piece" columnNames="campagne_id, nature, version" constraintName="uk_sbx_piece"/>
+
+        <createIndex tableName="unmatched_scenario" indexName="uk_unmatched_scenario_campagne" unique="true">
+            <column name="liaison_id"/>
+            <column name="campagne_id"/>
+            <column name="id_scenario"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

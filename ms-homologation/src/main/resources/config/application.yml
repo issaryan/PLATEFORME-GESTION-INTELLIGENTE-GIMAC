@@ -287,6 +287,8 @@ gimac:
     change-record-reader: stub
     # Tâches de MS-PILOTAGE (D-77) : demandes relayées avec réessai.
     pilotage-tasks: stub
+    # Contrat de lecture v1 de SBX-LECTURE (US-EXI-14, D-122), remplace simulator-reader.
+    sbx-lecture: stub
   # Services joints par les adaptateurs réels (surchargés en prod).
   services:
     participant:
@@ -299,6 +301,9 @@ gimac:
       url: http://localhost:8082
     pilotage:
       url: http://localhost:8091
+    # SBX-LECTURE par la passerelle interne de service (mTLS, jeton lié au certificat, US-EXI-14).
+    sbx-lecture:
+      url: http://localhost:8180
   # Relais des demandes de tâches vers MS-PILOTAGE (D-77, docs/lot1/modelisateur-processus.md §5).
   taches:
     delai: 2000

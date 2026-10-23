@@ -57,6 +57,12 @@ public class DocumentStubAdapter implements DocumentRegistryPort {
         pieces.put(id, Optional.empty());
     }
 
+    /** Pièce conservée de même empreinte (US-EXI-14), la première enregistrée. */
+    @Override
+    public Optional<UUID> parEmpreinte(String sha256) {
+        return pieces.entrySet().stream().filter(e -> e.getValue().map(x -> x.equalsIgnoreCase(sha256)).orElse(false)).map(Map.Entry::getKey).findFirst();
+    }
+
     @Override
     public Verification verifier(UUID documentId, String sha256) {
         Optional<String> connue = pieces.get(documentId);
