@@ -91,7 +91,7 @@ public final class RepriseParcours {
                 .parJalon(Jalon.EN_PRODUCTION)
                 .orElseThrow(() -> HomologationException.unprocessable("HOM_REPRISE_JALON_ABSENT", "Le référentiel de cette liaison ne porte pas de jalon EN_PRODUCTION."));
             LocalDate le = dateProduction == null ? aujourdhui : dateProduction;
-            String commentaire = "Repris à l'état final" + (origine == null ? "" : " (" + origine + ")");
+            String commentaire = "Repris à l'état final";
             p.operations(o -> o.getOrdre() <= jalon.getOrdre()).forEach(o ->
                 cibles.put(o.getRang(), new OperationReprise(o.getRang(), EtatRepris.FAITE, null, le, commentaire, null, null, null, null))
             );
@@ -121,7 +121,7 @@ public final class RepriseParcours {
                 continue;
             }
             exigerReprenable(o);
-            poser(p, o, cible, acteur, aujourdhui);
+            poser(p, o, cible, origine, acteur, aujourdhui);
             modifiees++;
         }
         p.ouvrirSuivantes(aujourdhui);
@@ -152,6 +152,10 @@ public final class RepriseParcours {
                 avertissements.add(o.getRang() + " faite alors que " + String.join(", ", avant) + " ne l'est pas");
             }
         }
+        long sansPiece = p.operations().stream().filter(o -> o.faite() && o.getPreuve() != null && o.getPreuve().estRepriseSansPiece()).count();
+        if (sansPiece > 0) {
+            avertissements.add(sansPiece + " opération(s) faite(s) reprise(s) sans pièce numérisée");
+        }
         p.rafraichir();
         return new Bilan(modifiees, List.copyOf(avertissements));
     }
@@ -178,13 +182,16 @@ public final class RepriseParcours {
         }
     }
 
-    private static void poser(Parcours p, OperationParcours o, OperationReprise cible, String acteur, LocalDate aujourdhui) {
+    private static void poser(Parcours p, OperationParcours o, OperationReprise cible, String origine, String acteur, LocalDate aujourdhui) {
         switch (cible.etat()) {
             case FAITE -> {
                 LocalDate le = cible.faiteLe() == null ? aujourdhui : cible.faiteLe();
                 o.setEtat(EtatOperationParcours.FAITE);
                 o.setFaiteLe(le);
-                o.setPreuve(Preuve.reprise(texte(cible.documentRef()), texte(cible.empreinte()), le, acteur, cible.valeurReference(), commentaire(cible)));
+                String piece = texte(cible.documentRef());
+                // Sans pièce numérisée : marquée comme telle (D-107), seule exception au contrôle des preuves exigées (D-109).
+                String commentaire = piece == null ? sansPiece(cible, origine) : commentaire(cible);
+                o.setPreuve(Preuve.reprise(piece, texte(cible.empreinte()), le, acteur, cible.valeurReference(), commentaire));
                 if (o.getParticularite() == Particularite.ENTREE_ESSAIS) {
                     p.servicesInclus().stream().filter(s -> s.getEntreeEssai() == null).forEach(s -> s.setEntreeEssai(le));
                 }
@@ -204,6 +211,11 @@ public final class RepriseParcours {
                 o.setPreuve(cible.commentaire() == null && cible.valeurReference() == null ? null : Preuve.reprise(null, null, aujourdhui, acteur, cible.valeurReference(), commentaire(cible)));
             }
         }
+    }
+
+    private static String sansPiece(OperationReprise o, String origine) {
+        String c = texte(o.commentaire());
+        return tronquer(Preuve.SANS_PIECE + (origine == null ? "" : " (" + origine + ")") + (c == null ? "" : " : " + c), 500);
     }
 
     private static String commentaire(OperationReprise o) {
