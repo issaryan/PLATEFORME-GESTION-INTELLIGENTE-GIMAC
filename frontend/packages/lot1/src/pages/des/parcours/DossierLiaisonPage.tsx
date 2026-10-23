@@ -20,6 +20,7 @@ import { OngletMiseEnService } from './onglets/OngletMiseEnService'
 import { OngletOperations } from './onglets/OngletOperations'
 import { OngletPerimetre } from './onglets/OngletPerimetre'
 import { OngletChronologie, OngletPreuves, OngletSignatures } from './onglets/OngletPreuves'
+import { OngletSandbox } from './onglets/OngletSandbox'
 
 // Dossier numérique de la liaison (/des/parcours/:id, gabarit G3 ; CR Fig. 7.3, D-57) : identification,
 // pilotage, puis dix onglets portés par l'adresse (?onglet=). L'écran principal est l'état du périmètre
@@ -28,7 +29,8 @@ import { OngletChronologie, OngletPreuves, OngletSignatures } from './onglets/On
 
 // D-109 : « Livrables et preuves », « Signatures » et « Chronologie » du dossier (preuves attendues de chaque étape et opération,
 // signatures attendues et recueillies, événements réels) ; l'exécution reste dans « Opérations ».
-const ONGLETS = ['perimetre', 'etapes', 'operations', 'graphe', 'planning', 'preuves', 'signatures', 'chronologie', 'decision', 'mise-en-service', 'blocages', 'gouvernance'] as const
+// US-EXI-17 : « Résultats de la sandbox » (DES-09), repris par MS-HOMOLOGATION de SBX-LECTURE, en lecture seule.
+const ONGLETS = ['perimetre', 'etapes', 'operations', 'graphe', 'planning', 'preuves', 'signatures', 'chronologie', 'sandbox', 'decision', 'mise-en-service', 'blocages', 'gouvernance'] as const
 type Onglet = (typeof ONGLETS)[number]
 
 /** Gestes du dossier : proposés si le service les permet ET si le jeton porte la permission. */
@@ -103,6 +105,7 @@ function Dossier({ dossier }: { dossier: DossierLiaison }) {
     preuves: <OngletPreuves dossier={dossier} />,
     signatures: <OngletSignatures dossier={dossier} />,
     chronologie: <OngletChronologie dossier={dossier} />,
+    sandbox: <OngletSandbox dossier={dossier} />,
     decision: <OngletDecision dossier={dossier} />,
     'mise-en-service': <OngletMiseEnService dossier={dossier} />,
     blocages: <OngletBlocages dossier={dossier} onDeclarer={gestes.bloquer ? () => maj({ action: 'bloquer' }) : undefined} />,

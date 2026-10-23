@@ -130,8 +130,9 @@ public final class TraducteurLectureSandbox {
 
     private static JsonNode lire(byte[] brut) {
         try {
+            // Contenu vide : MissingNode (Jackson 3), jamais null.
             JsonNode n = JSON.readTree(brut);
-            if (n == null || !n.isObject()) {
+            if (!n.isObject()) {
                 throw new HorsContrat("réponse qui n'est pas un objet JSON");
             }
             return n;

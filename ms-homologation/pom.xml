@@ -933,6 +933,12 @@
                                     <!-- HOM-06 et republication (D-122). -->
                                     <include>cm/gimac/des/homologation/infrastructure/messaging/consumer/StatutsInstitutionConsumer*</include>
                                     <include>cm/gimac/des/homologation/web/rest/lot1/RepublicationSandboxResource*</include>
+                                    <!-- US-EXI-14, US-EXI-15, US-EXI-17 (D-122) : client de SBX-LECTURE, relève, notification, résultats. -->
+                                    <include>cm/gimac/des/homologation/infrastructure/client/sandbox/**</include>
+                                    <include>cm/gimac/des/homologation/infrastructure/messaging/consumer/FinCampagneSandboxConsumer*</include>
+                                    <include>cm/gimac/des/homologation/infrastructure/scheduling/ReleveSandboxScheduler*</include>
+                                    <include>cm/gimac/des/homologation/web/rest/lot1/ResultatsSandboxResource*</include>
+                                    <include>cm/gimac/des/homologation/domain/event/CampaignResultImportedPayload*</include>
                                     <!-- Classes de la sandbox des récits suivants ajoutées ici. -->
                                 </includes>
                                 <excludes>

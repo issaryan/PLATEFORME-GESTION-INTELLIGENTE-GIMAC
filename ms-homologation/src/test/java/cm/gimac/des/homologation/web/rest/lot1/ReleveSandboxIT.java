@@ -52,6 +52,9 @@ class ReleveSandboxIT extends AbstractHomologationIT {
     ReleveSandbox releve;
 
     @Autowired
+    cm.gimac.des.homologation.infrastructure.messaging.consumer.FinCampagneSandboxConsumer finCampagne;
+
+    @Autowired
     org.springframework.transaction.support.TransactionTemplate transaction;
 
     /** Écriture validée (la réserve de connexions n'est pas en validation automatique). */
@@ -215,5 +218,41 @@ class ReleveSandboxIT extends AbstractHomologationIT {
         assertThat(jdbc.queryForObject("select taux from coverage where liaison_id = ? and nature = 'CERTIFICATION' and service_code = 'RETRAIT'", java.math.BigDecimal.class, liaison)).isEqualByComparingTo("100.00");
         assertThat(jdbc.queryForObject("select numerateur from coverage where liaison_id = ? and nature = 'CERTIFICATION' and service_code = 'TRANSFERT'", Integer.class, liaison)).isEqualTo(19);
         assertThat(releve.releverTout()).isPositive();
+    }
+
+    static String notification(String id, String campagne) {
+        return "{\"specversion\":\"1.0\",\"id\":\"" + id + "\",\"source\":\"/sbx-lecture\",\"type\":\"sbx-lecture.campaign-published.v1\",\"data\":{\"identifiantCampagne\":\"" + campagne + "\",\"motif\":\"FIN_DE_CAMPAGNE\"}}";
+    }
+
+    @Test
+    @DisplayName("US-EXI-15 : relecture déclenchée par sbx-lecture.campaign-published.v1, accusé constaté, notification réémise sans second traitement")
+    void exi15RelectureDeclenchee() {
+        campagne().etat("TERMINEE", 1);
+        String id = UUID.randomUUID().toString();
+
+        finCampagne.recevoir(notification(id, C));
+
+        assertThat(compter("select count(*) from sbx_execution where campagne_id = ?", C)).isEqualTo(45);
+        assertThat(sandbox.lecturesDetail(C)).isEqualTo(1);
+        assertThat(compter("select count(*) from processed_event where event_id = ?", id)).isEqualTo(1);
+        assertThat(compter("select count(*) from outbox_event where event_type = 'homologation.campaign-result-imported.v1' and aggregate_id = ?", C)).isEqualTo(1);
+
+        // Notification réémise à l'identique : aucune relecture.
+        finCampagne.recevoir(notification(id, C));
+        assertThat(sandbox.lecturesDetail(C)).isEqualTo(1);
+
+        // Notification d'une campagne inconnue de la sandbox : retenue sans effet, la relève périodique reste la référence.
+        String inconnue = UUID.randomUUID().toString();
+        finCampagne.recevoir(notification(inconnue, "0192f0aa-0000-7000-8000-0000000c1499"));
+        assertThat(compter("select count(*) from processed_event where event_id = ?", inconnue)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("US-EXI-15 critère 3 : notification désactivée ou perdue, la relève périodique reprend la campagne sans perte")
+    void exi15ReleveSansNotification() {
+        campagne().etat("TERMINEE", 1);
+        assertThat(releve.releverTout()).isPositive();
+        assertThat(compter("select count(*) from sbx_execution where campagne_id = ?", C)).isEqualTo(45);
+        assertThat(jdbc.queryForObject("select etat from sbx_campagne where campagne_id = ?", String.class, C)).isEqualTo("TERMINEE");
     }
 }

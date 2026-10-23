@@ -172,4 +172,47 @@ class ReleveSandboxTest {
         assertThat(r.getDernierEchec()).isEqualTo(T.plusSeconds(700));
         assertThatThrownBy(() -> new ReleveLiaisonSandbox(null)).isInstanceOf(NullPointerException.class);
     }
+    @Test
+    @DisplayName("US-EXI-15 : relecture notifiée, liaison prise du détail de la campagne")
+    void relectureNotifiee() {
+        Liaison liaison = new Liaison().id(l).etat(EtatLiaison.OUVERTE);
+        when(liaisons.existsById(l)).thenReturn(true);
+        when(liaisons.findById(l)).thenReturn(Optional.of(liaison));
+        when(lecture.campagne("C1")).thenReturn(campagne("C1", l));
+        when(lecture.executions(eq("C1"), any(), anyInt())).thenReturn(new PageExecutions(List.of(), "p0", false, "e"));
+        when(campagnes.verrouiller("C1")).thenReturn(Optional.of(new cm.gimac.des.homologation.domain.sandbox.CampagneSandbox("C1", l)));
+
+        assertThat(releve.releverCampagneNotifiee("C1")).isEqualTo(new ReleveSandbox.Bilan(ReleveSandbox.Issue.REUSSIE, 1, 0));
+        verify(lecture).campagne("C1");
+    }
+
+    @Test
+    @DisplayName("US-EXI-15 : campagne d'une liaison inconnue, illisible ou absente : écartée sans écriture")
+    void relectureNotifieeHorsContrat() {
+        when(lecture.campagne("C1")).thenReturn(campagne("C1", l));
+        when(lecture.campagne("C2")).thenReturn(new Campagne("C2", "CMP", "pas-une-liaison", "99001", "MOB", null, "EN_COURS", null, null, "1.0"));
+        when(lecture.campagne("C3")).thenReturn(new Campagne("C3", "CMP", null, "99001", "MOB", null, "EN_COURS", null, null, "1.0"));
+        when(lecture.campagne("C4")).thenThrow(new HorsContrat("SBX-LECTURE répond 404"));
+        for (String c : List.of("C1", "C2", "C3", "C4")) {
+            assertThat(releve.releverCampagneNotifiee(c).issue()).isEqualTo(ReleveSandbox.Issue.ECHEC);
+        }
+        verify(lecture, never()).executions(anyString(), any(), anyInt());
+        verify(releves, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("US-EXI-15 : sandbox indisponible pendant la relecture notifiée, échec noté sur la liaison connue")
+    void relectureNotifieeIndisponible() {
+        Liaison liaison = new Liaison().id(l).etat(EtatLiaison.OUVERTE);
+        when(liaisons.existsById(l)).thenReturn(true);
+        when(liaisons.findById(l)).thenReturn(Optional.of(liaison));
+        when(lecture.campagne("C1")).thenReturn(campagne("C1", l));
+        when(campagnes.verrouiller("C1")).thenReturn(Optional.of(new cm.gimac.des.homologation.domain.sandbox.CampagneSandbox("C1", l)));
+        when(lecture.executions(eq("C1"), any(), anyInt())).thenThrow(new LectureSandboxPort.Indisponible("SBX-LECTURE répond 503", java.time.Duration.ofSeconds(30)));
+        when(lecture.campagne("C2")).thenThrow(new LectureSandboxPort.Indisponible("SBX-LECTURE injoignable", java.time.Duration.ofMinutes(5)));
+
+        assertThat(releve.releverCampagneNotifiee("C1").issue()).isEqualTo(ReleveSandbox.Issue.ECHEC);
+        verify(releves).save(org.mockito.ArgumentMatchers.argThat((ReleveLiaisonSandbox r) -> r.enEchec() && T.plusSeconds(30).equals(r.getReprendreApres())));
+        assertThat(releve.releverCampagneNotifiee("C2").issue()).isEqualTo(ReleveSandbox.Issue.ECHEC);
+    }
 }

@@ -12,6 +12,7 @@ import { CATALOGUE, ETAPES_CANONIQUES, actionDuGeste, codesDeclenches, estDedie,
 import { LIBELLES_CR } from './libellesCR'
 import { empreinte } from './donnees'
 import { chronologieDemo, livrablesAttendusDemo, type DepotsDemo } from './preuves'
+import { executionsSandboxDemo, resultatsSandboxDemo } from './sandbox'
 import { preuvesDe } from '../../modele/preuvesCR'
 import { aujourdhui as aujourdhuiDouala } from '../../modele/jours'
 import type { ServiceDecision, ServiceParcours, ServicePortailParcours } from '../ports'
@@ -1065,6 +1066,9 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
       const e = trouver(id)
       return chronologieDemo(e.ops, e.blocages, depotsDemo)
     }),
+    // US-EXI-17 : résultats de la sandbox repris (lecture seule), au contrat de MS-HOMOLOGATION.
+    resultatsSandbox: (id) => attendre(() => resultatsSandboxDemo(trouver(id).s)),
+    executionsSandbox: (id, campagneId, page, taille) => attendre(() => executionsSandboxDemo(trouver(id).s, campagneId, page, taille)),
     validerOperation: (opId) => attendre(() => {
       const { e, o } = operation(opId)
       if (o.etat !== 'EN_VALIDATION') throw refus(409, 'HOM_OPERATION_NOT_IN_VALIDATION', 'L\'opération n\'attend pas de validation.')

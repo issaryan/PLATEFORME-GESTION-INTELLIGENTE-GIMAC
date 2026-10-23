@@ -41,22 +41,22 @@ public class StatutsInstitutionConsumer {
     @Transactional
     public void recevoir(String message) {
         JsonNode e = Json.tree(message);
-        String id = e.path("id").asString();
-        if (!TYPE.equals(e.path("type").asString()) || id == null || id.isBlank()) {
+        String id = Json.texte(e, "id");
+        if (!TYPE.equals(Json.texte(e, "type")) || id == null) {
             return;
         }
         JsonNode d = e.path("data");
-        String institution = d.path("institutionId").asString();
-        String statut = d.path("statut").asString();
-        if (institution == null || institution.isBlank() || statut == null || statut.isBlank()) {
+        String institution = Json.texte(d, "institutionId");
+        String statut = Json.texte(d, "statut");
+        if (institution == null || statut == null) {
             LOG.warn("Événement {} sans institution ni statut : ignoré", id);
             return;
         }
         long v = d.path("versionStatutRegistre").asLong(0);
         Long version = v > 0 ? v : null;
-        String effet = d.path("dateEffet").asString();
-        Instant date = effet == null || effet.isBlank() ? null : Instant.parse(effet);
-        String motif = d.path("motif").isString() ? d.path("motif").asString() : null;
+        String effet = Json.texte(d, "dateEffet");
+        Instant date = effet == null ? null : Instant.parse(effet);
+        String motif = Json.texte(d, "motif");
         if (!idempotent.handleOnce(id, GROUPE, () -> gel.appliquer(UUID.fromString(institution), statut, version, date, motif))) {
             LOG.debug("Événement {} déjà traité", id);
         }

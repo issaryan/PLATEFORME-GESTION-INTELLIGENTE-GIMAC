@@ -131,6 +131,10 @@ export const parcoursHttp: ServiceParcours = {
     http.post(`${H}/parcours/operations/${opId}/livrables/${encodeURIComponent(livrable)}/sans-objet`, { body: { motif, ...(service ? { service } : {}) } }),
   telechargerPiece: (opId, documentId) => http.blob(`${H}/parcours/operations/${opId}/pieces/${encodeURIComponent(documentId)}`, '*/*'),
   chronologie: (id) => http.get(`${L}/${id}/chronologie`),
+  // US-EXI-17 : résultats de la sandbox repris par MS-HOMOLOGATION (ResultatsSandboxResource), lecture seule.
+  resultatsSandbox: (id) => http.get(`${L}/${id}/sandbox`),
+  executionsSandbox: (id, campagneId, page, taille) =>
+    http.get(`${L}/${id}/sandbox/campagnes/${encodeURIComponent(campagneId)}/executions`, { query: { page, taille } }),
   validerOperation: (opId, assertion) => http.post(`${H}/parcours/operations/${opId}/validation`, { body: {}, reauthAssertion: assertion }),
   // D-93 : renvoi motivé par le validateur, sans réauthentification.
   renvoyer: (opId, motif) => http.post(`${H}/parcours/operations/${opId}/renvoi`, { body: { motif } }),
