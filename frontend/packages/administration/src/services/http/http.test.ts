@@ -65,6 +65,8 @@ describe('comptes (MS-IAM)', () => {
     await comptesHttp.reinitialiserSecondFacteur('u-1', 'Téléphone perdu')
     await comptesHttp.motDePasseProvisoire('u-1', 'Oubli')
     await comptesHttp.fermerSessions('u-1', 'Poste volé')
+    await comptesHttp.verrouillage('u-1')
+    await comptesHttp.debloquer('u-1', 'Appel au support')
     expect(appels(spy)).toEqual([
       'POST /bff/console/iam/comptes',
       'PUT /bff/console/iam/comptes/u-1',
@@ -76,6 +78,8 @@ describe('comptes (MS-IAM)', () => {
       'POST /bff/console/iam/comptes/u-1/second-facteur/reinitialisation',
       'POST /bff/console/iam/comptes/u-1/mot-de-passe-provisoire',
       'POST /bff/console/iam/comptes/u-1/sessions/fermeture',
+      'GET /bff/console/iam/comptes/u-1/verrouillage',
+      'POST /bff/console/iam/comptes/u-1/deblocage',
     ])
     expect(entete(spy, 2, 'X-Reauth-Assertion')).toBe('ASSERTION')
     expect(entete(spy, 5, 'X-Reauth-Assertion')).toBe('ASSERTION-2')

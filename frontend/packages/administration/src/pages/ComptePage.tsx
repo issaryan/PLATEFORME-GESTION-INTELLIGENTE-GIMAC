@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import {
-  ActionBar, Avatar, Button, Checkbox, CheckboxGroup, ConfirmDialog, CrudDialog, DataTable, InlineAlert, KeyValueList, OneTimeSecret, Select, StatusBadge, Tabs, Tag, TextField,
+  ActionBar, Avatar, Banner, Button, Checkbox, CheckboxGroup, ConfirmDialog, CrudDialog, DataTable, InlineAlert, KeyValueList, OneTimeSecret, Select, StatusBadge, Tabs, Tag, TextField,
   type Column,
 } from '@gimac/design-system'
 import { aPermission, urlAvatar, usePermissions, useSession, useLibelleProfil } from '@gimac/socle'
 import { ACTIONS_REQUISES, LANGUES_COMPTE, dateHeure, useMessageErreur, type ActionRequise, type Compte, type MessageErreur, type SessionCompte } from '@gimac/compte'
-import { useCompte, useEffet, useJournal, useLibellesProfils, useProfils, useSessionsCompte } from '../hooks'
+import { useCompte, useEffet, useJournal, useLibellesProfils, useProfils, useSessionsCompte, useVerrouillageCompte } from '../hooks'
 import type { EntreeJournal, FicheCompte } from '../modele/comptes'
 import { Annonce } from '../composants/Annonce'
 import { useActes } from '../composants/actes'
@@ -175,7 +175,7 @@ function Fiche({ compte }: { compte: Compte }) {
 
 export default function ComptePage() {
   const { id = '' } = useParams()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { base } = useChemins()
   const navigate = useNavigate()
   const session = useSession()
@@ -193,7 +193,9 @@ export default function ComptePage() {
     secondFacteur: useEffet((x, motif: string) => x.comptes.reinitialiserSecondFacteur(id, motif)),
     motDePasse: useEffet((x, motif: string) => x.comptes.motDePasseProvisoire(id, motif)),
     sessions: useEffet((x, motif: string) => x.comptes.fermerSessions(id, motif)),
+    debloquer: useEffet((x, motif: string) => x.comptes.debloquer(id, motif)),
   }
+  const verrouillage = useVerrouillageCompte(id)
   // Onglet porté par l'adresse (?onglet=securite…), pour y mener depuis le tableau de bord ou la liste.
   const [params, setParams] = useSearchParams()
   const onglet = ['securite', 'sessions', 'journal'].includes(params.get('onglet') ?? '') ? params.get('onglet')! : 'fiche'
@@ -298,6 +300,18 @@ export default function ComptePage() {
               ) : null}
               {onglet === 'sessions' ? (
                 <>
+                  {verrouillage.data?.verrouille ? (
+                    // US-EXI-23 : verrouillage par la protection contre la force brute, levé par le seul GIMAC.
+                    <Banner level="warn" title={t('console.compte.verrouille', { count: verrouillage.data.echecs })}
+                      action={peut('IAM_ACCOUNT_SECURITY') && !soiMeme ? (
+                        <Button icon="key-round" onClick={() => actes.motive({ titre: t('console.compte.debloquer'), libelle: t('console.compte.debloquer'), objet,
+                          description: t('console.compte.debloquer.texte'), succes: t('console.compte.debloque'), executer: (m) => s.debloquer.mutateAsync(m) })}>
+                          {t('console.compte.debloquer')}
+                        </Button>
+                      ) : undefined}>
+                      {verrouillage.data.dernierEchec ? t('console.compte.verrouille.dernier', { le: dateHeure(verrouillage.data.dernierEchec, i18n.language) }) : null}
+                    </Banner>
+                  ) : null}
                   {peut('IAM_ACCOUNT_SECURITY') ? (
                     <ActionBar align="start" label={t('console.compte.onglet.sessions')}>
                       <Button icon="lock" onClick={() => actes.motive({ titre: t('console.compte.fermerSessions'), libelle: t('console.compte.fermerSessions'), objet,

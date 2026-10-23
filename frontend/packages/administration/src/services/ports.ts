@@ -2,7 +2,7 @@ import type { SessionCompte } from '@gimac/compte'
 import type { ServiceSandboxIam } from './portsSandbox'
 import type { SignPurpose } from '@gimac/socle'
 import type { Application, DefinitionFonctionnalite, Demande, EntreePouvoirs, EtatDemande, MatricePouvoirs, PageDemandes, PouvoirsProfil, SaisieFonctionnalite, Unite } from '@gimac/lot1'
-import type { ActionRequise, Compte, Creation, DemandeAffectation, DemandeRattachement, OptionsOrganigrammePdf, ResultatAffectation, EntreeJournal, FicheCompte, FiltreComptes, FiltreJournal, IndicateursComptes, NouveauCompte, Page } from '../modele/comptes'
+import type { ActionRequise, Compte, Creation, DemandeAffectation, DemandeRattachement, OptionsOrganigrammePdf, ResultatAffectation, EntreeJournal, FicheCompte, FiltreComptes, FiltreJournal, IndicateursComptes, NouveauCompte, Page, Verrouillage } from '../modele/comptes'
 import type { ConfigurationMessagerie, PolitiqueSecurite, Profil } from '../modele/configuration'
 import type { DemandeGeste, EtatInfrastructure, EvenementCharge, Geste, JournauxCharge, NoeudCluster, Operation, PageOperations, PodCharge, TacheCluster } from '../modele/infrastructure'
 import type {
@@ -35,6 +35,10 @@ export interface ServiceComptes {
   reinitialiserSecondFacteur(id: string, motif: string): Promise<Compte>
   motDePasseProvisoire(id: string, motif: string): Promise<{ motDePasseProvisoire: string }>
   fermerSessions(id: string, motif: string): Promise<void>
+  /** US-EXI-23 : verrouillage par la protection contre la force brute (IAM_ACCOUNT_READ). */
+  verrouillage(id: string): Promise<Verrouillage>
+  /** US-EXI-23 : déblocage motivé par l'administrateur du GIMAC (IAM_ACCOUNT_SECURITY), jamais sur soi-même. */
+  debloquer(id: string, motif: string): Promise<Verrouillage>
 }
 
 /**

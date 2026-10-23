@@ -1,7 +1,7 @@
 import { sandboxSimulee } from './sandbox'
 import { ReauthCancelled, lirePreference } from '@gimac/socle'
 import { creerSimulateur, type Compte, type SessionCompte } from '@gimac/compte'
-import type { EntreeJournal, ParJour } from '../../modele/comptes'
+import type { EntreeJournal, ParJour, Verrouillage } from '../../modele/comptes'
 import { ALGORITHMES_OTP, type PolitiqueSecurite, type Profil } from '../../modele/configuration'
 import {
   ACTIONS_POUVOIR, FONCTIONNALITES_DEMO, MOTIF_DEMANDE, OCTROI_PRIVILEGIE, PERMISSIONS_COMMUNES, PORTEES, compositionPrivilegiee, porteesAdmisesParDefaut, UNITES_DEMO, estCreation, estProfils, magasinPouvoirs,
@@ -89,6 +89,7 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
   const fonctionnalites: DefinitionFonctionnalite[] = structuredClone(FONCTIONNALITES_DEMO)
   const magasin = o.pouvoirs ?? magasinPouvoirs()
   const sessions = new Map<string, SessionCompte[]>()
+  const verrouillages = new Map<string, Verrouillage>([['u-correspondant', { verrouille: true, echecs: 5, dernierEchec: '2026-10-22T07:58:00Z' }]])
   let n = 0
 
   const tracer = (action: string, c: { id: string | null; libelle: string }, motif: string | null, details: string[] = []) =>
@@ -324,6 +325,23 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
         const c = trouver(id)
         sessions.set(id, [])
         tracer('FERMETURE_SESSIONS', { id, libelle: c.identifiant }, m)
+      }),
+    // US-EXI-23 : un compte de démonstration verrouillé après cinq échecs ; seul le GIMAC le débloque.
+    verrouillage: (id) => attendre(() => {
+      trouver(id)
+      return verrouillages.get(id) ?? { verrouille: false, echecs: 0, dernierEchec: null }
+    }),
+    debloquer: (id, m) =>
+      attendre(() => {
+        pasSoiMeme(id)
+        motif(m)
+        const c = trouver(id)
+        const v = verrouillages.get(id)
+        if (v && (v.verrouille || v.echecs > 0)) {
+          verrouillages.delete(id)
+          tracer('COMPTE_DEBLOQUE', { id, libelle: c.identifiant }, m, [String(v.echecs)])
+        }
+        return { verrouille: false, echecs: 0, dernierEchec: null }
       }),
   }
 
