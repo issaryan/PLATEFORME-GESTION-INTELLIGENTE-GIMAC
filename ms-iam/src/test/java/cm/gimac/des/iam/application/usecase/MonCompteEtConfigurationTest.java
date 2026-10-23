@@ -291,14 +291,17 @@ class MonCompteEtConfigurationTest {
         assertThat(garde.getSecretChiffre()).doesNotContain(e.secret());
         assertThat(garde.getExpireLe()).isEqualTo(MAINTENANT.plusSeconds(600));
 
-        String juste = Totp.code(e.secret(), MAINTENANT, 6, 30, "HmacSHA1");
+        // Codes calculés à l'instant réel : l'annuaire en mémoire vérifie à Instant.now(), et MAINTENANT est fixé au
+        // chargement de la classe (plus de 30 s plus tôt sur un poste chargé, d'où un code précédent déjà hors tolérance).
+        Instant reel = Instant.now();
+        String juste = Totp.code(e.secret(), reel, 6, 30, "HmacSHA1");
         String faux = juste.equals("000000") ? "111111" : "000000";
         refus(() -> moi.confirmerTotp(titulaire, e.enrolementId(), faux, null, null), "IAM_TOTP_CODE_INVALID");
         refus(() -> moi.confirmerTotp(titulaire, UUID.randomUUID(), juste, null, null), "IAM_TOTP_ENROLMENT_EXPIRED");
         refus(() -> moi.confirmerTotp(titulaire, null, juste, null, null), "IAM_TOTP_ENROLMENT_EXPIRED");
         refus(() -> moi.confirmerTotp(new Acteur("demo-rssi", "RSSI", Set.of()), e.enrolementId(), juste, null, null), "IAM_TOTP_ENROLMENT_EXPIRED");
         // Tolérance d'un pas (30 s) : le code précédent est encore admis.
-        String precedent = Totp.code(e.secret(), MAINTENANT.minusSeconds(30), 6, 30, "HmacSHA1");
+        String precedent = Totp.code(e.secret(), reel.minusSeconds(30), 6, 30, "HmacSHA1");
         moi.confirmerTotp(titulaire, e.enrolementId(), " " + precedent + " ", "Téléphone", null);
         assertThat(annuaire.lire(nouveau).orElseThrow().secondFacteur()).isTrue();
         assertThat(annuaire.lire(nouveau).orElseThrow().actionsRequises()).doesNotContain(ActionRequise.SECOND_FACTEUR);
@@ -313,7 +316,10 @@ class MonCompteEtConfigurationTest {
         annuaire.enregistrerTotp(nouveau, "JBSWY3DPEHPK3PXP", Totp.code("JBSWY3DPEHPK3PXP", Instant.now(), 6, 30, "HmacSHA1"), null);
         when(cles.countBySujet(nouveau)).thenReturn(1L);
         var e = moi.enrolementTotp(titulaire);
-        String juste = Totp.code(e.secret(), MAINTENANT, 6, 30, "HmacSHA1");
+        // Codes calculés à l'instant réel : l'annuaire en mémoire vérifie à Instant.now(), et MAINTENANT est fixé au
+        // chargement de la classe (plus de 30 s plus tôt sur un poste chargé, d'où un code précédent déjà hors tolérance).
+        Instant reel = Instant.now();
+        String juste = Totp.code(e.secret(), reel, 6, 30, "HmacSHA1");
         assertThatThrownBy(() -> moi.confirmerTotp(titulaire, e.enrolementId(), juste, null, " ")).isInstanceOfSatisfying(IamException.class, x -> assertThat(x.status()).isEqualTo(428));
         when(reauth.verifier("rejouee", nouveau, MonCompteService.FINALITE_SENSIBLE)).thenReturn(false);
         refus(() -> moi.confirmerTotp(titulaire, e.enrolementId(), juste, null, "rejouee"), "IAM_REAUTH_INVALID");
