@@ -35,6 +35,25 @@ public class DocumentRestAdapter implements DocumentRegistryPort {
         this.client = builder.baseUrl(url).requestInterceptor(jeton).build();
     }
 
+    /**
+     * Pièce conservée de même empreinte (US-EXI-14) : {@code GET /api/v1/interne/documents/empreintes/{sha256}}
+     * (INTERNAL_DOCUMENT_READ) ; 404 : aucune ; registre injoignable : 503, jamais un dépôt en double supposé.
+     */
+    @Override
+    public java.util.Optional<UUID> parEmpreinte(String sha256) {
+        try {
+            Metadonnees m = client.get().uri("/api/v1/interne/documents/empreintes/{sha256}", sha256).retrieve().body(Metadonnees.class);
+            return java.util.Optional.ofNullable(m).map(Metadonnees::id);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                return java.util.Optional.empty();
+            }
+            throw indisponible();
+        } catch (RestClientException ex) {
+            throw indisponible();
+        }
+    }
+
     @Override
     public Verification verifier(UUID documentId, String sha256) {
         try {

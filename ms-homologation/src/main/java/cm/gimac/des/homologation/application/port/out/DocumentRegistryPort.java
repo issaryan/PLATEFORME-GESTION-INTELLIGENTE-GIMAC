@@ -39,4 +39,12 @@ public interface DocumentRegistryPort {
     default java.util.Optional<Contenu> lire(UUID documentId) {
         return java.util.Optional.empty();
     }
+
+    /**
+     * Pièce déjà conservée de même empreinte SHA-256 (US-EXI-14 : bilan déposé à la clôture par SBX-CAMPAGNE, que la
+     * relève reconnaît sans le redéposer) ; vide si le registre n'en conserve aucune ou ne sait pas répondre.
+     */
+    default java.util.Optional<UUID> parEmpreinte(String sha256) {
+        return java.util.Optional.empty();
+    }
 }

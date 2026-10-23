@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gimac.cm/contrats/sbx-lecture/v1/campagne",
+  "title": "SBX-LECTURE v1 : détail d'une campagne",
+  "description": "Réponse de GET /v1/campagnes/{c} (L04, table D.1, D.4) : liaison, participant, interface, services, état, taux par service et taux de campagne (numérateur, dénominateur, version de formule, horodatage, valeur tronquée), version du bilan et version de la table de correspondance.",
+  "type": "object",
+  "required": ["identifiantCampagne", "identifiantLiaison", "codeParticipant", "etat", "services", "taux"],
+  "properties": {
+    "identifiantCampagne": { "type": "string" },
+    "code": { "type": ["string", "null"] },
+    "identifiantLiaison": { "type": "string", "format": "uuid" },
+    "codeParticipant": { "type": "string" },
+    "interfaceTest": { "type": ["string", "null"] },
+    "services": { "type": "array", "items": { "type": "string" } },
+    "etat": { "type": "string", "enum": ["BROUILLON", "EN_COURS", "SUSPENDUE", "TERMINEE", "ANNULEE"] },
+    "taux": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["nature", "numerateur", "denominateur", "valeur", "versionFormule", "horodatage"],
+        "properties": {
+          "service": { "type": ["string", "null"] },
+          "nature": { "type": "string", "enum": ["AVANCEMENT", "REUSSITE"] },
+          "numerateur": { "type": "integer", "minimum": 0 },
+          "denominateur": { "type": "integer", "minimum": 0 },
+          "valeur": { "type": "string" },
+          "versionFormule": { "type": "string" },
+          "horodatage": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "versionBilan": { "type": ["integer", "null"], "minimum": 1 },
+    "versionTable": { "type": ["string", "null"] }
+  }
+}
