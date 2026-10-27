@@ -160,7 +160,7 @@ Règles :
 | US-EXI-23 | Fait (D-124, §8.5) | Campagne trimestrielle de réexamen réelle depuis la console ; raccordement OPA des nouvelles écritures BFF par le lot passerelle |
 | US-EXI-10 | Fait (D-124, §10) | Publication des événements à effet par les onze services, enveloppes conformes au §10 |
 | US-EXI-09 | Fait (D-124, §11) | Demandes `sbx-*.notification-requested.v1` des onze services ; canal courriel (§11, écart) |
-| US-EXI-25 | En attente (§12) | Décision sur le socle d'évaluation et la caducité des quitus dans MS-CERTIFICATION |
+| US-EXI-25 | Fait (D-125, §12) | Socle d'évaluation et caducité dans le circuit `CertificationCircuit`/`Quitus` existant ; événements historiques acceptés |
 
 ## 6. Passerelle, registre et services transverses (lot D-120)
 
@@ -832,14 +832,39 @@ notification de type `SANDBOX` par destinataire résolu, jamais regroupée, avec
 | Portée, cloisonnement par institution, préférences | `ReglesSandboxTest`, `NotificationsSandboxServiceTest` |
 | Résolution à blanc | `NotificationsSandboxServiceTest.simulation`, `DemandesSandboxKafkaIT.resolutionABlanc`, OPA `test_sbx_notifications_regles` |
 
-## 12. Bilan repris, socle du circuit des quitus (US-EXI-25) : en attente
+## 12. Bilan repris, socle du circuit des quitus (US-EXI-25) : réalisé (D-125)
 
-Le critère 3 est tenu par le générateur du domaine (§9 : aucune autorisation de la sandbox vers MS-CERTIFICATION ni
-MS-HOMOLOGATION). Les critères 1 et 2 supposent dans MS-CERTIFICATION un circuit des quitus ouvert sur un socle
-d'évaluation désignant le bilan repris par son empreinte, et une règle de caducité des quitus antérieurs (CER-06) :
-le lot 1 de MS-CERTIFICATION verrouille le procès-verbal et ses approbations sans socle d'évaluation ni caducité. Une
-décision est attendue (rattacher l'empreinte du bilan de §7.4 au procès-verbal, et rendre caducs procès-verbal et
-approbations sur une nouvelle version du bilan) avant réalisation.
+Le circuit existant `CertificationCircuit`/`Quitus` est utilisé, sans module de certification parallèle :
+
+- **Socle** : la relève de §7.4 reprend l'empreinte SHA-256 du bilan dont les empreintes de la liste, du HEAD et des
+  octets concordent. Elle l'enregistre dans `EvaluationBase` avec la source, la campagne et la version du bilan. Une
+  nouvelle empreinte crée le cycle suivant ; la même empreinte ne crée rien. Une pièce divergente ou absente ne devient
+  jamais un socle.
+- **Contrat rétrocompatible** : `homologation.campaign-result-imported.v1` reçoit le champ facultatif
+  `empreinteBilan`. L'ancien constructeur de `CampaignResultImportedPayload` est conservé et produit une empreinte
+  nulle ; un événement historique sans ce champ reste accepté sans effet sur le circuit.
+- **Consommation idempotente** : `BilanSandboxConsumer` écoute `homologation.campaign`. Un identifiant CloudEvent déjà
+  traité est acquitté sans effet ; une nouvelle livraison de la même empreinte conserve également le circuit et ses
+  quitus.
+- **Caducité (CER-06)** : une empreinte différente ouvre le cycle suivant, interrompt le circuit remplacé et fait
+  passer ses seuls quitus `SIGNE_FAVORABLE` à `CADUC`, avec les deux empreintes dans le motif.
+  `certification.quitus-lapsed.v1` est publié une fois par circuit remplacé comportant au moins un favorable.
+- **Signature** : `SignedDecisionServiceImpl` n'accepte que l'empreinte du circuit actuellement ouvert. Une signature
+  sur un circuit remplacé ou une empreinte différente est refusée en 409 `CER_SOCLE_OUTDATED`, avec `socleAJour`.
+- **Aucune écriture vers la Sandbox ou Moabi** : le flux part des lectures GET/HEAD de SBX-LECTURE et continue par
+  l'outbox de MS-HOMOLOGATION ; aucune méthode d'écriture n'est ajoutée au port de lecture. Le critère 3 reste tenu
+  par la matrice du générateur (§9).
+
+| Vérification | Test |
+|---|---|
+| Empreinte propagée, socle historisé seulement au changement | `SocleEvaluationSandboxReleveTest`, `ReleveSandboxIT.exi25EmpreinteBilanEtSocle` |
+| Même empreinte conservée, changement à `CADUC`, doublon sans effet | `SocleEvaluationSandboxTest`, `BilanSandboxConsumerTest`, `BilanSandboxIT.circuitComplet` |
+| Ancien contrat sans empreinte, signature sur ancien socle refusée | `SocleEvaluationSandboxReleveTest.constructeurHistorique`, `BilanSandboxConsumerTest`, `BilanSandboxIT.circuitComplet` |
+
+Les classes EXI ajoutées dans les deux services sont soumises aux seuils JaCoCo de 98 % en lignes, branches et
+méthodes, sans relever le seuil global des services. Le 27/10/2026, `TESTCONTAINERS_RYUK_DISABLED=true ./mvnw clean
+verify` réussit sur les deux services : 536 tests unitaires et 421 tests d'intégration pour MS-HOMOLOGATION, 219 tests
+unitaires et 236 tests d'intégration pour MS-CERTIFICATION ; contrôles JaCoCo globaux et EXI 98 % respectés.
 
 ## Journal des mises à jour
 
@@ -861,3 +886,4 @@ approbations sur une nouvelle version du bilan) avant réalisation.
 | 2026-10-23 | - | §8.4 : accès de prestataire de maintenance (US-EXI-24, D-123) ; §9 : comptes de service de la sandbox et matrice des appels synchrones (US-EXI-05, D-123) |
 | 2026-10-23 | - | §8.5 : verrouillage et déblocage des comptes de la sandbox (US-EXI-23) ; §10 : événements à effet dans MS-AUDIT (US-EXI-10) ; §11 : notifications de la sandbox dans MS-NOTIFICATION (US-EXI-09) ; §12 : US-EXI-25 en attente (D-124) |
 | 2026-10-27 | - | §8.1 : sagas OUVERTURE et MATRICE ; §8.5 : campagne trimestrielle de réexamen, décisions, scellement, journal et onglet console (US-EXI-23 critère 2) ; raccordement OPA des écritures BFF signalé au lot passerelle |
+| 2026-10-27 | - | §12 : empreinte du bilan dans le socle d'évaluation, caducité des quitus et refus des signatures sur ancien socle (US-EXI-25, D-125) |

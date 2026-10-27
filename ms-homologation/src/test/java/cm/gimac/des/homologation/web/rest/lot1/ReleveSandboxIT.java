@@ -220,6 +220,30 @@ class ReleveSandboxIT extends AbstractHomologationIT {
         assertThat(releve.releverTout()).isPositive();
     }
 
+    @Test
+    @DisplayName("US-EXI-25 : empreinte du bilan propagée, socle historisé seulement quand elle change")
+    void exi25EmpreinteBilanEtSocle() throws Exception {
+        var c = campagne().piece("BILAN", 1, BILAN).etat("TERMINEE", 1);
+        releve.releverLiaison(liaison);
+
+        String empreinte1 = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(BILAN.getBytes(StandardCharsets.UTF_8)));
+        String evenement = jdbc.queryForObject("select payload::text from outbox_event where event_type = 'homologation.campaign-result-imported.v1' and aggregate_id = ?", String.class, C);
+        assertThat(JsonPath.<String>read(evenement, "$.empreinteBilan")).isEqualTo(empreinte1);
+        assertThat(jdbc.queryForObject("select empreinte from evaluation_base where liaison_id = ? and cycle = 1", String.class, liaison)).isEqualTo(empreinte1);
+
+        // Relève à jour : pas de second socle. Une nouvelle version de contenu différent ouvre le cycle 2.
+        releve.releverLiaison(liaison);
+        assertThat(compter("select count(*) from evaluation_base where liaison_id = ?", liaison)).isEqualTo(1);
+        String bilan2 = "{\"bilan\":\"CMP-99001/MOB\",\"version\":2}";
+        c.piece("BILAN", 2, bilan2).etat("TERMINEE", 2);
+        releve.releverLiaison(liaison);
+
+        String empreinte2 = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bilan2.getBytes(StandardCharsets.UTF_8)));
+        assertThat(compter("select count(*) from evaluation_base where liaison_id = ?", liaison)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select empreinte from evaluation_base where liaison_id = ? and cycle = 2", String.class, liaison)).isEqualTo(empreinte2);
+        assertThat(compter("select count(*) from outbox_event where event_type = 'homologation.campaign-result-imported.v1' and aggregate_id = ?", C)).isEqualTo(2);
+    }
+
     static String notification(String id, String campagne) {
         return "{\"specversion\":\"1.0\",\"id\":\"" + id + "\",\"source\":\"/sbx-lecture\",\"type\":\"sbx-lecture.campaign-published.v1\",\"data\":{\"identifiantCampagne\":\"" + campagne + "\",\"motif\":\"FIN_DE_CAMPAGNE\"}}";
     }

@@ -1,6 +1,12 @@
 package cm.gimac.des.certification.service.impl;
 
+import cm.gimac.des.certification.domain.CertificationCircuit;
+import cm.gimac.des.certification.domain.CertificationException;
+import cm.gimac.des.certification.domain.Quitus;
 import cm.gimac.des.certification.domain.SignedDecision;
+import cm.gimac.des.certification.domain.enumeration.EtatCircuit;
+import cm.gimac.des.certification.repository.CertificationCircuitRepository;
+import cm.gimac.des.certification.repository.QuitusRepository;
 import cm.gimac.des.certification.repository.SignedDecisionRepository;
 import cm.gimac.des.certification.service.SignedDecisionService;
 import cm.gimac.des.certification.service.dto.SignedDecisionDTO;
@@ -30,17 +36,48 @@ public class SignedDecisionServiceImpl implements SignedDecisionService {
 
     private final SignedDecisionMapper signedDecisionMapper;
 
-    public SignedDecisionServiceImpl(SignedDecisionRepository signedDecisionRepository, SignedDecisionMapper signedDecisionMapper) {
+    private final QuitusRepository quitusRepository;
+
+    private final CertificationCircuitRepository certificationCircuitRepository;
+
+    public SignedDecisionServiceImpl(
+        SignedDecisionRepository signedDecisionRepository,
+        SignedDecisionMapper signedDecisionMapper,
+        QuitusRepository quitusRepository,
+        CertificationCircuitRepository certificationCircuitRepository
+    ) {
         this.signedDecisionRepository = signedDecisionRepository;
         this.signedDecisionMapper = signedDecisionMapper;
+        this.quitusRepository = quitusRepository;
+        this.certificationCircuitRepository = certificationCircuitRepository;
     }
 
     @Override
     public SignedDecisionDTO save(SignedDecisionDTO signedDecisionDTO) {
         LOG.debug("Request to save SignedDecision : {}", signedDecisionDTO);
+        verifierSocle(signedDecisionDTO);
         SignedDecision signedDecision = signedDecisionMapper.toEntity(signedDecisionDTO);
         signedDecision = signedDecisionRepository.save(signedDecision);
         return signedDecisionMapper.toDto(signedDecision);
+    }
+
+    /** CER-06/US-EXI-25 : une décision ne peut signer que le socle du circuit actuellement ouvert. */
+    private void verifierSocle(SignedDecisionDTO decision) {
+        Quitus quitus = quitusRepository
+            .findById(decision.getQuitus().getId())
+            .orElseThrow(() -> CertificationException.introuvable("CER_QUITUS_NOT_FOUND", "Le quitus à signer est introuvable."));
+        CertificationCircuit circuit = quitus.getCircuit();
+        CertificationCircuit courant = certificationCircuitRepository
+            .findFirstByLiaisonIdOrderByCycleDesc(circuit.getLiaisonId())
+            .orElse(circuit);
+        boolean surCircuitCourant = courant.getId().equals(circuit.getId()) && circuit.getEtat() == EtatCircuit.OUVERT;
+        if (!surCircuitCourant || !courant.getSocleEmpreinte().equals(decision.getSocleEmpreinte())) {
+            throw CertificationException.conflit(
+                "CER_SOCLE_OUTDATED",
+                "Le socle d'évaluation a changé depuis son affichage.",
+                java.util.Map.of("socleAJour", courant.getSocleEmpreinte())
+            );
+        }
     }
 
     @Override
