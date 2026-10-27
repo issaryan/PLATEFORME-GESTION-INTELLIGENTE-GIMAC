@@ -112,6 +112,12 @@ regles := [
 	# US-EXI-24 (D-123) : accès de prestataire de maintenance, demandé puis approuvé par le RSSI (quatre yeux, contrôle du
 	# service), refusé ou révoqué depuis la console, sous IAM_ACCOUNT_SECURITY et deux facteurs.
 	{"m": "POST", "re": `^/bff/console/iam/sandbox/delegations/(prestataire|[^/]+/(approbation|refus|revocation))$`, "p": "IAM_ACCOUNT_SECURITY"},
+	# IAM-18 (US-EXI-23) : campagnes de réexamen dans la console. Lecture, ouverture et décisions/scellement
+	# reprennent exactement les permissions de SandboxAccessReviewResource, avant les règles génériques des comptes.
+	{"m": "GET", "re": `^/bff/console/iam/comptes/reexamens(/[^/]+)?$`, "p": "IAM_ACCOUNT_READ"},
+	{"m": "POST", "re": `^/bff/console/iam/comptes/reexamens/ouverture$`, "p": "IAM_ACCOUNT_CREATE"},
+	{"m": "POST", "re": `^/bff/console/iam/comptes/reexamens/[^/]+/comptes/[^/]+/decision$`, "p": "IAM_ACCOUNT_ROLES"},
+	{"m": "POST", "re": `^/bff/console/iam/comptes/reexamens/[^/]+/cloture$`, "p": "IAM_ACCOUNT_ROLES"},
 	# Dépôts fragmentés depuis le portail (D-74, docs/lot1/depots-fragmentes.md §3) : ouverture, parties,
 	# état, fin et abandon ; institution exigée comme pour toute route du portail.
 	{"m": "POST", "re": `^/bff/portail/document/depots$`, "p": "HOM_PORTAL_SUBMIT"},
@@ -574,6 +580,13 @@ sbx_route := {"couche": m[1], "service": m[2]} if {
 }
 
 sbx_lecture if input.method in {"GET", "HEAD", "OPTIONS"}
+
+# Exports et accès intégral de SBX-TRACE : lectures motivées malgré POST, jamais une écriture.
+sbx_lecture if {
+	input.method == "POST"
+	sbx_route.service == "trace"
+	regex.match(`^/bff/console/sbx-trace/(exports|acces-integral)$`, input.path)
+}
 
 sbx_fonctions_ecriture := {"ADMINISTRATION", "SIMULATION", "EXECUTION", "VALIDATION"}
 
