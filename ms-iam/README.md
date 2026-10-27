@@ -133,6 +133,17 @@ Erreurs : ProblemDetail `application/problem+json` (`code`, `message`, `details`
 
 `iam.account-administered.v1` (sujet `iam.account`), `iam.configuration-changed.v1` (`iam.configuration`), `iam.reauthentication-verified.v1` (`iam.reauthentication`), `iam.avatar-changed.v1` (`iam.avatar` ; `compteId`, `identifiant`, `action` REMPLACEE ou RETIREE, `version`, `acteurId`, jamais l'image), `iam.request-submitted.v1` et `iam.request-decided.v1` (`iam.request`, clé = demande ; D-81 : `{demandeId, type, etat, demandeurId, cibleId, destinataires, le}` et `{demandeId, type, etat, demandeurId, cibleId, acteurId, destinataires: [demandeurId], le}` ; destinataires de la soumission : comptes actifs dont un profil porte `IAM_ACCOUNT_CREATE` ou `IAM_ACCOUNT_ROLES`, sauf le demandeur ; ni contenu ni motif).
 
+## Sandbox GIMAC : introspection, sagas et réexamen (EXI)
+
+Contrat de référence : `docs/lot1/sandbox-existant-adapte.md` §8. MS-IAM reste l'unique source de décision pour les comptes et les droits de la Sandbox.
+
+- **Introspection/cloisonnement** : `POST /api/v1/interne/sandbox/introspection`, réservé à `INTERNAL_IAM_SBX_INTROSPECT`, évalue à la requête le périmètre, le mandat ou l'accès de prestataire, sans cache. Une suspension ou une révocation révoque les sessions et rend le jeton inactif ; le rétablissement du périmètre ne réactive pas un compte suspendu auparavant.
+- **Sagas OUVERTURE et MATRICE** : les écritures de SBX-ESPACE sont rejouables par `Idempotency-Key`, avec réservation atomique et résultat d'origine au rejeu. MATRICE préserve les profils non SBX ; la validation des verdicts reste interdite aux profils externes.
+- **US-EXI-23** : verrouillage Keycloak et déblocage motivé par le GIMAC, refus journalisé au portail d'institution. `ReexamensAccesService` ouvre une campagne trimestrielle, fige profils et permissions effectives, applique `MAINTENU`, `REDUIT` ou `REVOQUE`, puis scelle la campagne après décision sur tous les accès. La console expose l'onglet « Réexamen des accès ».
+- **Preuves** : captures EXI-23 dans `docs/recette/captures/exi/iam/exi-23/` et synthèse DEMO-SBX-12 dans `docs/recette/sandbox.md`. Le nouvel onglet de réexamen est couvert par tests, sans capture ajoutée.
+
+Rapports du 27/10/2026 : 458 tests unitaires et de sécurité (2 ignorés), 450 tests d'intégration et de recette, aucun échec ; contrôles JaCoCo globaux et `seuil-sandbox-exi-iam` à 98 % respectés. Les tests utilisent Keycloak, PostgreSQL et Kafka par Testcontainers ; ils ne prouvent ni une AC mTLS locale ni un serveur GIMAC réel.
+
 ## Tests : définition de fini (D-61)
 
 | Type | Tests |
@@ -207,6 +218,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | 2026-10-22 | D-119 | US-EXI-04 : `DelegationsSandboxService`, `ReglesDelegation`, table `delegation_sandbox`, routes `/api/v1/interne/sandbox/delegations/**` et `GET /api/v1/sandbox/delegations`, introspection des jetons délégués ; module SUP dans `ReglesSandbox` (61 permissions) |
 | 2026-10-23 | D-123 | US-EXI-24 : accès de prestataire (`/api/v1/sandbox/delegations/prestataire`, approbation, refus, révocation), introspection par composant appelé, refus journalisé des données d'une institution |
 | 2026-10-23 | D-124 | US-EXI-23 : `GET /api/v1/comptes/{id}/verrouillage`, `POST /api/v1/comptes/{id}/deblocage` (`COMPTE_DEBLOQUE`), refus journalisé du déblocage par l'institution (`IAM_SBX_DEBLOCAGE_RESERVE`, `TENTATIVE_DEBLOCAGE`) |
+| 2026-10-27 | - | Introspection branchée à la passerelle ; sagas OUVERTURE/MATRICE et réexamen trimestriel US-EXI-23 ; 458 tests unitaires/sécurité (2 ignorés) et 450 d'intégration/recette, seuils globaux et EXI 98 % ; DEMO-SBX-12 documenté |
 
 # iam
 

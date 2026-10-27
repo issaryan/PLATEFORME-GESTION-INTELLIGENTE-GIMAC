@@ -9,6 +9,14 @@
 
 Principe (D-48) : ce que JHipster sait générer est régénéré, jamais édité ; les ajouts du projet vivent dans des fichiers séparés, pour qu'une régénération ne les écrase pas. Les générateurs réécrivent la version JHipster dans les `.yo-rc.json` des services en 8.11.0 : ces modifications sont annulées.
 
+## Sandbox GIMAC : règles OPA et limites de validation
+
+La politique `docker-compose/opa/politiques/lot1_authz.rego` et sa copie `kubernetes-gimac/partages/opa/lot1_authz.rego` sont identiques. Elles ferment le repli DES sur les routes SBX, n'ouvrent que `/bff/des/sbx-espace` et les quatre lectures D-121 de SBX-TRACE sous `SBX_SUP_CONSULTATION`, et protègent les écritures de réexamen US-EXI-23 par `IAM_ACCOUNT_CREATE` (ouverture) et `IAM_ACCOUNT_ROLES` (décision, clôture). Les autres règles SBX appliquent institution, second facteur, fonction du module et refus par défaut. `opa test infra/docker-compose/opa/politiques` a été exécuté le 27/10/2026 : **213/213**.
+
+Le domaine généré attribue `INTERNAL_IAM_SBX_SAGA` au seul `sbx-espace` et `INTERNAL_IAM_SBX_INTROSPECT` à `gateway-service` ; les secrets restent injectés par l'environnement. La liaison des jetons au certificat client est un réglage de déploiement : l'AC mTLS locale n'est pas livrée.
+
+Les validations OPA, Maven et Vitest ne remplacent pas un déploiement. Pour cette intégration, le Compose complet n'a pas été démarré, les assemblages spécifiques de recette restent à résorber dans l'assemblage courant et aucune preuve de connexion à de vrais serveurs GIMAC n'existe.
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -40,3 +48,4 @@ Principe (D-48) : ce que JHipster sait générer est régénéré, jamais édit�
 | 2026-10-22 | D-120 | OPA : routes de la Sandbox GIMAC (`/bff/{console,portail}/sbx-*`, `/bff/des/sbx-espace`), permissions `SBX_<MODULE>_<FONCTION>`, repli du département fermé à `/bff/des/sbx-*` |
 | 2026-10-22 | D-119 | Keycloak : client `sbx-espace` (`INTERNAL_IAM_SBX_SAGA`, `INTERNAL_PARTICIPANT_READ`), `INTERNAL_IAM_SBX_INTROSPECT` à `gateway-service`, secret `GIMAC_SECRET_SBX_ESPACE` (Compose, gimac-dev.sh, Kubernetes) ; OPA : lectures `/bff/console/iam/sandbox/**` (IAM_ACCOUNT_READ) |
 | 2026-10-22 | D-120 | OPA : catalogue des types de pièces de la sandbox depuis la console (SBX_TRA_CONSULTATION, SBX_TRA_ADMINISTRATION, comptes du GIMAC) |
+| 2026-10-27 | D-121 | OPA : quatre lectures SBX-TRACE et écritures de réexamen US-EXI-23, politiques Compose/Kubernetes identiques, 213 tests réussis ; limites AC mTLS locale, assemblages de recette, Compose complet et serveurs réels documentées |

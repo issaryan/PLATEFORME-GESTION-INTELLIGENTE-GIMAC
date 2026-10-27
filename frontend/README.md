@@ -144,6 +144,14 @@ poussé `/bff/console/live` ; les liaisons citées s'y affichent en texte, sans 
 La configuration du serveur d'envoi des courriels est sous « Courriels de la plateforme »
 (`/console/plateforme/courriels`).
 
+## Sandbox GIMAC : administration, supervision et recette
+
+- `@gimac/administration` porte `/console/sandbox` : périmètres, comptes protégés, mandats, accès de prestataire, registre d'audit et, depuis US-EXI-23, réexamen trimestriel des accès. Les écritures de réexamen passent par `/bff/console/iam/comptes/reexamens` et les permissions OPA `IAM_ACCOUNT_CREATE` ou `IAM_ACCOUNT_ROLES`.
+- `@gimac/sandbox-admin` porte `/des/sandbox/espaces` et `/des/sandbox/supervision`. D-121 ne réutilise pas MS-MONITORING : la supervision lit seulement quatre ressources de SBX-TRACE sous `SBX_SUP_CONSULTATION`, avec trois paginations indépendantes.
+- `docs/recette/sandbox.md` consigne DEMO-SBX-12 : 12 contrôles visuels et 64 captures clair/sombre, toutes produites sur services simulés et données fictives. Les nouveaux écrans de réexamen et de supervision n'ont pas de capture ajoutée ; D-125 est serveur seul.
+
+Validations du 27/10/2026 : `@gimac/administration`, 189 tests réussis et couverture globale de 95,25 % instructions, 85,70 % branches, 94,38 % fonctions et 96,44 % lignes, avec seuils EXI de 98 % sur les fichiers concernés ; `@gimac/sandbox-admin`, 46 tests réussis et 100 % instructions, fonctions et lignes, 99,55 % branches. Ces résultats ne valent pas recette sur le Compose complet ni sur de vrais serveurs GIMAC.
+
 ## Suite prévue
 
 Enveloppe commune IHM-01, bibliothèque de composants IHM-02, navigation élaguée IHM-03, bilinguisme IHM-10 et accessibilité WCAG 2.2 AA IHM-11, conformément au carnet v2.0.
@@ -193,3 +201,4 @@ Enveloppe commune IHM-01, bibliothèque de composants IHM-02, navigation élagu�
 | 2026-10-22 | D-119 | Console « Sandbox GIMAC » : onglet « Mandats de partenaire » (`composants/sandboxOnglets.tsx`) ; catalogue des droits : fonctionnalité `sandboxSup` |
 | 2026-10-23 | D-122 | DES : onglet « Résultats de la sandbox » du dossier de liaison (`OngletSandbox`, US-EXI-17), exécutions paginées ; captures (`e2e/captures/exi-homologation/capturer.mjs`) |
 | 2026-10-23 | D-123, D-124 | Console « Sandbox GIMAC » : onglets « Accès de prestataire » (US-EXI-24) et « Registre d'audit » (US-EXI-10) ; fiche du compte : verrouillage et déblocage (US-EXI-23) ; type de notification `SANDBOX` (US-EXI-09) |
+| 2026-10-27 | D-121 | Supervision de la sandbox dans `@gimac/sandbox-admin`, réexamen US-EXI-23 dans `@gimac/administration` ; DEMO-SBX-12 : 12 contrôles et 64 captures ; 189 puis 46 tests Vitest et couvertures documentées |
