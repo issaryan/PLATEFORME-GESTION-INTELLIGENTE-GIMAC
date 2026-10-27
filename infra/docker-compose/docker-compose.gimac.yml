@@ -107,6 +107,8 @@ services:
       <<: *emetteur-gimac
       GIMAC_SERVICE_CLIENT_ID: homologation-service
       GIMAC_SERVICE_CLIENT_SECRET: ${GIMAC_SECRET_HOMOLOGATION_SERVICE:?à définir dans .env}
+      # Contrat v1 de SBX-LECTURE sur son alias du réseau partagé avec la Sandbox (D-122).
+      GIMAC_SBX_LECTURE_URL: http://sbx-lecture:8111
   certification:
     <<: *application
     environment:
