@@ -12,6 +12,8 @@ import org.springframework.stereotype.Repository;
 public interface PieceSandboxRepository extends JpaRepository<PieceSandbox, UUID> {
     boolean existsByCampagneIdAndNatureAndVersion(String campagneId, String nature, int version);
 
+    Optional<PieceSandbox> findByCampagneIdAndNatureAndVersion(String campagneId, String nature, int version);
+
     List<PieceSandbox> findByCampagneIdOrderByNatureAscVersionAsc(String campagneId);
 
     /** Pièce déjà conservée de même empreinte (déposée par cette relève ou reconnue). */

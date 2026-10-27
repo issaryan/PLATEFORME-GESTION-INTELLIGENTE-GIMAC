@@ -7,6 +7,7 @@ import cm.gimac.des.homologation.application.port.out.LectureSandboxPort.Enregis
 import cm.gimac.des.homologation.application.port.out.LectureSandboxPort.HorsContrat;
 import cm.gimac.des.homologation.application.port.out.LectureSandboxPort.Indisponible;
 import cm.gimac.des.homologation.application.port.out.LectureSandboxPort.PageExecutions;
+import cm.gimac.des.homologation.domain.EvaluationBase;
 import cm.gimac.des.homologation.domain.Liaison;
 import cm.gimac.des.homologation.domain.UnmatchedScenario;
 import cm.gimac.des.homologation.domain.enumeration.EtatLiaison;
@@ -14,11 +15,14 @@ import cm.gimac.des.homologation.domain.enumeration.QualificationScenario;
 import cm.gimac.des.homologation.domain.event.CampaignResultImportedPayload;
 import cm.gimac.des.homologation.domain.sandbox.CampagneSandbox;
 import cm.gimac.des.homologation.domain.sandbox.ExecutionSandbox;
+import cm.gimac.des.homologation.domain.sandbox.PieceSandbox;
 import cm.gimac.des.homologation.domain.sandbox.ReleveLiaisonSandbox;
 import cm.gimac.des.homologation.infrastructure.messaging.outbox.OutboxPublisher;
 import cm.gimac.des.homologation.repository.CampagneSandboxRepository;
+import cm.gimac.des.homologation.repository.EvaluationBaseRepository;
 import cm.gimac.des.homologation.repository.ExecutionSandboxRepository;
 import cm.gimac.des.homologation.repository.LiaisonRepository;
+import cm.gimac.des.homologation.repository.PieceSandboxRepository;
 import cm.gimac.des.homologation.repository.ReleveLiaisonSandboxRepository;
 import cm.gimac.des.homologation.repository.ScenariosSandboxRepository;
 import java.time.Clock;
@@ -63,6 +67,8 @@ public class ReleveSandbox {
     private final ExecutionSandboxRepository executions;
     private final ScenariosSandboxRepository scenarios;
     private final ReleveLiaisonSandboxRepository releves;
+    private final EvaluationBaseRepository evaluationBases;
+    private final PieceSandboxRepository piecesSandbox;
     private final ConservationPiecesSandbox pieces;
     private final CouverturesSandbox couvertures;
     private final OutboxPublisher outbox;
@@ -77,6 +83,8 @@ public class ReleveSandbox {
         ExecutionSandboxRepository executions,
         ScenariosSandboxRepository scenarios,
         ReleveLiaisonSandboxRepository releves,
+        EvaluationBaseRepository evaluationBases,
+        PieceSandboxRepository piecesSandbox,
         ConservationPiecesSandbox pieces,
         CouverturesSandbox couvertures,
         OutboxPublisher outbox,
@@ -89,6 +97,8 @@ public class ReleveSandbox {
         this.executions = executions;
         this.scenarios = scenarios;
         this.releves = releves;
+        this.evaluationBases = evaluationBases;
+        this.piecesSandbox = piecesSandbox;
         this.pieces = pieces;
         this.couvertures = couvertures;
         this.outbox = outbox;
@@ -211,7 +221,11 @@ public class ReleveSandbox {
         int nouvellesPieces = pieces.conserver(campagneId);
         if (lus > 0 || nouvellesPieces > 0) {
             int luesFinal = lus;
-            transaction.executeWithoutResult(s ->
+            transaction.executeWithoutResult(s -> {
+                String empreinteBilan = empreinteBilan(c);
+                if (empreinteBilan != null) {
+                    ajouterSocle(liaison, c, empreinteBilan);
+                }
                 outbox.publish(
                     "campaign",
                     campagneId,
@@ -226,13 +240,46 @@ public class ReleveSandbox {
                         executions.countByCampagneIdAndOperationCodeIsNull(campagneId),
                         nouvellesPieces,
                         c.versionBilan(),
+                        empreinteBilan,
                         clock.instant()
                     )
-                )
-            );
+                );
+            });
         }
         LOG.info("Campagne {} de la liaison {} relue : {} enregistrement(s), {} pièce(s) nouvelle(s)", campagneId, liaisonId, lus, nouvellesPieces);
         return lus;
+    }
+
+    /** Empreinte du bilan effectivement contrôlée et conservée ; une pièce divergente ne devient jamais un socle. */
+    private String empreinteBilan(Campagne c) {
+        if (c.versionBilan() == null) {
+            return null;
+        }
+        return piecesSandbox
+            .findByCampagneIdAndNatureAndVersion(c.identifiantCampagne(), "BILAN", c.versionBilan())
+            .filter(p -> p.getStatut() != PieceSandbox.Statut.EMPREINTE_DIVERGENTE)
+            .map(PieceSandbox::getEmpreinte)
+            .orElse(null);
+    }
+
+    /** Le socle historise chaque nouvelle empreinte ; une relève du même bilan ne crée pas de cycle. */
+    private void ajouterSocle(Liaison liaison, Campagne c, String empreinteBilan) {
+        var precedent = evaluationBases.findFirstByLiaison_IdOrderByCycleDesc(liaison.getId());
+        if (precedent.map(p -> p.getEmpreinte().equals(empreinteBilan)).orElse(false)) {
+            return;
+        }
+        Map<String, Object> composition = new HashMap<>();
+        composition.put("source", "SANDBOX");
+        composition.put("campagneId", c.identifiantCampagne());
+        composition.put("versionBilan", c.versionBilan());
+        evaluationBases.save(
+            new EvaluationBase()
+                .liaison(liaison)
+                .empreinte(empreinteBilan)
+                .cycle(precedent.map(p -> p.getCycle() + 1).orElse(1))
+                .dateCalcul(clock.instant())
+                .composition(JSON.writeValueAsString(composition))
+        );
     }
 
     /** Une page et la position suivante, ensemble : la relève suivante repart de là. */

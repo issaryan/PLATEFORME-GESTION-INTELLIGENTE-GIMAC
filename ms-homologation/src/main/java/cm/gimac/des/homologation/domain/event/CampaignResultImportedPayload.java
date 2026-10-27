@@ -19,7 +19,36 @@ public record CampaignResultImportedPayload(
     long scenariosNonRapproches,
     int piecesConservees,
     Integer versionBilan,
+    String empreinteBilan,
     Instant releveLe
 ) {
+    /** Forme historique du contrat : les événements sans empreinte restent lisibles et ignorables par les consommateurs. */
+    public CampaignResultImportedPayload(
+        UUID liaisonId,
+        String campagneId,
+        String code,
+        String etat,
+        int enregistrementsLus,
+        long executionsRetenues,
+        long scenariosNonRapproches,
+        int piecesConservees,
+        Integer versionBilan,
+        Instant releveLe
+    ) {
+        this(
+            liaisonId,
+            campagneId,
+            code,
+            etat,
+            enregistrementsLus,
+            executionsRetenues,
+            scenariosNonRapproches,
+            piecesConservees,
+            versionBilan,
+            null,
+            releveLe
+        );
+    }
+
     public static final String TYPE = "homologation.campaign-result-imported.v1";
 }

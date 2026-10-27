@@ -57,6 +57,12 @@ Consommé : `homologation.coverage-established.v1` `{liaisonId, taux, servicesCo
 
 Adaptateurs (`gimac.adapters.*`, `real` en production) : `homologation-reader` (contexte de certification, `GET /api/v1/interne/liaisons/{id}/contexte-certification`), `reauthentication` (MS-IAM, finalité `QUITUS_SIGN`), `document-deposit` (MS-DOCUMENT : empreinte et dépôt interne). `key-vault-signing` (cachet HMAC et horodatage locaux) et `change-record-reader` (fiche lue approuvée) n'ont qu'un substitut tant que le coffre, l'autorité d'horodatage et l'interface du dispositif de changement ne sont pas livrés.
 
+## US-EXI-25 : socle d'évaluation et caducité (D-125)
+
+Le circuit existant `CertificationCircuit`/`Quitus` consomme `homologation.campaign-result-imported.v1` de manière idempotente, sans module parallèle ni appel entrant de la Sandbox. Une même empreinte est sans effet ; une nouvelle empreinte ouvre le cycle suivant, interrompt le circuit remplacé et passe ses seuls quitus `SIGNE_FAVORABLE` à `CADUC`, avec motif et publication de `certification.quitus-lapsed.v1`. Une signature sur un circuit remplacé ou une empreinte différente est refusée en 409 `CER_SOCLE_OUTDATED`. Les événements historiques sans `empreinteBilan` restent admis sans effet. Contrat : `docs/lot1/sandbox-existant-adapte.md` §12.
+
+Validation du 27/10/2026 avec `TESTCONTAINERS_RYUK_DISABLED=true ./mvnw clean verify` : 219 tests unitaires et 236 tests d'intégration réussis ; contrôles JaCoCo globaux et EXI à 98 % respectés. `BilanSandboxIT.circuitComplet` couvre notamment doublon, changement de socle, caducité et refus de signature. Aucun serveur GIMAC réel ni Compose complet n'a été utilisé pour cette preuve.
+
 ## Lancer
 
 - Avec la plateforme : `infra/docker-compose/gimac-dev.sh demarrer`, puis `infra/docker-compose/scripts/verifier-phase0.sh`.
@@ -75,6 +81,7 @@ Adaptateurs (`gimac.adapters.*`, `real` en production) : `homologation-reader` (
 | 2026-09-29 | — | Lot 1, Phase 0 : régénération depuis le JDL du plan en JHipster 9.4.0, corrections Liquibase (jsonb, unicités, index, immuabilité), messagerie (outbox, relais, consommateur idempotent, rebut `.dlq`), jeton de service, sécurité du portail, arborescence hexagonale (D-55). |
 | 2026-09-29 | — | Ports sortants `application/port/out` versionnés : la règle `out/` du `.gitignore` généré par JHipster les ignorait, le dépôt distant ne compilait pas ; exception `!src/**/out/` ajoutée |
 | 2026-09-30 | — | Verrous de la décision (D-56) : procès-verbal de certification (établissement à 100 %, signatures GIMAC et participant FIDO2 puis cachet horodaté, immuables), approbation de la sécurité (dossier et fiche de changement, attestations vérifiées avec rejet motivé puis archivées), visas optionnels, portail cloisonné ; contexte de MS-HOMOLOGATION, consommation de `homologation.coverage-established.v1`, 10 événements `certification.*` ; routes métier et portail à deux facteurs (D-61), CRUD généré réservé à l'administration ; seuils JaCoCo D-61 ; 191 tests unitaires et de sécurité, 233 tests d'intégration dont 8 scénarios Gherkin des verrous (`RecetteGherkinIT`), `verify` réussi. |
+| 2026-10-27 | D-125 | US-EXI-25 : consommation idempotente du socle, cycle suivant au changement, quitus antérieurs caducs et refus `CER_SOCLE_OUTDATED` ; `clean verify` : 219 tests unitaires et 236 d'intégration, seuils globaux et EXI 98 % |
 <!-- GIMAC:FIN -->
 
 # certification

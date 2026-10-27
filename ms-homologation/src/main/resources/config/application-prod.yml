@@ -116,8 +116,8 @@ gimac:
     reauthentication: real
     # Tâches de MS-PILOTAGE (D-77) : jeton du client homologation-service, INTERNAL_PILOTAGE_TASK_CREATE.
     pilotage-tasks: real
-    # Substitut au contrat exact tant que SBX-LECTURE n'est pas déployé (D-122) ; « real » à sa mise en service.
-    sbx-lecture: stub
+    # Contrat de lecture v1 de SBX-LECTURE (D-122), activé explicitement en production.
+    sbx-lecture: real
   services:
     participant:
       url: http://participant:8085
@@ -130,4 +130,4 @@ gimac:
     pilotage:
       url: http://pilotage:8091
     sbx-lecture:
-      url: ${GIMAC_SBX_LECTURE_URL:http://sbx-lecture:8080}
+      url: ${GIMAC_SBX_LECTURE_URL:http://sbx-lecture:8111}
