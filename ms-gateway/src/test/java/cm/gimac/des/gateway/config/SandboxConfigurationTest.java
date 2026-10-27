@@ -50,6 +50,8 @@ class SandboxConfigurationTest {
         assertThat(config.projectionPerimetres(fournisseur(mock(DatabaseClient.class)), fournisseur(h))).isInstanceOf(ProjectionPerimetresR2dbc.class);
         assertThat(config.projectionPerimetres(fournisseur(null), fournisseur(null))).isInstanceOf(ProjectionPerimetresMemoire.class);
         assertThat(config.journalDecisionsSandbox(fournisseur(null))).isInstanceOf(JournalDecisionsSandboxAudit.class);
+        assertThat(config.introspectionSandbox(new ConnexionProperties(), fournisseur(null), fournisseur(null)))
+            .isInstanceOf(cm.gimac.des.gateway.infrastructure.sandbox.IamIntrospectionSandbox.class);
     }
 
     @Test
@@ -73,8 +75,11 @@ class SandboxConfigurationTest {
     void cloisonnement() throws Exception {
         SandboxProperties p = new SandboxProperties();
         EmetteurJwtInterne emetteur = new EmetteurJwtInterne(RsaKeyLoader.genererEphemere(2048), fournisseur(null));
-        CloisonnementSandbox avec = config.cloisonnementSandbox(p, new ProjectionPerimetresMemoire(), e -> {}, fournisseur(null), fournisseur(emetteur), fournisseur(null));
-        CloisonnementSandbox sans = config.cloisonnementSandbox(p, new ProjectionPerimetresMemoire(), e -> {}, fournisseur(null), fournisseur(null), fournisseur(null));
+        cm.gimac.des.gateway.domain.sandbox.port.IntrospectionSandbox introspection = (j, i, c) -> Mono.just(
+            new cm.gimac.des.gateway.domain.sandbox.port.IntrospectionSandbox.Portee(true, "u", "99001", List.of("SBX_TRA_CONSULTATION"), "COMPTE")
+        );
+        CloisonnementSandbox avec = config.cloisonnementSandbox(p, introspection, e -> {}, fournisseur(null), fournisseur(emetteur), fournisseur(null));
+        CloisonnementSandbox sans = config.cloisonnementSandbox(p, introspection, e -> {}, fournisseur(null), fournisseur(null), fournisseur(null));
         CloisonnementSandbox.Demande d = new CloisonnementSandbox.Demande(
             "u",
             "99001",
@@ -84,7 +89,8 @@ class SandboxConfigurationTest {
             "/bff/portail/sbx-trace/x",
             List.of("SBX_TRA_CONSULTATION"),
             "2",
-            ""
+            "",
+            "original"
         );
         assertThat(avec.evaluer(d).block().jeton()).isPresent();
         assertThat(sans.evaluer(d).block().jeton()).isEmpty();

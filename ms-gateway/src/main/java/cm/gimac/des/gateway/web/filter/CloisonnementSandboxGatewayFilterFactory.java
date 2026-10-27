@@ -88,8 +88,16 @@ public class CloisonnementSandboxGatewayFilterFactory extends AbstractGatewayFil
             OpaAuthorizeGatewayFilterFactory.cheminOrigine(exchange),
             permissions,
             OpaAuthorizeGatewayFilterFactory.claim(auth, OpaAuthorizeGatewayFilterFactory.ACR_CLAIM),
-            distante == null ? "" : distante.getHostString()
+            distante == null ? "" : distante.getHostString(),
+            jetonOriginal(exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION))
         );
+    }
+
+    private static String jetonOriginal(String autorisation) {
+        if (autorisation == null || !autorisation.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            return "";
+        }
+        return autorisation.substring(7).trim();
     }
 
     /** En-tête de choix retiré ; jeton réduit à la place du jeton relayé quand il existe. */

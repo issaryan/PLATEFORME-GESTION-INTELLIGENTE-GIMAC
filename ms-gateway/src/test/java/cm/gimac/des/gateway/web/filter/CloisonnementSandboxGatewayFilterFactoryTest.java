@@ -3,14 +3,11 @@ package cm.gimac.des.gateway.web.filter;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import cm.gimac.des.gateway.domain.sandbox.JetonReduit;
-import cm.gimac.des.gateway.domain.sandbox.PerimetreMandats;
+import cm.gimac.des.gateway.domain.sandbox.port.IntrospectionSandbox.Portee;
 import cm.gimac.des.gateway.domain.sandbox.port.JournalDecisionsSandbox;
-import cm.gimac.des.gateway.infrastructure.sandbox.ProjectionPerimetresMemoire;
 import cm.gimac.des.gateway.service.sandbox.CloisonnementSandbox;
 import java.net.InetSocketAddress;
-import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -36,13 +33,14 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-/** Filtre CloisonnementSandbox des routes de la sandbox (US-EXI-07), horloge figée au 22/10/2026. */
+/** Filtre CloisonnementSandbox : transmission du jeton original à IAM et réponses indiscernables. */
 class CloisonnementSandboxGatewayFilterFactoryTest {
 
     final List<JournalDecisionsSandbox.Entree> journal = new ArrayList<>();
     final List<JetonReduit> emis = new ArrayList<>();
+    final List<String> jetonsIntrospectes = new ArrayList<>();
     final AtomicReference<ServerWebExchange> relaye = new AtomicReference<>();
-    ProjectionPerimetresMemoire projection;
+    final AtomicReference<Portee> portee = new AtomicReference<>();
     boolean quota;
     GatewayFilter filtre;
 
@@ -53,17 +51,19 @@ class CloisonnementSandboxGatewayFilterFactoryTest {
 
     @BeforeEach
     void preparer() {
-        projection = new ProjectionPerimetresMemoire();
         quota = true;
+        portee.set(new Portee(true, "u-1", "99001", List.of("SBX_SIM_SIMULATION"), "COMPTE"));
         CloisonnementSandbox service = new CloisonnementSandbox(
-            projection,
+            (jeton, institution, composant) -> {
+                jetonsIntrospectes.add(jeton);
+                return Mono.justOrEmpty(portee.get());
+            },
             journal::add,
             Map.of("portail", cle -> Mono.just(quota)),
             j -> {
                 emis.add(j);
                 return Optional.of("reduit-" + j.institution());
-            },
-            Clock.fixed(Instant.parse("2026-10-22T10:00:00Z"), ZoneOffset.UTC)
+            }
         );
         filtre = new CloisonnementSandboxGatewayFilterFactory(service).apply(new Object());
     }
@@ -82,14 +82,15 @@ class CloisonnementSandboxGatewayFilterFactoryTest {
     }
 
     static MockServerWebExchange echange(MockServerHttpRequest.BaseBuilder<?> requete) {
-        return MockServerWebExchange.from(requete.header(HttpHeaders.AUTHORIZATION, "Bearer session").remoteAddress(new InetSocketAddress("10.0.0.9", 4000)));
+        return MockServerWebExchange.from(requete.header(HttpHeaders.AUTHORIZATION, "Bearer session-originale").remoteAddress(new InetSocketAddress("10.0.0.9", 4000)));
     }
 
     @Test
-    @DisplayName("Critère 1 : route du portail, jeton de session remplacé par le jeton réduit portant 99001, décision journalisée")
+    @DisplayName("Compte propre : jeton original introspecté puis remplacé par le jeton réduit, décision journalisée")
     void routePortailCloisonnee() {
         MockServerWebExchange ex = echange(MockServerHttpRequest.get("/bff/portail/sbx-simulation/essais"));
-        executer(ex, jwt("99001", "SBX_SIM_SIMULATION", "NOT_INBOX_READ")).block();
+        executer(ex, jwt("99001", "SBX_SIM_SIMULATION")).block();
+        assertThat(jetonsIntrospectes).containsExactly("session-originale");
         assertThat(relaye.get().getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION)).isEqualTo("Bearer reduit-99001");
         assertThat(emis.get(0).permissions()).containsExactly("SBX_SIM_SIMULATION");
         assertThat(journal).singleElement().satisfies(e -> {
@@ -97,14 +98,13 @@ class CloisonnementSandboxGatewayFilterFactoryTest {
             assertThat(e.methode()).isEqualTo("GET");
             assertThat(e.chemin()).isEqualTo("/bff/portail/sbx-simulation/essais");
         });
-        assertThat(filtre).isInstanceOf(OrderedGatewayFilter.class);
         assertThat(((OrderedGatewayFilter) filtre).getOrder()).isEqualTo(CloisonnementSandboxGatewayFilterFactory.ORDRE);
     }
 
     @Test
-    @DisplayName("Critère 2 : partenaire mandaté, institution mandante 99002 choisie par l'en-tête, en-tête retiré avant le service")
+    @DisplayName("Mandat actif : institution mandante transmise à IAM, en-tête retiré avant le service")
     void partenaireMandate() {
-        projection.appliquer(new PerimetreMandats("u-1", "99010", Map.of("99002", Instant.parse("2026-11-10T00:00:00Z")), 1)).block();
+        portee.set(new Portee(true, "u-1", "99002", List.of("SBX_SIM_SIMULATION"), "MANDAT"));
         MockServerWebExchange ex = echange(MockServerHttpRequest.post("/bff/portail/sbx-simulation/essais").header(CloisonnementSandboxGatewayFilterFactory.ENTETE_MANDANTE, "99002"));
         executer(ex, jwt("99010", "SBX_SIM_SIMULATION")).block();
         HttpHeaders relayes = relaye.get().getRequest().getHeaders();
@@ -113,9 +113,9 @@ class CloisonnementSandboxGatewayFilterFactoryTest {
     }
 
     @Test
-    @DisplayName("Critère 4 : institution hors mandat, 404 RFC 9457 sans révéler la ressource, rien n'est relayé")
-    void institutionHorsMandat() {
-        projection.appliquer(new PerimetreMandats("u-1", "99010", Map.of("99002", Instant.parse("2026-10-01T00:00:00Z")), 1)).block();
+    @DisplayName("Mandat échu ou suspension : 404 RFC 9457 identique, rien n'est relayé")
+    void introspectionRefusee() {
+        portee.set(Portee.refusee());
         MockServerWebExchange ex = echange(MockServerHttpRequest.get("/bff/portail/sbx-simulation/essais/e1").header(CloisonnementSandboxGatewayFilterFactory.ENTETE_MANDANTE, "99002"));
         executer(ex, jwt("99010", "SBX_SIM_SIMULATION")).block();
         assertThat(relaye.get()).isNull();
@@ -123,8 +123,8 @@ class CloisonnementSandboxGatewayFilterFactoryTest {
         assertThat(ex.getResponse().getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PROBLEM_JSON);
         assertThat(ex.getResponse().getBodyAsString().block())
             .contains("\"status\":404", "\"code\":\"GW_SBX_INTROUVABLE\"", "Ressource introuvable", "gw-sbx-introuvable")
-            .doesNotContain("99002", "mandat");
-        assertThat(journal.get(0).decision().motif().name()).isEqualTo("MANDAT_ECHU");
+            .doesNotContain("99002", "mandat", "session-originale");
+        assertThat(journal.get(0).decision().motif().name()).isEqualTo("INTROSPECTION_REFUSEE");
     }
 
     @Test
@@ -158,6 +158,21 @@ class CloisonnementSandboxGatewayFilterFactoryTest {
     }
 
     @Test
+    @DisplayName("Jeton original absent ou non Bearer : valeur vide transmise, IAM refuse par défaut")
+    void jetonOriginalAbsent() {
+        portee.set(Portee.refusee());
+        MockServerWebExchange absent = MockServerWebExchange.from(MockServerHttpRequest.get("/bff/portail/sbx-simulation/essais"));
+        executer(absent, jwt("99001")).block();
+        MockServerWebExchange basic = MockServerWebExchange.from(
+            MockServerHttpRequest.get("/bff/portail/sbx-simulation/essais").header(HttpHeaders.AUTHORIZATION, "Basic x")
+        );
+        executer(basic, jwt("99001")).block();
+        assertThat(jetonsIntrospectes).containsExactly("", "");
+        assertThat(absent.getResponse().getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(basic.getResponse().getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
     @DisplayName("Langue du problème : fr par défaut, en et es reconnus, toute autre langue en fr")
     void langue() {
         assertThat(CloisonnementSandboxGatewayFilterFactory.langue(null)).isEqualTo("fr");
@@ -168,9 +183,10 @@ class CloisonnementSandboxGatewayFilterFactoryTest {
     }
 
     @Test
-    @DisplayName("Compte du GIMAC sans adresse distante : console admise sans jeton réduit d'institution")
+    @DisplayName("Compte du GIMAC sans adresse distante : console admise sans institution")
     void sansAdresse() {
-        MockServerWebExchange ex = MockServerWebExchange.from(MockServerHttpRequest.get("/bff/console/sbx-trace/sessions"));
+        portee.set(new Portee(true, "u-gimac", null, List.of("SBX_TRA_CONSULTATION"), "COMPTE"));
+        MockServerWebExchange ex = MockServerWebExchange.from(MockServerHttpRequest.get("/bff/console/sbx-trace/sessions").header(HttpHeaders.AUTHORIZATION, "Bearer session-originale"));
         executer(ex, jwt(null, "SBX_TRA_CONSULTATION")).block();
         assertThat(relaye.get()).isNotNull();
         assertThat(journal.get(0).ip()).isEmpty();
