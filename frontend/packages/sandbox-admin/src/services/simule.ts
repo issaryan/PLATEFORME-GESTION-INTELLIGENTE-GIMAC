@@ -1,6 +1,7 @@
 import { ApiError } from '@gimac/socle'
 import { PERMISSION, type ActeEspace, type DemandeOuverture, type Espace, type Ouverture, type PageEspaces } from '../modele'
 import type { ServiceEspaces, ServicesSandbox } from './ports'
+import { supervisionSimulee, type OptionsSupervisionSimulee } from './supervisionSimulee'
 
 // SBX-ESPACE simulé au contrat exact des routes de la console (EspaceConsoleController, ProblemesEspace, Appelant et
 // EspaceInstitution de la branche sbx-espace-hexagone) : jamais servi par une construction de production.
@@ -146,4 +147,4 @@ export function espacesSimules(o: OptionsEspacesSimules): ServiceEspaces {
   }
 }
 
-export const servicesSandboxSimules = (o: OptionsEspacesSimules): ServicesSandbox => ({ espaces: espacesSimules(o) })
+export const servicesSandboxSimules = (o: OptionsEspacesSimules & OptionsSupervisionSimulee): ServicesSandbox => ({ espaces: espacesSimules(o), supervision: supervisionSimulee(o) })

@@ -647,6 +647,19 @@ spring:
                   args:
                     maxSize: 1MB
                 - RewritePath=/bff/des/sbx-espace/(?<p>.*), /api/v1/console/${p}
+            # D-121 : supervision de la sandbox, quatre lectures seulement ; aucune autre route DES vers SBX-TRACE.
+            - id: des-sbx-trace
+              uri: ${gimac.services.sbx-trace}
+              predicates:
+                - Path=/bff/des/sbx-trace/etat-sante/detail,/bff/des/sbx-trace/elements-supervises,/bff/des/sbx-trace/alertes,/bff/des/sbx-trace/disponibilites
+                - Method=GET
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 64KB
+                - RewritePath=/bff/des/sbx-trace/(?<p>.*), /api/v1/console/${p}
             # D-120 (US-EXI-08) : types de pièces de la sandbox et quarantaines de MS-DOCUMENT, depuis la console ;
             # comptes du GIMAC seulement (OPA, SBX_TRA_CONSULTATION en lecture, SBX_TRA_ADMINISTRATION en écriture).
             - id: console-document-sandbox

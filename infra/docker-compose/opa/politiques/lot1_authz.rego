@@ -551,8 +551,9 @@ allow if {
 
 # ---------------------------------------------------------------------------------------------------------------------
 # D-120 (docs/lot1/sandbox-existant-adapte.md §6, US-EXI-07) : routes de la Sandbox GIMAC.
-# /bff/console/sbx-<service>/** et /bff/portail/sbx-<service>/** des onze services ; /bff/des/sbx-espace/** seul dans
-# le département (D-118). Lecture (GET, HEAD, OPTIONS) : SBX_<MODULE>_CONSULTATION. Écriture : une fonction d'action du
+# /bff/console/sbx-<service>/** et /bff/portail/sbx-<service>/** des onze services ; dans le département,
+# /bff/des/sbx-espace/** (D-118) et seulement les quatre lectures de supervision D-121. Lecture (GET, HEAD, OPTIONS) :
+# SBX_<MODULE>_CONSULTATION. Écriture : une fonction d'action du
 # module (ADMINISTRATION, SIMULATION, EXECUTION, VALIDATION), ADMINISTRATION seule pour sbx-espace
 # (SBX_HAB_ADMINISTRATION) ; le service revérifie la fonction exacte du geste. Portail : institution exigée ; console
 # et département : comptes du GIMAC seulement. Le cloisonnement par mandat et le quota sont appliqués ensuite par le
@@ -617,6 +618,21 @@ sbx_couche_admise if {
 	sbx_route.couche == "des"
 	sbx_route.service == "espace"
 	not compte_externe
+}
+
+# D-121 : quatre lectures exactes de la supervision dans le DES, permission SUP dédiée ; aucun repli sur TRA.
+sbx_supervision_des if {
+	input.method == "GET"
+	regex.match(`^/bff/des/sbx-trace/(etat-sante/detail|elements-supervises|alertes|disponibilites)$`, input.path)
+}
+
+allow if {
+	not restreinte
+	not interne
+	sbx_supervision_des
+	not compte_externe
+	double_facteur
+	"SBX_SUP_CONSULTATION" in input.permissions
 }
 
 allow if {

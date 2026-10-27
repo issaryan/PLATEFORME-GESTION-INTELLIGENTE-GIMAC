@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Espace sandbox de l'application du département (D-118, D-122) : une entrée par écran sous /des/sandbox ; « Espaces des institutions » sur SBX-ESPACE",
+  "description": "Espace sandbox du département (D-118, D-121, D-122) : espaces sur SBX-ESPACE et supervision sur SBX-TRACE",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "sideEffects": false,

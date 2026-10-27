@@ -1,6 +1,6 @@
 import { http } from '@gimac/socle'
-import type { Espace, Ouverture, PageEspaces } from '../modele'
-import type { ServiceEspaces, ServicesSandbox } from './ports'
+import type { Alerte, Disponibilite, ElementSupervise, Espace, EtatSante, Ouverture, PageEspaces, PageSupervision } from '../modele'
+import type { ServiceEspaces, ServiceSupervision, ServicesSandbox } from './ports'
 
 // SBX-ESPACE par la passerelle (D-118, D-122) : route des-sbx-espace, /bff/des/sbx-espace/(.*) réécrit en
 // /api/v1/console/$1 ; contrôle OPA SBX_HAB_CONSULTATION en lecture, SBX_HAB_ADMINISTRATION en écriture.
@@ -15,4 +15,13 @@ export const espacesHttp: ServiceEspaces = {
   agir: (code, acte, c) => http.post<Espace>(`${BASE}/${e(code)}/${acte}`, { body: {}, entetes: cle(c) }),
 }
 
-export const servicesSandboxHttp = (): ServicesSandbox => ({ espaces: espacesHttp })
+export const BASE_SUPERVISION = '/bff/des/sbx-trace'
+
+export const supervisionHttp: ServiceSupervision = {
+  etatSante: () => http.get<EtatSante>(`${BASE_SUPERVISION}/etat-sante/detail`),
+  elements: (q) => http.get<PageSupervision<ElementSupervise>>(`${BASE_SUPERVISION}/elements-supervises`, { query: q }),
+  alertes: (q) => http.get<PageSupervision<Alerte>>(`${BASE_SUPERVISION}/alertes`, { query: q }),
+  disponibilites: (q) => http.get<PageSupervision<Disponibilite>>(`${BASE_SUPERVISION}/disponibilites`, { query: q }),
+}
+
+export const servicesSandboxHttp = (): ServicesSandbox => ({ espaces: espacesHttp, supervision: supervisionHttp })

@@ -90,7 +90,7 @@ describe('EspacesPage', () => {
     r2.unmount()
     const s = simules()
     let essais = 0
-    const services = { espaces: { ...s.espaces, lister: async (q: { apres?: string; taille?: number }) => { essais++; if (essais === 1) throw new Error('panne'); return s.espaces.lister(q) } } }
+    const services = { ...s, espaces: { ...s.espaces, lister: async (q: { apres?: string; taille?: number }) => { essais++; if (essais === 1) throw new Error('panne'); return s.espaces.lister(q) } } }
     rendre(<EspacesPage />, { services })
     fireEvent.click(await screen.findByRole('button', { name: 'Réessayer' }))
     expect(await screen.findByText('ESP-99001')).toBeTruthy()

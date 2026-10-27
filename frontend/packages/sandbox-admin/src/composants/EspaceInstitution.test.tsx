@@ -56,7 +56,7 @@ describe('EspaceInstitution', () => {
 
   it('acte refusé par le service : problème traduit, dialogue ouvert', async () => {
     const s = simules()
-    const services: ServicesSandbox = { espaces: { ...s.espaces, agir: async () => { throw new ApiError(409, 'SBX_ESP_REGISTRE_OPPOSE', '', 'c-1') } } }
+    const services: ServicesSandbox = { ...s, espaces: { ...s.espaces, agir: async () => { throw new ApiError(409, 'SBX_ESP_REGISTRE_OPPOSE', '', 'c-1') } } }
     rendre(page('99001'), { chemin: '/x', route: '/x', services })
     fireEvent.click(await screen.findByRole('button', { name: 'Suspendre l’espace' }))
     const d = await screen.findByRole('alertdialog')
@@ -104,7 +104,7 @@ describe('EspaceInstitution', () => {
 
   it('lecture en échec (autre que 404) et refus non traduit', async () => {
     const s = simules()
-    const services: ServicesSandbox = { espaces: { ...s.espaces, consulter: async () => { throw new ApiError(503, 'HTTP_503', 'indisponible', '') } } }
+    const services: ServicesSandbox = { ...s, espaces: { ...s.espaces, consulter: async () => { throw new ApiError(503, 'HTTP_503', 'indisponible', '') } } }
     rendre(page('99001'), { chemin: '/x', route: '/x', services })
     expect(await screen.findByText('L’espace n’a pas pu être lu. Réessayez dans un instant.')).toBeTruthy()
   })
@@ -113,6 +113,7 @@ describe('EspaceInstitution', () => {
     const s = simules()
     let appel = 0
     const services: ServicesSandbox = {
+      ...s,
       espaces: {
         ...s.espaces,
         ouvrir: async () => {
