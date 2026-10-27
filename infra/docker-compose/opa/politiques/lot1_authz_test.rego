@@ -1593,6 +1593,20 @@ test_sbx_fonctions_ecriture if {
 	authz.allow with input as {"method": "GET", "path": "/bff/portail/sbx-simulation/essais", "permissions": ["SBX_SIM_SIMULATION", "SBX_SIM_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
 }
 
+test_sbx_trace_post_lecture_motivee if {
+	every chemin in ["/bff/console/sbx-trace/exports", "/bff/console/sbx-trace/acces-integral"] {
+		authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["SBX_TRA_ADMINISTRATION"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["SBX_TRA_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "1"}
+	}
+
+	# Les autres POST restent des écritures ; un chemin voisin n'hérite pas de l'exception.
+	authz.allow with input as {"method": "POST", "path": "/bff/console/sbx-trace/regles", "permissions": ["SBX_TRA_ADMINISTRATION"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/console/sbx-trace/regles", "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/console/sbx-trace/exports/e1", "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "2"}
+}
+
 test_sbx_espace_departement if {
 	# D-118 : administration des espaces depuis le département, comptes du GIMAC, HAB seulement.
 	authz.allow with input as {"method": "GET", "path": "/bff/des/sbx-espace/espaces", "permissions": ["SBX_HAB_CONSULTATION"], "authentifie": true, "acr": "2"}
@@ -1679,6 +1693,29 @@ test_sbx_document_console if {
 	not authz.allow with input as {"method": "GET", "path": "/bff/console/document/sandbox/types-pieces", "permissions": ["SBX_TRA_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
 	not authz.allow with input as {"method": "GET", "path": "/bff/console/document/sandbox/types-pieces", "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "1"}
 	not authz.allow with input as {"method": "DELETE", "path": "/bff/console/document/sandbox/types-pieces/SBX_TRACE_EXPORTEE/retention", "permissions": ["SBX_TRA_ADMINISTRATION"], "authentifie": true, "acr": "2"}
+}
+
+# IAM-18 (US-EXI-23) : les cinq appels de @gimac/administration reprennent les permissions exactes du contrôleur.
+test_iam_reexamens_acces if {
+	every chemin in ["/bff/console/iam/comptes/reexamens", "/bff/console/iam/comptes/reexamens/r1"] {
+		authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["IAM_ACCOUNT_ROLES"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["IAM_ACCOUNT_CREATE"], "authentifie": true, "acr": "2"}
+	}
+
+	authz.allow with input as {"method": "POST", "path": "/bff/console/iam/comptes/reexamens/ouverture", "permissions": ["IAM_ACCOUNT_CREATE"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/console/iam/comptes/reexamens/ouverture", "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/console/iam/comptes/reexamens/ouverture", "permissions": ["IAM_ACCOUNT_ROLES"], "authentifie": true, "acr": "2"}
+
+	every chemin in [
+		"/bff/console/iam/comptes/reexamens/r1/comptes/c1/decision",
+		"/bff/console/iam/comptes/reexamens/r1/cloture",
+	] {
+		authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["IAM_ACCOUNT_ROLES"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["IAM_ACCOUNT_CREATE"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["IAM_ACCOUNT_ROLES"], "authentifie": true, "acr": "1"}
+	}
 }
 
 # US-EXI-23 : déblocage réservé au GIMAC (IAM_ACCOUNT_SECURITY), verrouillage lu sous IAM_ACCOUNT_READ ; la demande de
