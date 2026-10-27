@@ -4,50 +4,45 @@ import cm.gimac.des.gateway.domain.connexion.port.LimiteurTentatives;
 import cm.gimac.des.gateway.domain.sandbox.DecisionSandbox;
 import cm.gimac.des.gateway.domain.sandbox.DecisionSandbox.Motif;
 import cm.gimac.des.gateway.domain.sandbox.JetonReduit;
-import cm.gimac.des.gateway.domain.sandbox.PerimetreMandats;
-import cm.gimac.des.gateway.domain.sandbox.PolitiqueCloisonnement;
 import cm.gimac.des.gateway.domain.sandbox.RouteSandbox;
 import cm.gimac.des.gateway.domain.sandbox.port.EmetteurJetonReduit;
+import cm.gimac.des.gateway.domain.sandbox.port.IntrospectionSandbox;
+import cm.gimac.des.gateway.domain.sandbox.port.IntrospectionSandbox.Portee;
 import cm.gimac.des.gateway.domain.sandbox.port.JournalDecisionsSandbox;
-import cm.gimac.des.gateway.domain.sandbox.port.ProjectionPerimetres;
-import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import reactor.core.publisher.Mono;
 
 /**
- * Cas d'utilisation de la passerelle sur une route de la sandbox (US-EXI-07) : institution effective (propre ou
- * mandante d'un mandat actif), jeton interne réduit, quota de débit par couche, institution et route, décision
- * journalisée vers MS-AUDIT. Un refus de mandat rend 404 sans révéler l'existence de la ressource.
+ * Cas d'utilisation de la passerelle sur une route de la sandbox (US-EXI-07) : MS-IAM décide à chaque requête si le
+ * jeton original est encore actif et rend la portée effective (compte propre, mandat ou prestataire). Aucun cache local
+ * ne participe à cette décision. Le jeton interne réduit, le quota et le journal de décision sont appliqués ensuite.
  */
 public class CloisonnementSandbox {
 
     /** Préfixe des permissions de la sandbox, seules portées par le jeton réduit. */
     static final String PREFIXE_PERMISSION = "SBX_";
 
-    private final ProjectionPerimetres projection;
+    private final IntrospectionSandbox introspection;
     private final JournalDecisionsSandbox journal;
     private final Map<String, LimiteurTentatives> quotas;
     private final EmetteurJetonReduit emetteur;
-    private final Clock horloge;
 
     /**
      * @param quotas limiteur par couche (portail, console, des) ; une couche absente n'est pas limitée
      * @param emetteur émetteur du jeton réduit, nul quand le jeton interne de la passerelle n'est pas actif
      */
     public CloisonnementSandbox(
-        ProjectionPerimetres projection,
+        IntrospectionSandbox introspection,
         JournalDecisionsSandbox journal,
         Map<String, LimiteurTentatives> quotas,
-        EmetteurJetonReduit emetteur,
-        Clock horloge
+        EmetteurJetonReduit emetteur
     ) {
-        this.projection = projection;
+        this.introspection = introspection;
         this.journal = journal;
         this.quotas = Map.copyOf(quotas);
         this.emetteur = emetteur;
-        this.horloge = horloge;
     }
 
     /** Requête reçue par la passerelle sur une route de la sandbox, après la décision d'OPA. */
@@ -60,38 +55,63 @@ public class CloisonnementSandbox {
         String chemin,
         List<String> permissions,
         String acr,
-        String ip
-    ) {}
+        String ip,
+        String jetonOriginal
+    ) {
+        @Override
+        public String toString() {
+            return "Demande[compte=" + compte + ", institutionJeton=" + institutionJeton + ", demandee=" + demandee +
+                ", route=" + route + ", methode=" + methode + ", chemin=" + chemin + ", permissions=" + permissions +
+                ", acr=" + acr + ", ip=" + ip + ", jetonOriginal=****]";
+        }
+    }
 
-    /** Décision, statut HTTP (200 relayée, 404 hors mandat, 429 quota) et jeton réduit à relayer s'il existe. */
+    /** Décision, statut HTTP (200 relayée, 404 refus indiscernable, 429 quota) et jeton réduit éventuel. */
     public record Resultat(DecisionSandbox decision, int statut, Optional<String> jeton) {}
 
     public Mono<Resultat> evaluer(Demande d) {
-        return perimetre(d)
-            .map(p -> PolitiqueCloisonnement.decider(d.institutionJeton(), d.demandee(), p.orElse(null), horloge.instant()))
-            .flatMap(decision -> decision.admise() ? admettre(d, decision) : Mono.just(new Resultat(decision, 404, Optional.empty())))
+        return introspection
+            .introspecter(d.jetonOriginal(), d.demandee(), composant(d.route()))
+            .switchIfEmpty(Mono.error(() -> new IllegalStateException("Réponse d'introspection vide")))
+            .flatMap(portee -> {
+                if (!portee.active()) {
+                    return Mono.just(refus(d, Motif.INTROSPECTION_REFUSEE));
+                }
+                DecisionSandbox decision = decision(portee);
+                return admettre(d, portee, decision);
+            })
+            .onErrorResume(e -> Mono.just(refus(d, Motif.IAM_INDISPONIBLE)))
             .doOnNext(r -> consigner(d, r));
     }
 
-    /** Le périmètre n'est lu que si une institution mandante, différente de celle du jeton, est demandée. */
-    private Mono<Optional<PerimetreMandats>> perimetre(Demande d) {
-        boolean mandat = !vide(d.institutionJeton()) && !vide(d.demandee()) && !d.demandee().equals(d.institutionJeton());
-        if (!mandat) {
-            return Mono.just(Optional.empty());
-        }
-        return projection.lire(d.compte()).map(Optional::of).defaultIfEmpty(Optional.empty());
+    private static String composant(RouteSandbox route) {
+        return route.nomService().toUpperCase(java.util.Locale.ROOT);
     }
 
-    private Mono<Resultat> admettre(Demande d, DecisionSandbox decision) {
-        Optional<String> jeton = emetteur == null ? Optional.empty() : emetteur.emettre(jetonReduit(d, decision));
-        if (decision.motif() == Motif.MANDAT_ACTIF && jeton.isEmpty()) {
+    private static DecisionSandbox decision(Portee portee) {
+        if ("MANDAT".equals(portee.type())) {
+            return DecisionSandbox.de(Motif.MANDAT_ACTIF, portee.institution());
+        }
+        if ("PRESTATAIRE".equals(portee.type())) {
+            return DecisionSandbox.de(Motif.PRESTATAIRE_AUTORISE, "");
+        }
+        return DecisionSandbox.de(vide(portee.institution()) ? Motif.COMPTE_GIMAC : Motif.INSTITUTION_PROPRE, portee.institution());
+    }
+
+    private static Resultat refus(Demande d, Motif motif) {
+        return new Resultat(DecisionSandbox.de(motif, d.institutionJeton()), 404, Optional.empty());
+    }
+
+    private Mono<Resultat> admettre(Demande d, Portee portee, DecisionSandbox decision) {
+        Optional<String> jeton = emetteur == null ? Optional.empty() : emetteur.emettre(jetonReduit(d, portee, decision));
+        if ((decision.motif() == Motif.MANDAT_ACTIF || decision.motif() == Motif.PRESTATAIRE_AUTORISE) && jeton.isEmpty()) {
             return Mono.just(new Resultat(DecisionSandbox.de(Motif.JETON_REDUIT_INDISPONIBLE, d.institutionJeton()), 404, Optional.empty()));
         }
         LimiteurTentatives limiteur = quotas.get(d.route().couche());
         if (limiteur == null) {
             return Mono.just(new Resultat(decision, 200, jeton));
         }
-        String titulaire = vide(decision.institutionEffective()) ? "gimac:" + d.compte() : decision.institutionEffective();
+        String titulaire = vide(decision.institutionEffective()) ? "gimac:" + portee.sujet() : decision.institutionEffective();
         String cle = "sbx:" + d.route().couche() + ":" + titulaire + ":" + d.route().service();
         return limiteur
             .consommer(cle)
@@ -102,10 +122,10 @@ public class CloisonnementSandbox {
             );
     }
 
-    static JetonReduit jetonReduit(Demande d, DecisionSandbox decision) {
-        List<String> permissions = d.permissions().stream().filter(p -> p.startsWith(PREFIXE_PERMISSION)).sorted().toList();
+    static JetonReduit jetonReduit(Demande d, Portee portee, DecisionSandbox decision) {
+        List<String> permissions = portee.permissions().stream().filter(p -> p.startsWith(PREFIXE_PERMISSION)).sorted().toList();
         String propre = vide(d.institutionJeton()) ? "" : d.institutionJeton();
-        return new JetonReduit(d.compte(), decision.institutionEffective(), propre, permissions, d.acr(), d.route().nomService());
+        return new JetonReduit(portee.sujet(), decision.institutionEffective(), propre, permissions, d.acr(), d.route().nomService());
     }
 
     private void consigner(Demande d, Resultat r) {

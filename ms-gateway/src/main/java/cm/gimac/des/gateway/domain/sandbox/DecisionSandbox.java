@@ -11,8 +11,14 @@ public record DecisionSandbox(boolean admise, String institutionEffective, Motif
         COMPTE_GIMAC(true),
         /** Institution du jeton, aucune institution mandante demandée. */
         INSTITUTION_PROPRE(true),
-        /** Institution mandante d'un mandat actif. */
+        /** Institution mandante d'un mandat actif confirmé par MS-IAM. */
         MANDAT_ACTIF(true),
+        /** Accès de maintenance actif sur le composant appelé, confirmé par MS-IAM. */
+        PRESTATAIRE_AUTORISE(true),
+        /** Jeton inactif, compte inactif, suspension, mandat ou composant refusé par MS-IAM. */
+        INTROSPECTION_REFUSEE(false),
+        /** Introspection impossible : refus par défaut, sans utiliser un état local périmé. */
+        IAM_INDISPONIBLE(false),
         /** Institution demandée sans mandat pour ce compte. */
         MANDAT_ABSENT(false),
         /** Mandat de l'institution demandée échu. */

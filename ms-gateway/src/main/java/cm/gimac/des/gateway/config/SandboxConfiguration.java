@@ -2,11 +2,14 @@ package cm.gimac.des.gateway.config;
 
 import cm.gimac.des.gateway.audit.GatewayAuditEventPublisher;
 import cm.gimac.des.gateway.domain.connexion.port.LimiteurTentatives;
+import cm.gimac.des.gateway.domain.sandbox.port.IntrospectionSandbox;
 import cm.gimac.des.gateway.domain.sandbox.port.JournalDecisionsSandbox;
 import cm.gimac.des.gateway.domain.sandbox.port.ProjectionPerimetres;
+import cm.gimac.des.gateway.infrastructure.connexion.JetonServicePasserelle;
 import cm.gimac.des.gateway.infrastructure.connexion.LimiteurTentativesMemoire;
 import cm.gimac.des.gateway.infrastructure.connexion.LimiteurTentativesValkey;
 import cm.gimac.des.gateway.infrastructure.sandbox.ConsommateurPerimetresKafka;
+import cm.gimac.des.gateway.infrastructure.sandbox.IamIntrospectionSandbox;
 import cm.gimac.des.gateway.security.EmetteurJetonReduitJwt;
 import cm.gimac.des.gateway.infrastructure.sandbox.JournalDecisionsSandboxAudit;
 import cm.gimac.des.gateway.infrastructure.sandbox.ProjectionPerimetresMemoire;
@@ -26,11 +29,14 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.r2dbc.core.DatabaseClient;
+import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
+import org.springframework.web.reactive.function.client.WebClient;
 
 /**
- * Assemblage du cloisonnement des routes de la sandbox (D-120, US-EXI-07) : projection des périmètres en base (mémoire
- * sans base), journal des décisions, quotas par couche (Valkey partagé si la limitation de débit est active, mémoire
- * sinon), jeton interne réduit quand l'émetteur de la passerelle est actif, consommateur des instantanés de périmètre.
+ * Assemblage du cloisonnement des routes de la sandbox (D-120, US-EXI-07) : introspection MS-IAM à chaque requête,
+ * journal des décisions, quotas par couche et jeton interne réduit. L'ancienne projection reste alimentée pour les
+ * autres usages, mais ne décide plus de l'accès et ne peut donc retarder ni suspension ni fin de mandat.
  */
 @Configuration
 @EnableConfigurationProperties(SandboxProperties.class)
@@ -48,9 +54,19 @@ public class SandboxConfiguration {
     }
 
     @Bean
+    public IntrospectionSandbox introspectionSandbox(
+        ConnexionProperties p,
+        ObjectProvider<ReactiveClientRegistrationRepository> enregistrements,
+        ObjectProvider<ReactiveOAuth2AuthorizedClientService> clientsAutorises
+    ) {
+        JetonServicePasserelle jeton = new JetonServicePasserelle(SupervisionConfiguration.gestionnaire(enregistrements, clientsAutorises));
+        return new IamIntrospectionSandbox(WebClient.builder().baseUrl(p.getIamUrl()).build(), jeton, p.getDelai());
+    }
+
+    @Bean
     public CloisonnementSandbox cloisonnementSandbox(
         SandboxProperties p,
-        ProjectionPerimetres projection,
+        IntrospectionSandbox introspection,
         JournalDecisionsSandbox journal,
         ObjectProvider<TokenBucketRateLimiter> valkey,
         ObjectProvider<EmetteurJwtInterne> emetteur,
@@ -58,7 +74,7 @@ public class SandboxConfiguration {
     ) {
         Clock h = ConnexionConfiguration.horloge(horloge);
         EmetteurJwtInterne jwt = emetteur.getIfAvailable();
-        return new CloisonnementSandbox(projection, journal, quotas(p.getQuotas(), valkey.getIfAvailable(), h), jwt == null ? null : new EmetteurJetonReduitJwt(jwt), h);
+        return new CloisonnementSandbox(introspection, journal, quotas(p.getQuotas(), valkey.getIfAvailable(), h), jwt == null ? null : new EmetteurJetonReduitJwt(jwt));
     }
 
     @Bean

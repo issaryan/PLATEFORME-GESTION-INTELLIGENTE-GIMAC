@@ -5,40 +5,45 @@ import static org.assertj.core.api.Assertions.assertThat;
 import cm.gimac.des.gateway.domain.connexion.port.LimiteurTentatives;
 import cm.gimac.des.gateway.domain.sandbox.DecisionSandbox.Motif;
 import cm.gimac.des.gateway.domain.sandbox.JetonReduit;
-import cm.gimac.des.gateway.domain.sandbox.PerimetreMandats;
 import cm.gimac.des.gateway.domain.sandbox.RouteSandbox;
 import cm.gimac.des.gateway.domain.sandbox.port.EmetteurJetonReduit;
+import cm.gimac.des.gateway.domain.sandbox.port.IntrospectionSandbox;
+import cm.gimac.des.gateway.domain.sandbox.port.IntrospectionSandbox.Portee;
 import cm.gimac.des.gateway.domain.sandbox.port.JournalDecisionsSandbox;
-import cm.gimac.des.gateway.infrastructure.sandbox.ProjectionPerimetresMemoire;
 import cm.gimac.des.gateway.service.sandbox.CloisonnementSandbox.Demande;
 import cm.gimac.des.gateway.service.sandbox.CloisonnementSandbox.Resultat;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
-/** Décision de la passerelle sur les routes de la sandbox (US-EXI-07), horloge figée au 22/10/2026. */
+/** Décision temps réel de la passerelle sur les routes de la sandbox (US-EXI-04, 06, 07 et 24). */
 class CloisonnementSandboxTest {
 
-    static final Clock HORLOGE = Clock.fixed(Instant.parse("2026-10-22T10:00:00Z"), ZoneOffset.UTC);
     static final RouteSandbox SIMULATION = new RouteSandbox("portail", "simulation");
 
     final List<JournalDecisionsSandbox.Entree> journal = new ArrayList<>();
     final List<JetonReduit> emis = new ArrayList<>();
-    ProjectionPerimetresMemoire projection;
+    final AtomicReference<Portee> reponse = new AtomicReference<>();
+    final AtomicReference<Throwable> panne = new AtomicReference<>();
+    final List<String> appels = new ArrayList<>();
     EmetteurJetonReduit emetteur;
     boolean quotaAdmis;
 
+    final IntrospectionSandbox introspection = (jeton, institution, composant) -> {
+        appels.add(jeton + "|" + institution + "|" + composant);
+        return panne.get() == null ? Mono.justOrEmpty(reponse.get()) : Mono.error(panne.get());
+    };
+
     @BeforeEach
     void preparer() {
-        projection = new ProjectionPerimetresMemoire();
+        reponse.set(new Portee(true, "u-1", "99001", List.of("SBX_SIM_SIMULATION", "NOT_INBOX_READ", "SBX_SIM_CONSULTATION"), "COMPTE"));
+        panne.set(null);
         emetteur = j -> {
             emis.add(j);
             return Optional.of("jeton-reduit-" + j.institution());
@@ -47,7 +52,7 @@ class CloisonnementSandboxTest {
     }
 
     CloisonnementSandbox service(EmetteurJetonReduit e, Map<String, LimiteurTentatives> quotas) {
-        return new CloisonnementSandbox(projection, journal::add, quotas, e, HORLOGE);
+        return new CloisonnementSandbox(introspection, journal::add, quotas, e);
     }
 
     CloisonnementSandbox service() {
@@ -62,84 +67,104 @@ class CloisonnementSandboxTest {
             SIMULATION,
             "GET",
             "/bff/portail/sbx-simulation/essais",
-            List.of("SBX_SIM_SIMULATION", "NOT_INBOX_READ", "SBX_SIM_CONSULTATION"),
+            List.of("SBX_SIM_ADMINISTRATION"),
             "2",
-            "10.0.0.1"
+            "10.0.0.1",
+            "jeton-original-secret"
         );
     }
 
     @Test
-    @DisplayName("Critère 1 : route du portail cloisonnée, jeton interne réduit portant 99001, décision journalisée")
-    void routePortailCloisonnee() {
+    @DisplayName("Compte propre : portée IAM autoritaire, jeton réduit et décision auditée")
+    void comptePropre() {
         Resultat r = service().evaluer(demande("99001", null)).block();
         assertThat(r.statut()).isEqualTo(200);
         assertThat(r.decision().motif()).isEqualTo(Motif.INSTITUTION_PROPRE);
         assertThat(r.jeton()).contains("jeton-reduit-99001");
-        // Institution choisie égale à celle du jeton : même décision, sans lecture du périmètre.
-        assertThat(service().evaluer(demande("99001", "99001")).block().decision().motif()).isEqualTo(Motif.INSTITUTION_PROPRE);
-        journal.remove(1);
-        emis.remove(1);
+        assertThat(appels).containsExactly("jeton-original-secret|null|SBX-SIMULATION");
         assertThat(emis).singleElement().satisfies(j -> {
             assertThat(j.institution()).isEqualTo("99001");
             assertThat(j.institutionPropre()).isEqualTo("99001");
             assertThat(j.permissions()).containsExactly("SBX_SIM_CONSULTATION", "SBX_SIM_SIMULATION");
             assertThat(j.audience()).isEqualTo("sbx-simulation");
-            assertThat(j.acr()).isEqualTo("2");
             assertThat(j.sujet()).isEqualTo("u-1");
         });
         assertThat(journal).singleElement().satisfies(e -> {
             assertThat(e.statut()).isEqualTo(200);
-            assertThat(e.decision().institutionEffective()).isEqualTo("99001");
-            assertThat(e.route()).isEqualTo(SIMULATION);
-            assertThat(e.compte()).isEqualTo("u-1");
+            assertThat(e.decision()).isEqualTo(r.decision());
         });
+        assertThat(demande("99001", null).toString()).doesNotContain("jeton-original-secret").contains("jetonOriginal=****");
     }
 
     @Test
-    @DisplayName("Critère 2 : partenaire mandaté par 99001 et 99002, le jeton réduit porte 99002 tant que le mandat est actif")
-    void partenaireMandate() {
-        projection.appliquer(new PerimetreMandats("u-1", "99010", Map.of("99001", Instant.parse("2026-11-10T00:00:00Z"), "99002", Instant.parse("2026-11-10T00:00:00Z")), 3)).block();
+    @DisplayName("Mandat actif confirmé par IAM : institution et permissions du mandat relayées")
+    void mandatActif() {
+        reponse.set(new Portee(true, "u-1", "99002", List.of("SBX_SIM_CONSULTATION"), "MANDAT"));
         Resultat r = service().evaluer(demande("99010", "99002")).block();
         assertThat(r.statut()).isEqualTo(200);
         assertThat(r.decision().motif()).isEqualTo(Motif.MANDAT_ACTIF);
         assertThat(r.jeton()).contains("jeton-reduit-99002");
         assertThat(emis.get(0).institutionPropre()).isEqualTo("99010");
+        assertThat(emis.get(0).permissions()).containsExactly("SBX_SIM_CONSULTATION");
+        assertThat(appels).containsExactly("jeton-original-secret|99002|SBX-SIMULATION");
     }
 
     @Test
-    @DisplayName("Critère 4 : mandat échu pour 99002, refus 404 sans révéler la ressource, tentative journalisée")
-    void institutionHorsMandat() {
-        projection.appliquer(new PerimetreMandats("u-1", "99010", Map.of("99002", Instant.parse("2026-10-01T00:00:00Z")), 4)).block();
-        Resultat r = service().evaluer(demande("99010", "99002")).block();
-        assertThat(r.statut()).isEqualTo(404);
-        assertThat(r.decision().motif()).isEqualTo(Motif.MANDAT_ECHU);
-        assertThat(r.jeton()).isEmpty();
+    @DisplayName("Mandat échu, suspension ou compte inactif : même 404, aucun ancien cache consulté")
+    void refusTempsReelIndiscernables() {
+        reponse.set(Portee.refusee());
+        Resultat echu = service().evaluer(demande("99010", "99002")).block();
+        Resultat suspension = service().evaluer(demande("99001", null)).block();
+        assertThat(echu.statut()).isEqualTo(404);
+        assertThat(suspension.statut()).isEqualTo(404);
+        assertThat(echu.decision().motif()).isEqualTo(Motif.INTROSPECTION_REFUSEE);
+        assertThat(suspension.decision().motif()).isEqualTo(Motif.INTROSPECTION_REFUSEE);
         assertThat(emis).isEmpty();
-        assertThat(journal).singleElement().satisfies(e -> {
-            assertThat(e.statut()).isEqualTo(404);
-            assertThat(e.demandee()).isEqualTo("99002");
-            assertThat(e.decision().admise()).isFalse();
-        });
-        // Aucun instantané reçu pour ce compte : mandat absent, même refus.
-        assertThat(service().evaluer(new Demande("u-2", "99010", "99002", SIMULATION, "GET", "/x", List.of(), "2", "")).block().decision().motif()).isEqualTo(Motif.MANDAT_ABSENT);
+        assertThat(journal).hasSize(2).allSatisfy(e -> assertThat(e.statut()).isEqualTo(404));
+        assertThat(new Portee(false, null, null, null, null).permissions()).isEmpty();
     }
 
     @Test
-    @DisplayName("Mandat actif sans émetteur de jeton réduit : refus par défaut (aucune institution mandante ne peut être relayée)")
-    void jetonReduitIndisponible() {
-        projection.appliquer(new PerimetreMandats("u-1", "99010", Map.of("99002", Instant.parse("2026-11-10T00:00:00Z")), 1)).block();
-        Resultat r = service(null, Map.of()).evaluer(demande("99010", "99002")).block();
+    @DisplayName("Prestataire autorisé sur SBX-SIMULATION seulement : portée sans institution ; hors composant IAM refuse")
+    void prestataire() {
+        reponse.set(new Portee(true, "prestataire", null, List.of(), "PRESTATAIRE"));
+        Resultat admis = service().evaluer(demande("", null)).block();
+        assertThat(admis.statut()).isEqualTo(200);
+        assertThat(admis.decision().motif()).isEqualTo(Motif.PRESTATAIRE_AUTORISE);
+        assertThat(emis.get(0).institution()).isEmpty();
+        reponse.set(Portee.refusee());
+        assertThat(service().evaluer(demande("", null)).block().statut()).isEqualTo(404);
+        assertThat(appels).allSatisfy(appel -> assertThat(appel).endsWith("|SBX-SIMULATION"));
+    }
+
+    @Test
+    @DisplayName("IAM indisponible ou réponse vide : refus 404 par défaut et décision auditée")
+    void iamIndisponible() {
+        panne.set(new IllegalStateException("IAM injoignable"));
+        Resultat r = service().evaluer(demande("99001", null)).block();
         assertThat(r.statut()).isEqualTo(404);
-        assertThat(r.decision().motif()).isEqualTo(Motif.JETON_REDUIT_INDISPONIBLE);
-        assertThat(r.decision().institutionEffective()).isEqualTo("99010");
-        // Institution propre sans émetteur : relayée avec le jeton de session.
+        assertThat(r.decision().motif()).isEqualTo(Motif.IAM_INDISPONIBLE);
+        assertThat(journal.get(0).decision().motif()).isEqualTo(Motif.IAM_INDISPONIBLE);
+        panne.set(null);
+        reponse.set(null);
+        assertThat(service().evaluer(demande("99001", null)).block().decision().motif()).isEqualTo(Motif.IAM_INDISPONIBLE);
+    }
+
+    @Test
+    @DisplayName("Mandat ou prestataire sans émetteur de jeton réduit : refus par défaut ; compte propre inchangé")
+    void jetonReduitIndisponible() {
+        reponse.set(new Portee(true, "u-1", "99002", List.of(), "MANDAT"));
+        assertThat(service(null, Map.of()).evaluer(demande("99010", "99002")).block().decision().motif()).isEqualTo(Motif.JETON_REDUIT_INDISPONIBLE);
+        reponse.set(new Portee(true, "prestataire", null, List.of(), "PRESTATAIRE"));
+        assertThat(service(null, Map.of()).evaluer(demande("", null)).block().statut()).isEqualTo(404);
+        reponse.set(new Portee(true, "u-1", "99001", List.of(), "COMPTE"));
         Resultat propre = service(null, Map.of()).evaluer(demande("99001", null)).block();
         assertThat(propre.statut()).isEqualTo(200);
         assertThat(propre.jeton()).isEmpty();
     }
 
     @Test
-    @DisplayName("Quota par couche, institution et route dépassé : 429, décision journalisée")
+    @DisplayName("Quota dépassé après introspection admise : 429 et décision journalisée")
     void quota() {
         List<String> cles = new ArrayList<>();
         quotaAdmis = false;
@@ -150,28 +175,25 @@ class CloisonnementSandboxTest {
         Resultat r = s.evaluer(demande("99001", null)).block();
         assertThat(r.statut()).isEqualTo(429);
         assertThat(r.decision().motif()).isEqualTo(Motif.QUOTA_DEPASSE);
-        assertThat(r.decision().institutionEffective()).isEqualTo("99001");
         assertThat(cles).containsExactly("sbx:portail:99001:simulation");
         assertThat(journal.get(0).statut()).isEqualTo(429);
     }
 
     @Test
-    @DisplayName("Compte du GIMAC sur la console : admis, quota par compte, jeton réduit sans institution")
+    @DisplayName("Compte du GIMAC : quota par sujet IAM, jeton réduit sans institution")
     void compteGimac() {
+        reponse.set(new Portee(true, "u-gimac", null, List.of("SBX_TRA_CONSULTATION"), "COMPTE"));
         List<String> cles = new ArrayList<>();
         CloisonnementSandbox s = service(emetteur, Map.of("console", cle -> {
             cles.add(cle);
             return Mono.just(true);
         }));
-        Demande d = new Demande("u-gimac", "", null, new RouteSandbox("console", "trace"), "GET", "/bff/console/sbx-trace/x", List.of("SBX_TRA_CONSULTATION"), "2", "");
+        Demande d = new Demande("u-gimac", "", null, new RouteSandbox("console", "trace"), "GET", "/bff/console/sbx-trace/x", List.of(), "2", "", "j");
         Resultat r = s.evaluer(d).block();
         assertThat(r.statut()).isEqualTo(200);
         assertThat(r.decision().motif()).isEqualTo(Motif.COMPTE_GIMAC);
         assertThat(cles).containsExactly("sbx:console:gimac:u-gimac:trace");
         assertThat(emis.get(0).institution()).isEmpty();
-        assertThat(emis.get(0).institutionPropre()).isEmpty();
-        // Institution du jeton nulle : même traitement.
-        Demande nulle = new Demande("u-gimac", null, null, new RouteSandbox("des", "espace"), "GET", "/bff/des/sbx-espace/x", List.of(), "2", "");
-        assertThat(s.evaluer(nulle).block().statut()).isEqualTo(200);
+        assertThat(appels).containsExactly("j|null|SBX-TRACE");
     }
 }

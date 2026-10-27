@@ -92,6 +92,16 @@ class RoutesPresentationTest {
             Arguments.of("/bff/console/participant/reprise/institutions", "${gimac.services.participant}", "/api/v1/reprise/institutions"),
             Arguments.of("/bff/console/homologation/reprise/liaisons", "${gimac.services.homologation}", "/api/v1/reprise/liaisons"),
             Arguments.of("/bff/console/iam/comptes/c1/profils", "${gimac.services.iam}", "/api/v1/comptes/c1/profils"),
+            // IAM-18 : réexamen des accès consommé par @gimac/administration, sur la route console-iam existante.
+            Arguments.of("/bff/console/iam/comptes/reexamens", "${gimac.services.iam}", "/api/v1/comptes/reexamens"),
+            Arguments.of("/bff/console/iam/comptes/reexamens/ouverture", "${gimac.services.iam}", "/api/v1/comptes/reexamens/ouverture"),
+            Arguments.of("/bff/console/iam/comptes/reexamens/r1", "${gimac.services.iam}", "/api/v1/comptes/reexamens/r1"),
+            Arguments.of(
+                "/bff/console/iam/comptes/reexamens/r1/comptes/c1/decision",
+                "${gimac.services.iam}",
+                "/api/v1/comptes/reexamens/r1/comptes/c1/decision"
+            ),
+            Arguments.of("/bff/console/iam/comptes/reexamens/r1/cloture", "${gimac.services.iam}", "/api/v1/comptes/reexamens/r1/cloture"),
             Arguments.of("/bff/console/iam/configuration/politique-securite", "${gimac.services.iam}", "/api/v1/configuration/politique-securite"),
             // Administration dans le département (D-69) : comptes, journal, politique et profils.
             Arguments.of("/bff/des/iam/comptes", "${gimac.services.iam}", "/api/v1/comptes"),

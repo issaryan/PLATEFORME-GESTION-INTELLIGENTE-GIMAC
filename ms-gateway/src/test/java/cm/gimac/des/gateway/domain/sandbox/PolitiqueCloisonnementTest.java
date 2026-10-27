@@ -56,7 +56,7 @@ class PolitiqueCloisonnementTest {
     @Test
     @DisplayName("Motifs : admis ou refus ; décision sans institution normalisée")
     void motifs() {
-        assertThat(Motif.values()).filteredOn(Motif::admis).containsExactly(Motif.COMPTE_GIMAC, Motif.INSTITUTION_PROPRE, Motif.MANDAT_ACTIF);
+        assertThat(Motif.values()).filteredOn(Motif::admis).containsExactly(Motif.COMPTE_GIMAC, Motif.INSTITUTION_PROPRE, Motif.MANDAT_ACTIF, Motif.PRESTATAIRE_AUTORISE);
         assertThat(DecisionSandbox.de(Motif.QUOTA_DEPASSE, null)).isEqualTo(new DecisionSandbox(false, "", Motif.QUOTA_DEPASSE));
     }
 
