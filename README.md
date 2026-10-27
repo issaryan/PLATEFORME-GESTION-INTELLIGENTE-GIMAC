@@ -86,6 +86,30 @@ infra/ci/valider-securite.sh                       # secrets (gitleaks) et vuln�
 
 - **Socle vérifié le 29/09/2026 (D-54)** : 1 356 tests unitaires et 5 476 tests d'intégration réussis sur les 14 services ; plateforme complète démarrée ; `infra/docker-compose/tester-socle.sh` : 48 contrôles sur 48 réussis (santé, jeton Keycloak, API via la passerelle, OPA, WORM, simulacres, frontend, Prometheus).
 
+## État au 27/10/2026 — intégration de la Sandbox GIMAC
+
+Le contrat complet reste dans `docs/lot1/sandbox-existant-adapte.md` ; les README ne donnent que l'état intégré et ses preuves.
+
+- **Introspection et cloisonnement** : MS-IAM décide à chaque requête, sans cache, de l'activité d'un jeton Sandbox (périmètre, mandat ou prestataire). La passerelle l'interroge avant de cloisonner l'institution effective et de réduire le jeton interne ; suspension et révocation ferment aussi les sessions. Le rétablissement restaure l'état propre de chaque compte.
+- **Sagas et US-EXI-23** : les étapes OUVERTURE et MATRICE sont rejouables par clé d'idempotence ; MATRICE ne modifie que les profils SBX. Le réexamen trimestriel fige tous les accès, permissions SBX comprises, puis maintient, réduit ou révoque avant scellement. Le déblocage reste réservé au GIMAC.
+- **US-EXI-25 / D-125** : MS-HOMOLOGATION propage l'empreinte contrôlée du bilan dans le socle d'évaluation. MS-CERTIFICATION ouvre un cycle seulement au changement, rend caducs les quitus favorables du circuit remplacé et refuse toute signature sur un ancien socle (`CER_SOCLE_OUTDATED`). Les événements historiques sans empreinte restent admis, sans effet sur le circuit.
+- **Supervision D-121** : aucune adaptation de MS-MONITORING, MS-INCIDENT ou MS-REPORTING. L'écran `/des/sandbox/supervision` lit uniquement quatre ressources GET de SBX-TRACE sous `SBX_SUP_CONSULTATION`.
+- **OPA** : les politiques Compose et Kubernetes sont identiques. Les règles couvrent le cloisonnement SBX, les quatre lectures D-121 et les écritures de réexamen (`IAM_ACCOUNT_CREATE`, `IAM_ACCOUNT_ROLES`), sans ouvrir les chemins voisins.
+- **Recette DEMO-SBX-12** : douze contrôles visuels et 64 captures en clair et sombre sont consignés dans `docs/recette/sandbox.md`. Les compléments du 27/10 (sagas, réexamen, supervision et D-125) ont des preuves automatisées, mais pas de nouvelles captures.
+
+Validations réellement exécutées et conservées dans les rapports du 27/10 :
+
+| Périmètre | Résultat |
+|---|---|
+| MS-IAM | 458 tests unitaires et de sécurité (2 ignorés), 450 d'intégration et de recette ; seuils JaCoCo globaux et EXI 98 % |
+| MS-GATEWAY | 592 tests unitaires ; seuils JaCoCo ; 213 tests OPA sur 213 |
+| MS-HOMOLOGATION | `TESTCONTAINERS_RYUK_DISABLED=true ./mvnw clean verify` : 536 tests unitaires et 421 d'intégration ; seuils globaux et EXI 98 % |
+| MS-CERTIFICATION | même commande : 219 tests unitaires et 236 d'intégration ; seuils globaux et EXI 98 % |
+| `@gimac/administration` | 189 tests ; couverture globale 95,25 % instructions, 85,70 % branches, 94,38 % fonctions, 96,44 % lignes ; seuils EXI 98 % sur les fichiers concernés |
+| `@gimac/sandbox-admin` | 46 tests ; 100 % instructions, fonctions et lignes, 99,55 % branches |
+
+**Limites de preuve** : les assemblages spécifiques de recette restent à résorber dans l'assemblage courant ; l'autorité de certification mTLS locale n'est pas livrée ; le Compose complet n'a pas été démarré pour cette intégration ; aucune exécution ne démontre un raccordement à de vrais serveurs GIMAC. Les validations ci-dessus ne doivent donc pas être présentées comme une recette de production.
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -171,3 +195,5 @@ infra/ci/valider-securite.sh                       # secrets (gitleaks) et vuln�
 | 2026-10-23 | D-122 | Sandbox GIMAC, US-EXI-14, US-EXI-15, US-EXI-17 : MS-HOMOLOGATION relit le contrat de SBX-LECTURE (relève périodique et sur `sbx-lecture.campaign-published.v1`), pièces conservées par empreinte ; onglet « Résultats de la sandbox » du dossier de liaison du DES |
 | 2026-10-23 | D-123 | Sandbox GIMAC, US-EXI-05 et US-EXI-24 : comptes de service `sbx-*` et matrice des appels synchrones dans le domaine Keycloak ; accès de prestataire de maintenance approuvé par le RSSI (MS-IAM, console) |
 | 2026-10-23 | D-124 | Sandbox GIMAC, US-EXI-23, US-EXI-10, US-EXI-09 : verrouillage et déblocage des comptes depuis la console ; registre d'audit de la sandbox (MS-AUDIT) ; notifications de la sandbox (MS-NOTIFICATION, type `SANDBOX`) ; US-EXI-25 en attente d'une décision |
+| 2026-10-27 | - | EXI : introspection MS-IAM et cloisonnement immédiat, sagas OUVERTURE/MATRICE, réexamen US-EXI-23, supervision D-121 et règles OPA ; DEMO-SBX-12 : 12 contrôles et 64 captures ; validations et limites de preuve actualisées |
+| 2026-10-27 | D-125 | US-EXI-25 réalisé : socle d'évaluation par empreinte, cycle et caducité des quitus, refus des signatures sur ancien socle ; `clean verify` réussi sur MS-HOMOLOGATION et MS-CERTIFICATION |

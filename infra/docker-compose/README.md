@@ -74,6 +74,12 @@ cd infra/docker-compose && jhipster docker-compose --no-insight
 git checkout -- ../../ms-*/.yo-rc.json   # annule la réécriture de version par le générateur
 ```
 
+## Règles Sandbox et état de la preuve locale
+
+La politique OPA autorise dans le DES, en plus de `/bff/des/sbx-espace`, uniquement les quatre lectures D-121 de SBX-TRACE sous `SBX_SUP_CONSULTATION`. Les écritures de réexamen US-EXI-23 sont réservées à `IAM_ACCOUNT_CREATE` (ouverture) et `IAM_ACCOUNT_ROLES` (décision et clôture). Exécution du 27/10/2026 : `opa test opa/politiques`, 213/213. La même politique est déployée dans `infra/kubernetes-gimac/partages/opa/`.
+
+Ces contrôles statiques et les tests Testcontainers ne sont pas un démarrage du Compose complet, qui n'a pas été effectué pour cette intégration. Les assemblages spécifiques de recette restent à résorber dans l'assemblage courant ; l'AC mTLS locale n'est pas livrée et aucune preuve de serveurs GIMAC réels n'existe.
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -111,3 +117,4 @@ git checkout -- ../../ms-*/.yo-rc.json   # annule la réécriture de version par
 | 2026-10-13 | D-107 | D-107 : `GIMAC_SECRET_REPRISE_SERVICE` (client `reprise-service`) créé par `gimac-dev.sh` et transmis à Keycloak ; tests OPA des routes de reprise |
 | 2026-10-19 | D-111 | `observabilite/loki.yaml` (conservation d'un jour) et `block_retention: 24h` de Tempo ; `GIMAC_EXPLOITATION=1` : `gimac-dev.sh` génère `docker-compose.exploitation.yml` (redémarrage `unless-stopped` sauf `*-init`, journaux de conteneur bornés par `GIMAC_JOURNAUX_TAILLE` et `GIMAC_JOURNAUX_FICHIERS`, 10 Mo et 2 par défaut), fichier non versionné |
 | 2026-10-23 | D-123, D-124 | Secrets `GIMAC_SECRET_SBX_<SERVICE>` et `GIMAC_SECRET_EXPLOITATION_SERVICE` créés par `gimac-dev.sh` et transmis à Keycloak ; règles OPA : accès de prestataire, déblocage, registre d'audit et notifications de la sandbox, résultats de la sandbox du DES |
+| 2026-10-27 | D-121 | OPA : quatre lectures SBX-TRACE et réexamens US-EXI-23, 213/213 ; Compose complet non démarré pour cette intégration, limites AC mTLS et serveurs réels documentées |

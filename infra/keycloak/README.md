@@ -23,6 +23,12 @@ Contenu : permissions (`HOM_*`, `CER_*`, `PAR_*`, `INTERNAL_*`) ; quatorze profi
 
 Aucun secret : mots de passe et secrets de client sont des variables `${GIMAC_...}` résolues par Keycloak à l'import, à partir du `.env` local créé par `gimac-dev.sh`. Jeton d'un utilisateur de test : `source infra/docker-compose/scripts/token.sh test-chef-ddrm` (niveau 2, par le navigateur) ou `NIVEAU=1 source ...` (niveau 1, pour vérifier les refus). Depuis D-65, les comptes de test configurent leur code TOTP sur la plateforme au premier accès ; `tester-cli` garde le flux navigateur et l'autorisation par appareil pour les seuls contrôles des développeurs.
 
+## Sandbox et mTLS
+
+Le générateur réserve `INTERNAL_IAM_SBX_SAGA` au client `sbx-espace` et donne `INTERNAL_IAM_SBX_INTROSPECT` à `gateway-service` pour la décision MS-IAM sans cache utilisée par le cloisonnement. Les sagas OUVERTURE/MATRICE et le réexamen US-EXI-23 conservent les permissions et profils non SBX ; la validation des verdicts reste interdite aux profils externes.
+
+Le rattachement des jetons de service au certificat client (RFC 8705) reste une configuration de déploiement. Aucune autorité de certification mTLS locale n'est livrée dans cet environnement ; les tests du domaine et Testcontainers ne constituent pas une preuve de mTLS bout en bout ni de raccordement à des serveurs GIMAC réels.
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -40,3 +46,4 @@ Aucun secret : mots de passe et secrets de client sont des variables `${GIMAC_..
 | 2026-10-13 | D-105 | CR-CERT-GIMAC-01 v1.7 : `HOM_LIAISON_OPEN` retirée de `ROLE_CHEF_DES` (la DDRM ouvre le projet) ; missions des profils réécrites (§3.2, §3.6) ; nouveau profil `ROLE_AGENT_SSI` (`CER_SECURITY_VERIFY`, `HOM_EVIDENCE_SUBMIT`, sans `IAM_*`, `PLATFORM_*` ni quitus) et compte de test `test-agent-ssi` ; tests `test_generer_realm_gimac.py` joués par `valider-infra.sh` |
 | 2026-10-13 | D-107 | D-107 : permission `REF_REPRISE_IMPORT` (super administrateur) et client de service `reprise-service` (`GIMAC_SECRET_REPRISE_SERVICE`) |
 | 2026-10-23 | D-123 | US-EXI-05 : clients `sbx-*` et `sbx-mifos`, permissions `INTERNAL_SBX_*` du tableau des appels synchrones (`APPELS_SBX`), `INTERNAL_SBX_LECTURE_READ` pour `homologation-service`, client `exploitation-service` (`INTERNAL_HOMOLOGATION_REPUBLISH`) ; matrice vérifiée par le générateur |
+| 2026-10-27 | - | Introspection du cloisonnement et sagas US-EXI-23 documentées ; rattachement RFC 8705 toujours dépendant d'une AC mTLS locale non livrée |
