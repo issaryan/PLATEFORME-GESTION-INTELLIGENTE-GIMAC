@@ -101,7 +101,7 @@ Ordre de réalisation, composant par composant, serveur et écrans ensemble.
 
 | Ordre | Composant | Récits |
 |---|---|---|
-| 1 | MS-IAM et Keycloak | EXI-01, 02, 03, 04, 05, 06, 23, 24 (faits ; réexamen des accès d'EXI-23 en attente, §8.5) |
+| 1 | MS-IAM et Keycloak | EXI-01, 02, 03, 04, 05, 06, 23, 24 (faits ; réexamen des accès d'EXI-23 au §8.5) |
 | 2 | Passerelle et OPA | EXI-07 |
 | 3 | MS-PARTICIPANT | EXI-20, 21 |
 | 4 | MS-DOCUMENT, MS-NOTIFICATION, MS-AUDIT | EXI-08, 09, 10 (faits) |
@@ -157,7 +157,7 @@ Règles :
 | US-EXI-17 | Fait (D-122, §7.6) | Onglet sur les résultats d'une campagne close reprise de SBX-LECTURE réel |
 | US-EXI-24 | Fait (D-123, §8.4) | Introspection par la passerelle (jeton réduit) et par SBX-TRACE pour le composant appelé |
 | US-EXI-05 | Fait (D-123, §9) | Jetons réduits entre services de la sandbox ; rattachement au certificat client au déploiement |
-| US-EXI-23 | Fait en partie (D-124, §8.5) | Réexamen périodique des accès (IAM-18) : campagne absente de MS-IAM, critère 2 en attente |
+| US-EXI-23 | Fait (D-124, §8.5) | Campagne trimestrielle de réexamen réelle depuis la console ; raccordement OPA des nouvelles écritures BFF par le lot passerelle |
 | US-EXI-10 | Fait (D-124, §10) | Publication des événements à effet par les onze services, enveloppes conformes au §10 |
 | US-EXI-09 | Fait (D-124, §11) | Demandes `sbx-*.notification-requested.v1` des onze services ; canal courriel (§11, écart) |
 | US-EXI-25 | En attente (§12) | Décision sur le socle d'évaluation et la caducité des quitus dans MS-CERTIFICATION |
@@ -526,6 +526,9 @@ privilège, règle placée avant celle de `/api/v1/interne/**`).
 
 | Opération du port | Méthode et route MS-IAM | Permission | Corps | Réponse |
 |---|---|---|---|---|
+| `ouvrirCompte(…, cle)` (saga OUVERTURE) | `POST /api/v1/interne/sandbox/comptes` | `INTERNAL_IAM_SBX_SAGA` | `{ identifiant, prenom, nom, email, telephone?, fonction?, institutionId, profils }` | 201, ou 200 au rejeu : compte, profils et `permissionsSbx`, `rejouee` ; invitation, aucun mot de passe rendu |
+| `attribuerRole(…, cle)` (saga MATRICE) | `PUT /api/v1/interne/sandbox/comptes/{id}/profils-sandbox` | `INTERNAL_IAM_SBX_SAGA` | `{ profils, motif }` | Compte et permissions SBX ; seuls les profils SBX changent, les autres accès sont conservés |
+| (lecture du compte) | `GET /api/v1/interne/sandbox/comptes/{id}` | `INTERNAL_IAM_SBX_SAGA` | | même forme |
 | `suspendrePerimetre(code, suspendu, cle)` | `PUT /api/v1/interne/sandbox/perimetres/{code}/suspension` | `INTERNAL_IAM_SBX_SAGA` | `{ suspendu, motif? }` | `{ code, suspendu, depuis, sessionsRevoquees, rejouee }` |
 | (lecture) | `GET /api/v1/interne/sandbox/perimetres/{code}` | `INTERNAL_IAM_SBX_SAGA` | | même forme |
 | `attribuerRole(…, protege, cle)` (attribut seul) | `PUT /api/v1/interne/sandbox/comptes/{id}/protection-dernier-administrateur` | `INTERNAL_IAM_SBX_SAGA` | `{ protege }` | `{ compteId, institutionId, protege, rejouee }` |
@@ -535,6 +538,11 @@ Clients du domaine Keycloak (générateur) : `sbx-espace` porte `INTERNAL_IAM_SB
 générateur) et `INTERNAL_PARTICIPANT_READ` ; `gateway-service` reçoit `INTERNAL_IAM_SBX_INTROSPECT`. Secret
 `GIMAC_SECRET_SBX_ESPACE` (Compose, `gimac-dev.sh`, Kubernetes, `diagnostiquer-serveur.sh`). Code de périmètre :
 `^[A-Za-z0-9_-]{1,64}$`, sinon 400 `IAM_SBX_PERIMETRE_INVALIDE`.
+
+OUVERTURE et MATRICE réutilisent `AdministrationComptesService`, `EtapesIdempotentes` et `ReglesSandbox`. Seuls des
+profils externes dont la composition porte une permission SBX sont acceptés (`IAM_SBX_PROFIL_REQUIS` ou
+`IAM_SBX_PROFIL_INVALIDE`) ; MATRICE préserve les profils non SBX du compte. Contrats et reprises :
+`ComptesSandboxSagaServiceTest`, `ComptesSandboxSagaIT.ouvertureEtMatrice`, `SandboxPerimetresRoutesTest.ouvertureMatrice`.
 
 ### 8.2 Suspension d'institution et dernier administrateur (US-EXI-06)
 
@@ -680,14 +688,25 @@ comptes inactifs (D-119). Ajouts :
 - **Console** : fiche du compte (`/console/comptes/{id}`), bandeau « Compte verrouillé » (nombre d'échecs, dernier
   échec) et action « Débloquer le compte » motivée, pour les porteurs d'`IAM_ACCOUNT_SECURITY`. Captures :
   `docs/recette/captures/exi/iam/exi-23/`.
-- **Écart (critère 2)** : le réexamen périodique des accès (IAM-18) n'existe pas encore dans MS-IAM (seule l'entité
-  générée `AccessReview`, sans campagne ni écran) ; les habilitations `SBX_*` y seront présentées comme les autres
-  lorsque la campagne de réexamen sera réalisée. Récit tenu « fait en partie ».
+- **Réexamen périodique (critère 2, IAM-18)** : `ReexamensAccesService` ouvre une campagne `AAAA-Tn` au premier jour
+  de chaque trimestre à 3 h (`gimac.iam.reexamen-planification`, désactivation par `gimac.iam.reexamen-actif=false`),
+  sous le verrou de tâches partagé et avec unicité de la période. Chaque ligne `AccessReviewDecision` fige profils et
+  permissions effectives de tous les comptes, `SBX_*` comprises. Décisions `MAINTENU`, `REDUIT` (sous-ensemble strict,
+  sans ajout) et `REVOQUE`, motif obligatoire pour les deux dernières ; réduction et révocation passent par
+  `AdministrationComptesService`, donc par ses contrôles, son journal et ses événements. Clôture refusée tant qu'un accès
+  est `EN_ATTENTE` ; à clôture, SHA-256 de la période et des lignes canoniques triées, approbateur et date conservés.
+  Actes `REEXAMEN_OUVERT`, `REEXAMEN_DECISION_*` et `REEXAMEN_CLOS` au journal d'administration.
+- **Routes MS-IAM** : `GET /api/v1/comptes/reexamens` et `GET /api/v1/comptes/reexamens/{id}` (`IAM_ACCOUNT_READ`),
+  `POST /api/v1/comptes/reexamens/ouverture` (`IAM_ACCOUNT_CREATE`, reprise de la période courante), décision et clôture
+  par `POST /api/v1/comptes/reexamens/{id}/comptes/{compteId}/decision` et `/cloture` (`IAM_ACCOUNT_ROLES`). La console
+  ajoute l'onglet « Réexamen des accès » à `/console/sandbox` : instantané, permissions SBX, décisions et empreinte.
+  La route BFF existante `/bff/console/iam/comptes/**` relaie ces appels ; les règles OPA des nouvelles écritures restent
+  à ajouter par le lot passerelle, hors du présent périmètre.
 
 | Critère | Test |
 |---|---|
 | 1. Verrouillage après le nombre d'échecs, déblocage par l'administrateur du GIMAC | `AdministrationComptesServiceTest.verrouillageEtDeblocage`, `AdministrationDelegueeIT.verrouillageEtDeblocage`, `ComptePage.test.tsx` |
-| 2. Réexamen des accès portant sur les rôles de la sandbox | en attente (IAM-18) |
+| 2. Réexamen des accès portant sur les rôles de la sandbox | `ReexamensAccesServiceTest`, `ReexamensAccesIT.campagneComplete`, `ReexamenAccesTest`, `reexamens.test.tsx` |
 | 3. Déblocage par l'administrateur de l'institution refusé et journalisé | `AdministrationDelegueeServiceTest.deblocageRefuse`, `AdministrationDelegueeIT.verrouillageEtDeblocage`, OPA `test_sbx_deblocage` |
 
 ## 9. Comptes de service de la sandbox (US-EXI-05, D-123)
@@ -841,3 +860,4 @@ approbations sur une nouvelle version du bilan) avant réalisation.
 | 2026-10-23 | - | §7.4 et §7.5 : lecture de SBX-LECTURE et notification de fin de campagne par MS-HOMOLOGATION (US-EXI-14, US-EXI-15) ; §7.6 : onglet « Résultats de la sandbox » du dossier de liaison (US-EXI-17) |
 | 2026-10-23 | - | §8.4 : accès de prestataire de maintenance (US-EXI-24, D-123) ; §9 : comptes de service de la sandbox et matrice des appels synchrones (US-EXI-05, D-123) |
 | 2026-10-23 | - | §8.5 : verrouillage et déblocage des comptes de la sandbox (US-EXI-23) ; §10 : événements à effet dans MS-AUDIT (US-EXI-10) ; §11 : notifications de la sandbox dans MS-NOTIFICATION (US-EXI-09) ; §12 : US-EXI-25 en attente (D-124) |
+| 2026-10-27 | - | §8.1 : sagas OUVERTURE et MATRICE ; §8.5 : campagne trimestrielle de réexamen, décisions, scellement, journal et onglet console (US-EXI-23 critère 2) ; raccordement OPA des écritures BFF signalé au lot passerelle |

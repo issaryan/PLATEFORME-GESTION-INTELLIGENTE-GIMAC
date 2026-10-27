@@ -14,8 +14,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import cm.gimac.des.iam.application.usecase.AvatarService;
+import cm.gimac.des.iam.application.usecase.sandbox.ComptesSandboxSagaService;
+import cm.gimac.des.iam.application.usecase.sandbox.ComptesSandboxSagaService.CompteSaga;
 import cm.gimac.des.iam.application.usecase.sandbox.DelegationsSandboxService;
 import cm.gimac.des.iam.application.usecase.sandbox.DelegationsSandboxService.VueDelegation;
+import cm.gimac.des.iam.application.usecase.sandbox.ReexamensAccesService;
+import cm.gimac.des.iam.application.usecase.sandbox.ReexamensAccesService.Campagne;
+import cm.gimac.des.iam.application.usecase.sandbox.ReexamensAccesService.VueCampagne;
 import cm.gimac.des.iam.application.usecase.sandbox.IntrospectionSandboxService;
 import cm.gimac.des.iam.domain.sandbox.Delegation;
 import cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation;
@@ -54,7 +59,7 @@ import tech.jhipster.config.JHipsterProperties;
  * jeton de service portant INTERNAL_IAM_SBX_SAGA, introspection à INTERNAL_IAM_SBX_INTROSPECT, lectures de la console à
  * IAM_ACCOUNT_READ sous deux facteurs ; INTERNAL_IAM_READ seul n'ouvre aucune route de la sandbox.
  */
-@WebMvcTest(controllers = { SandboxSagaInterneResource.class, SandboxIntrospectionResource.class, SandboxConsoleResource.class })
+@WebMvcTest(controllers = { SandboxSagaInterneResource.class, SandboxIntrospectionResource.class, SandboxConsoleResource.class, SandboxAccessReviewResource.class })
 @Import({ SecurityConfiguration.class, TestSecurityConfiguration.class, IamExceptionHandler.class })
 @EnableConfigurationProperties(JHipsterProperties.class)
 class SandboxPerimetresRoutesTest {
@@ -75,6 +80,12 @@ class SandboxPerimetresRoutesTest {
 
     @MockitoBean
     DelegationsSandboxService delegations;
+
+    @MockitoBean
+    ComptesSandboxSagaService comptesSaga;
+
+    @MockitoBean
+    ReexamensAccesService reexamens;
 
     static VueDelegation vue(boolean rejouee) {
         return new VueDelegation(
@@ -114,6 +125,19 @@ class SandboxPerimetresRoutesTest {
         when(delegations.approuverAccesPrestataire(any(), eq("a1"))).thenReturn(acces);
         when(delegations.refuserAccesPrestataire(any(), eq("a1"), eq("Non"))).thenReturn(acces);
         when(delegations.revoquerAccesPrestataire(any(), eq("a1"), eq("Fin"))).thenReturn(acces);
+        CompteSaga compte = new CompteSaga("c1", "awa.test", "Awa Test", "awa@test.cm", "99001", true, T, List.of("ROLE_SBX_TESTEUR"), List.of("SBX_CER_EXECUTION"), false);
+        when(comptesSaga.ouvrir(any(), any(), eq("saga-o/1"))).thenReturn(compte);
+        when(comptesSaga.ouvrir(any(), any(), eq("saga-o/replay"))).thenReturn(new CompteSaga("c1", "awa.test", "Awa Test", "awa@test.cm", "99001", true, T, List.of("ROLE_SBX_TESTEUR"), List.of("SBX_CER_EXECUTION"), true));
+        when(comptesSaga.lire("c1")).thenReturn(compte);
+        when(comptesSaga.matrice(any(), eq("c1"), eq(Set.of("ROLE_SBX_TESTEUR")), eq("Revue"), eq("saga-m/2"))).thenReturn(compte);
+        java.util.UUID rid = java.util.UUID.fromString("00000000-0000-0000-0000-000000000101");
+        Campagne campagne = new Campagne(rid, "2026-T4", cm.gimac.des.iam.domain.enumeration.ReviewState.OUVERTE, T, null, null, null, 1);
+        VueCampagne vueCampagne = new VueCampagne(campagne, List.of());
+        when(reexamens.lister()).thenReturn(List.of(campagne));
+        when(reexamens.ouvrirCourante(any())).thenReturn(campagne);
+        when(reexamens.lire(rid)).thenReturn(vueCampagne);
+        when(reexamens.decider(any(), eq(rid), eq("c1"), eq(cm.gimac.des.iam.domain.enumeration.ReviewDecision.MAINTENU), isNull(), isNull())).thenReturn(vueCampagne);
+        when(reexamens.cloturer(any(), eq(rid))).thenReturn(campagne);
     }
 
     @Test
@@ -218,5 +242,32 @@ class SandboxPerimetresRoutesTest {
             .andExpect(jsonPath("$.type").value("PRESTATAIRE"))
             .andExpect(jsonPath("$.composants[0]").value("SBX-TRACE"))
             .andExpect(jsonPath("$.permissions").isEmpty());
+    }
+
+    @Test
+    @DisplayName("Sagas OUVERTURE et MATRICE : compte partagé et profils SBX, clé relayée")
+    void ouvertureMatrice() throws Exception {
+        String corps = "{\"identifiant\":\"awa.test\",\"prenom\":\"Awa\",\"nom\":\"Test\",\"email\":\"awa@test.cm\",\"institutionId\":\"99001\",\"profils\":[\"ROLE_SBX_TESTEUR\"]}";
+        mvc.perform(post("/api/v1/interne/sandbox/comptes").with(service("INTERNAL_IAM_SBX_SAGA")).header("Idempotency-Key", "saga-o/1").contentType(MediaType.APPLICATION_JSON).content(corps))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.permissionsSbx[0]").value("SBX_CER_EXECUTION"));
+        mvc.perform(post("/api/v1/interne/sandbox/comptes").with(service("INTERNAL_IAM_SBX_SAGA")).header("Idempotency-Key", "saga-o/replay").contentType(MediaType.APPLICATION_JSON).content(corps))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.rejouee").value(true));
+        mvc.perform(get("/api/v1/interne/sandbox/comptes/c1").with(service("INTERNAL_IAM_SBX_SAGA"))).andExpect(status().isOk()).andExpect(jsonPath("$.identifiant").value("awa.test"));
+        mvc.perform(put("/api/v1/interne/sandbox/comptes/c1/profils-sandbox").with(service("INTERNAL_IAM_SBX_SAGA")).header("Idempotency-Key", "saga-m/2").contentType(MediaType.APPLICATION_JSON).content("{\"profils\":[\"ROLE_SBX_TESTEUR\"],\"motif\":\"Revue\"}"))
+            .andExpect(status().isOk());
+        mvc.perform(post("/api/v1/interne/sandbox/comptes").with(service("INTERNAL_IAM_READ")).contentType(MediaType.APPLICATION_JSON).content(corps)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("US-EXI-23 : lecture, ouverture, décision et clôture des campagnes de réexamen")
+    void reexamensRoutes() throws Exception {
+        String id = "00000000-0000-0000-0000-000000000101";
+        mvc.perform(get("/api/v1/comptes/reexamens").with(console("2", "IAM_ACCOUNT_READ"))).andExpect(status().isOk()).andExpect(jsonPath("$[0].period").value("2026-T4"));
+        mvc.perform(post("/api/v1/comptes/reexamens/ouverture").with(console("2", "IAM_ACCOUNT_CREATE"))).andExpect(status().isCreated());
+        mvc.perform(get("/api/v1/comptes/reexamens/" + id).with(console("2", "IAM_ACCOUNT_READ"))).andExpect(status().isOk());
+        mvc.perform(post("/api/v1/comptes/reexamens/" + id + "/comptes/c1/decision").with(console("2", "IAM_ACCOUNT_ROLES")).contentType(MediaType.APPLICATION_JSON).content("{\"decision\":\"MAINTENU\"}")).andExpect(status().isOk());
+        mvc.perform(post("/api/v1/comptes/reexamens/" + id + "/cloture").with(console("2", "IAM_ACCOUNT_ROLES"))).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/comptes/reexamens").with(console("1", "IAM_ACCOUNT_READ"))).andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/comptes/reexamens/" + id + "/cloture").with(console("2", "IAM_ACCOUNT_READ"))).andExpect(status().isForbidden());
     }
 }

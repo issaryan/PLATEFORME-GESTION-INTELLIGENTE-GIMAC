@@ -4,6 +4,7 @@ import { configurationHttp as fabriqueConfiguration } from './configuration'
 import { ouvrirFlux, plateformeHttp } from './plateforme'
 import { servicesConsoleHttp } from './index'
 import { infrastructureHttp } from './infrastructure'
+import { reexamensHttp } from './reexamens'
 
 // Adaptateurs HTTP de l'administration : routes /bff/console/iam ou /bff/des/iam (MS-IAM, D-69) et
 // /api/plateforme (MS-GATEWAY).
@@ -91,6 +92,26 @@ describe('comptes (MS-IAM)', () => {
   it('428 : réauthentification exigée remontée telle quelle', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({ code: 'IAM_REAUTH_REQUIRED', message: 'exigée' }, 428))
     await expect(comptesHttp.definirProfils('u-1', [], 'm', '')).rejects.toMatchObject({ status: 428, code: 'IAM_REAUTH_REQUIRED' })
+  })
+})
+
+describe('réexamens des accès (US-EXI-23)', () => {
+  it('campagne, décision et clôture sous /bff/console/iam/comptes/reexamens', async () => {
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => json({}))
+    const service = reexamensHttp()
+    await service.lister()
+    await service.ouvrir()
+    await service.lire('r 1')
+    await service.decider('r1', 'c 1', { decision: 'REDUIT', profils: ['ROLE_SBX_LECTEUR'], comment: 'Fin de mission' })
+    await service.cloturer('r1')
+    expect(appels(spy)).toEqual([
+      'GET /bff/console/iam/comptes/reexamens',
+      'POST /bff/console/iam/comptes/reexamens/ouverture',
+      'GET /bff/console/iam/comptes/reexamens/r%201',
+      'POST /bff/console/iam/comptes/reexamens/r1/comptes/c%201/decision',
+      'POST /bff/console/iam/comptes/reexamens/r1/cloture',
+    ])
+    expect(JSON.parse(String((spy.mock.calls[3][1] as RequestInit).body))).toEqual({ decision: 'REDUIT', profils: ['ROLE_SBX_LECTEUR'], comment: 'Fin de mission' })
   })
 })
 

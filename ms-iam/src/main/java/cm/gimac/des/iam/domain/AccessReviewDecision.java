@@ -33,13 +33,19 @@ public class AccessReviewDecision implements Serializable {
     @Column(name = "comment", length = 500)
     private String comment;
 
-    @NotNull
-    @Column(name = "decided_by", nullable = false)
+    @Column(name = "decided_by")
     private UUID decidedBy;
 
-    @NotNull
-    @Column(name = "decided_at", nullable = false)
+    @Column(name = "decided_at")
     private Instant decidedAt;
+
+    /** Profils du compte à l'ouverture de la campagne, ordonnés et séparés par un retour à la ligne. */
+    @Column(name = "profiles_snapshot", columnDefinition = "text")
+    private String profilesSnapshot;
+
+    /** Permissions effectives à l'ouverture, SBX_* incluses, dans le même format canonique. */
+    @Column(name = "permissions_snapshot", columnDefinition = "text")
+    private String permissionsSnapshot;
 
     @ManyToOne(optional = false)
     @NotNull
@@ -114,6 +120,32 @@ public class AccessReviewDecision implements Serializable {
 
     public void setDecidedAt(Instant decidedAt) {
         this.decidedAt = decidedAt;
+    }
+
+    public String getProfilesSnapshot() {
+        return this.profilesSnapshot;
+    }
+
+    public AccessReviewDecision profilesSnapshot(String profilesSnapshot) {
+        this.setProfilesSnapshot(profilesSnapshot);
+        return this;
+    }
+
+    public void setProfilesSnapshot(String profilesSnapshot) {
+        this.profilesSnapshot = profilesSnapshot;
+    }
+
+    public String getPermissionsSnapshot() {
+        return this.permissionsSnapshot;
+    }
+
+    public AccessReviewDecision permissionsSnapshot(String permissionsSnapshot) {
+        this.setPermissionsSnapshot(permissionsSnapshot);
+        return this;
+    }
+
+    public void setPermissionsSnapshot(String permissionsSnapshot) {
+        this.permissionsSnapshot = permissionsSnapshot;
     }
 
     public AccessReview getReview() {

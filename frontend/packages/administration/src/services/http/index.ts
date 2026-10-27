@@ -7,6 +7,7 @@ import { infrastructureHttp } from './infrastructure'
 import { organisationHttp } from './organisation'
 import { pouvoirsAdministrationHttp } from './pouvoirs'
 import { sandboxHttp } from './sandbox'
+import { reexamensHttp } from './reexamens'
 
 /**
  * Services réels de l'administration, par la passerelle : /bff/console/iam pour la console, /bff/des/iam
@@ -26,5 +27,6 @@ export function servicesConsoleHttp(couche: Extract<Couche, 'console' | 'des'> =
     reauth: { assertion: (purpose) => getReauthAssertion(couche, purpose) },
     // Sandbox GIMAC (D-119) : console seulement (/bff/console/iam/sandbox).
     sandbox: sandboxHttp(),
+    reexamens: reexamensHttp(),
   }
 }

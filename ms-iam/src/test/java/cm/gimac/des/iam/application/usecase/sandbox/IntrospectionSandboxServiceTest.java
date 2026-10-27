@@ -182,12 +182,15 @@ class IntrospectionSandboxServiceTest {
         Instant t = horloge.instant();
         prestataire("a1", t.minusSeconds(3600), t.plusSeconds(60), cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation.ACCORDEE);
         jetons.put("j-presta-long", Map.of("sub", delegations.lignes.get("a1").compteId()));
+        assertThat(service.introspecter("j-presta", null, "SBX-TRACE").expiration()).isEqualTo(t.plusSeconds(60));
         assertThat(service.introspecter("j-presta-long", null, "SBX-TRACE").expiration()).isEqualTo(t.plusSeconds(60));
         horloge.avancer(java.time.Duration.ofSeconds(60));
         assertThat(service.introspecter("j-presta", null, "SBX-TRACE").motifRefus()).isEqualTo("COMPOSANT_HORS_ACCES");
         assertThat(service.introspecter("j-presta", null).motifRefus()).isEqualTo("ACCES_PRESTATAIRE_INACTIF");
         prestataire("a2", t, t.plusSeconds(7200), cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation.DEMANDEE);
         assertThat(service.introspecter("j-presta", null).active()).isFalse();
+        prestataire("a3", t.plusSeconds(120), t.plusSeconds(7200), cm.gimac.des.iam.domain.sandbox.Delegation.EtatDelegation.ACCORDEE);
+        assertThat(service.introspecter("j-presta", null, "SBX-TRACE").motifRefus()).isEqualTo("COMPOSANT_HORS_ACCES");
     }
 
     @Test

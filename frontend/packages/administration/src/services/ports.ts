@@ -1,5 +1,6 @@
 import type { SessionCompte } from '@gimac/compte'
 import type { ServiceSandboxIam } from './portsSandbox'
+import type { ServiceReexamens } from './portsReexamens'
 import type { SignPurpose } from '@gimac/socle'
 import type { Application, DefinitionFonctionnalite, Demande, EntreePouvoirs, EtatDemande, MatricePouvoirs, PageDemandes, PouvoirsProfil, SaisieFonctionnalite, Unite } from '@gimac/lot1'
 import type { ActionRequise, Compte, Creation, DemandeAffectation, DemandeRattachement, OptionsOrganigrammePdf, ResultatAffectation, EntreeJournal, FicheCompte, FiltreComptes, FiltreJournal, IndicateursComptes, NouveauCompte, Page, Verrouillage } from '../modele/comptes'
@@ -173,4 +174,6 @@ export interface ServicesConsole {
   reauth: ServiceReauthentification
   /** Sandbox GIMAC (D-119) : périmètres suspendus, comptes protégés, délégations et comptes de service. */
   sandbox: ServiceSandboxIam
+  /** Réexamen trimestriel de tous les accès, permissions SBX incluses (US-EXI-23). */
+  reexamens: ServiceReexamens
 }
