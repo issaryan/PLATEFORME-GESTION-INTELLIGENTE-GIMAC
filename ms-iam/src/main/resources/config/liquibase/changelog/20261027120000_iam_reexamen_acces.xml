@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="20261027120000-1" author="gimac">
+        <addColumn tableName="access_review_decision">
+            <column name="profiles_snapshot" type="text"/>
+            <column name="permissions_snapshot" type="text"/>
+        </addColumn>
+        <dropNotNullConstraint tableName="access_review_decision" columnName="decided_by" columnDataType="${uuidType}"/>
+        <dropNotNullConstraint tableName="access_review_decision" columnName="decided_at" columnDataType="${datetimeType}"/>
+        <sql dbms="postgresql">ALTER TABLE access_review_decision ADD CONSTRAINT ck_access_review_decision_etat CHECK ((decision = 'EN_ATTENTE' AND decided_by IS NULL AND decided_at IS NULL) OR (decision &lt;&gt; 'EN_ATTENTE' AND decided_by IS NOT NULL AND decided_at IS NOT NULL))</sql>
+    </changeSet>
+</databaseChangeLog>

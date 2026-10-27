@@ -1,4 +1,5 @@
 import { sandboxSimulee } from './sandbox'
+import { reexamensSimules } from './reexamens'
 import { ReauthCancelled, lirePreference } from '@gimac/socle'
 import { creerSimulateur, type Compte, type SessionCompte } from '@gimac/compte'
 import type { EntreeJournal, ParJour, Verrouillage } from '../../modele/comptes'
@@ -799,6 +800,7 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
     pouvoirs,
     plateforme,
     sandbox: sandboxSimulee({ attendre, refus }),
+    reexamens: reexamensSimules(),
     infrastructure: infrastructureSimulee({
       attendre, refus, acteur, assertionValide: (a) => a === ASSERTION_SIMULEE, orchestrateur: o.orchestrateur ?? orchestrateurDemo(), dureeGesteMs: o.dureeGesteMs, latenceMs: o.latenceMs,
     }),

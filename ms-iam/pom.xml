@@ -916,6 +916,7 @@
                                     <include>cm/gimac/des/iam/infrastructure/persistence/EtapesIdempotentesJdbc*</include>
                                     <include>cm/gimac/des/iam/infrastructure/securite/LecteurJetonJwt*</include>
                                     <include>cm/gimac/des/iam/infrastructure/scheduling/DesactivationInactifsPlanifiee*</include>
+                                    <include>cm/gimac/des/iam/infrastructure/scheduling/ReexamenAccesPlanifie*</include>
                                     <include>cm/gimac/des/iam/web/rest/lot1/Sandbox*</include>
                                 </includes>
                                 <rules>

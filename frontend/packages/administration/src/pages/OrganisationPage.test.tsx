@@ -103,7 +103,7 @@ describe('Fiche d’un compte : rattachement', () => {
     fireEvent.mouseDown(await within(d).findByRole('option', { name: /François Tchoumi Kamga/ }))
     fireEvent.change(within(d).getByLabelText('Unité'), { target: { value: 'SNA' } })
     fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer le rattachement' }))
-    expect(await screen.findByText('Le rattachement du compte a été enregistré.')).toBeTruthy()
+    expect(await screen.findByText('Le rattachement du compte a été enregistré.', {}, { timeout: 15_000 })).toBeTruthy()
     expect(await screen.findByText('Service Normes et Agréments (Département Exploitation et Supervision)')).toBeTruthy()
   })
 

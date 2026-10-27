@@ -1,0 +1,48 @@
+package cm.gimac.des.iam.web.rest.lot1;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import cm.gimac.des.iam.AbstractIamIT;
+import cm.gimac.des.iam.application.port.out.Annuaire;
+import com.jayway.jsonpath.JsonPath;
+import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+
+/** Contrat interne OUVERTURE/MATRICE de SBX-ESPACE sur l'annuaire et PostgreSQL. */
+class ComptesSandboxSagaIT extends AbstractIamIT {
+
+    @Autowired Annuaire annuaire;
+
+    static RequestPostProcessor sbxEspace() {
+        return jwt().jwt(j -> j.subject("sa-sbx-espace").claim("preferred_username", "service-account-sbx-espace")).authorities(new SimpleGrantedAuthority("INTERNAL_IAM_SBX_SAGA"));
+    }
+
+    @Test
+    @DisplayName("OUVERTURE rejouée sans doublon, puis MATRICE limitée aux profils SBX")
+    void ouvertureEtMatrice() throws Exception {
+        String suffixe = UUID.randomUUID().toString().substring(0, 8);
+        String identifiant = "saga." + suffixe;
+        String cle = "saga-" + suffixe + "/1";
+        String corps = "{\"identifiant\":\"" + identifiant + "\",\"prenom\":\"Awa\",\"nom\":\"Saga\",\"email\":\"" + identifiant + "@test.cm\",\"institutionId\":\"99001\",\"profils\":[\"ROLE_SBX_TESTEUR\"]}";
+        String response = mvc.perform(post("/api/v1/interne/sandbox/comptes").with(sbxEspace()).header("Idempotency-Key", cle).contentType(MediaType.APPLICATION_JSON).content(corps))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.identifiant").value(identifiant)).andReturn().getResponse().getContentAsString();
+        String id = JsonPath.read(response, "$.id");
+        mvc.perform(post("/api/v1/interne/sandbox/comptes").with(sbxEspace()).header("Idempotency-Key", cle).contentType(MediaType.APPLICATION_JSON).content(corps))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(id)).andExpect(jsonPath("$.rejouee").value(true));
+        annuaire.definirProfils(id, java.util.Set.of("ROLE_SBX_TESTEUR", "ROLE_CORRESPONDANT"));
+        mvc.perform(put("/api/v1/interne/sandbox/comptes/{id}/profils-sandbox", id).with(sbxEspace()).header("Idempotency-Key", "saga-" + suffixe + "/2").contentType(MediaType.APPLICATION_JSON).content("{\"profils\":[\"ROLE_SBX_LECTEUR\"],\"motif\":\"Matrice de recette\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.profils[?(@ == 'ROLE_CORRESPONDANT')]").isNotEmpty());
+        assertThat(annuaire.lire(id).orElseThrow().profils()).containsExactlyInAnyOrder("ROLE_CORRESPONDANT", "ROLE_SBX_LECTEUR");
+        assertThat(jdbc.queryForObject("select count(*) from etape_idempotente where cle in (?, ?)", Integer.class, cle, "saga-" + suffixe + "/2")).isEqualTo(2);
+    }
+}
