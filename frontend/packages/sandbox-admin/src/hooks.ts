@@ -33,5 +33,27 @@ export function useActeEspace() {
   })
 }
 
+const KS = ['sandbox', 'supervision'] as const
+
+export function useEtatSante() {
+  const { supervision } = useServicesSandbox()
+  return useQuery({ queryKey: [...KS, 'sante'], queryFn: supervision.etatSante })
+}
+
+export function useElementsSupervises(page: number, taille: number) {
+  const { supervision } = useServicesSandbox()
+  return useQuery({ queryKey: [...KS, 'elements', page, taille], queryFn: () => supervision.elements({ page, taille }) })
+}
+
+export function useAlertesSandbox(page: number, taille: number) {
+  const { supervision } = useServicesSandbox()
+  return useQuery({ queryKey: [...KS, 'alertes', page, taille], queryFn: () => supervision.alertes({ page, taille }) })
+}
+
+export function useDisponibilites(page: number, taille: number) {
+  const { supervision } = useServicesSandbox()
+  return useQuery({ queryKey: [...KS, 'disponibilites', page, taille], queryFn: () => supervision.disponibilites({ page, taille }) })
+}
+
 /** Clé d'idempotence d'une intention : tirée à l'ouverture du dialogue, gardée pour ses nouvelles tentatives. */
 export const nouvelleCle = (): string => crypto.randomUUID()

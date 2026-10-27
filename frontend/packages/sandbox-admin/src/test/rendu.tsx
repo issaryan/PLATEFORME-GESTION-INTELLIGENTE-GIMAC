@@ -9,19 +9,20 @@ import { catalogues } from '../i18n'
 import { ServicesSandboxProvider } from '../services/contexte'
 import { servicesSandboxSimules, type OptionsEspacesSimules } from '../services/simule'
 import type { ServicesSandbox } from '../services/ports'
-import { PERMISSION } from '../modele'
+import type { OptionsSupervisionSimulee } from '../services/supervisionSimulee'
+import { PERMISSION, PERMISSION_SUPERVISION } from '../modele'
 
 // Monte un écran comme dans l'application du département : routeur (/des/sandbox/*), services simulés sans latence,
 // requêtes sans réessai, session portant les permissions demandées. Aucun appel réseau.
 
-export const ADMIN = [PERMISSION.consultation, PERMISSION.administration, 'PIL_ACTIVITY_OWN']
+export const ADMIN = [PERMISSION.consultation, PERMISSION.administration, PERMISSION_SUPERVISION, 'PIL_ACTIVITY_OWN']
 export const LECTEUR = [PERMISSION.consultation, 'PIL_ACTIVITY_OWN']
 
 export const session = (permissions: string[]): Session => ({
   sujet: 'u-test', nom: 'Agent de test', identifiant: 'test', roles: [], permissions, institutionId: '', acr: '2', doubleFacteur: true,
 })
 
-export const simules = (o: Partial<OptionsEspacesSimules> = {}) => servicesSandboxSimules({ permissions: ADMIN, maintenant: () => new Date('2026-10-22T09:00:00Z'), ...o })
+export const simules = (o: Partial<OptionsEspacesSimules & OptionsSupervisionSimulee> = {}) => servicesSandboxSimules({ permissions: ADMIN, maintenant: () => new Date('2026-10-22T09:00:00Z'), ...o })
 
 export function rendre(page: ReactElement, o: { permissions?: string[]; services?: ServicesSandbox; langue?: Langue; chemin?: string; route?: string } = {}) {
   if (!i18next.isInitialized) initI18n([...cataloguesLot1, ...catalogues], o.langue ?? 'fr')

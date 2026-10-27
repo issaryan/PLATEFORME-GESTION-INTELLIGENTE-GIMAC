@@ -35,3 +35,31 @@ export type ActeEspace = 'suspension' | 'retablissement' | 'fermeture'
 
 /** Permissions de l'écran (la mention SBX_ESP_* de D-118 est une coquille, corrigée par D-122). */
 export const PERMISSION = { consultation: 'SBX_HAB_CONSULTATION', administration: 'SBX_HAB_ADMINISTRATION' } as const
+
+// Contrat de supervision de SBX-TRACE (D-121), servi sous /bff/des/sbx-trace et réécrit en /api/v1/console.
+export const PERMISSION_SUPERVISION = 'SBX_SUP_CONSULTATION'
+export type NiveauSante = 'NOMINAL' | 'DEGRADE' | 'INDISPONIBLE' | 'EN_MAINTENANCE'
+export type Criticite = 'MINEURE' | 'MAJEURE' | 'CRITIQUE'
+export type PageSupervision<T> = { elements: T[]; total: number; page: number; taille: number; suivant: string | null }
+export type EtatSante = { id: string; niveauGlobal: NiveauSante; etatsModules: string; causeExterne: boolean; calculeLe: string }
+export type ElementSupervise = {
+  id: string
+  nature: string
+  module: string
+  codeParticipant: string | null
+  seuilDelai: string | null
+  seuilEchecs: number | null
+  criticite: Criticite
+  externe: boolean
+  enMaintenance: boolean
+}
+export type Alerte = {
+  id: string
+  criticite: Criticite
+  message: string
+  etat: 'LEVEE' | 'CLOSE'
+  leveeLe: string
+  closeLe: string | null
+  element: { id: string; nature: string }
+}
+export type Disponibilite = { id: string; code: string; module: string | null; periode: string; valeur: number; publieLe: string }

@@ -36,9 +36,9 @@ function monter(chemin: string, o: { permissions?: string[]; garde?: (cle: strin
 }
 
 describe('espace sandbox du DES', () => {
-  it('registre : « Espaces des institutions » gardée par SBX_HAB_CONSULTATION, chemin sous /des/sandbox', () => {
-    expect(ENTREES_SANDBOX.map((e) => [e.cle, e.permission])).toEqual([['sandboxEspaces', 'SBX_HAB_CONSULTATION']])
-    expect(CHEMINS_SANDBOX).toEqual({ sandboxEspaces: '/des/sandbox/espaces' })
+  it('registre : espaces et supervision gardés par leurs permissions, chemins sous /des/sandbox', () => {
+    expect(ENTREES_SANDBOX.map((e) => [e.cle, e.permission])).toEqual([['sandboxEspaces', 'SBX_HAB_CONSULTATION'], ['sandboxSupervision', 'SBX_SUP_CONSULTATION']])
+    expect(CHEMINS_SANDBOX).toEqual({ sandboxEspaces: '/des/sandbox/espaces', sandboxSupervision: '/des/sandbox/supervision' })
   })
 
   it('routes : liste, fiche, et toute autre adresse ramène à la première entrée', async () => {
@@ -60,10 +60,9 @@ describe('espace sandbox du DES', () => {
     expect(await screen.findByText(i18next.t('catalogue.refuse.titre'))).toBeTruthy()
   })
 
-  it('une entrée de plus s’ajoute sans toucher aux autres', async () => {
-    const supervision: EntreeSandbox = { cle: 'sandboxSupervision', chemin: 'supervision', permission: 'SBX_TRA_CONSULTATION', routes: [{ chemin: 'supervision', page: () => <h1>Supervision</h1> }] }
-    monter('/des/sandbox/supervision', { entrees: [...ENTREES_SANDBOX, supervision], permissions: [...ADMIN, 'SBX_TRA_CONSULTATION'] })
-    expect(await screen.findByRole('heading', { level: 1, name: 'Supervision' })).toBeTruthy()
+  it('la supervision s’ajoute sans toucher aux autres', async () => {
+    monter('/des/sandbox/supervision')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Supervision de la sandbox' })).toBeTruthy()
   })
 
   it('services : employés hors de leur fournisseur, une erreur explicite', () => {
