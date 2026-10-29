@@ -4,6 +4,7 @@ import static cm.gimac.des.pilotage.web.rest.activite.Jetons.appelant;
 
 import cm.gimac.des.pilotage.application.port.in.InstancesProcessusUseCase;
 import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase;
+import cm.gimac.des.pilotage.application.usecase.PdfInstanceService;
 import cm.gimac.des.pilotage.web.rest.activite.Jetons;
 import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.ChampsRequete;
 import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.InstanceResumeVue;
@@ -48,6 +49,9 @@ public class InstanceProcessusResource {
 
     private final InstancesProcessusUseCase instances;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private PdfInstanceService pdf;
+
     public InstanceProcessusResource(InstancesProcessusUseCase instances) {
         this.instances = instances;
     }
@@ -68,6 +72,18 @@ public class InstanceProcessusResource {
     @PreAuthorize(Jetons.ACTIVITE)
     public InstanceVue lire(@PathVariable UUID id, Authentication auth) {
         return InstanceVue.de(instances.instance(appelant(auth), id));
+    }
+
+    /** PDF de la demande initiée et de ses signatures, avec les droits de lecture de l'instance. */
+    @GetMapping("/{id}/pdf")
+    @PreAuthorize(Jetons.ACTIVITE)
+    public ResponseEntity<byte[]> pdf(@PathVariable UUID id, Authentication auth) {
+        PdfInstanceService.PdfInstance document = pdf.telecharger(appelant(auth), id);
+        return ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_PDF)
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
+            .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(document.nomFichier(), StandardCharsets.UTF_8).build().toString())
+            .body(document.contenu());
     }
 
     /**

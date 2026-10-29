@@ -106,7 +106,7 @@ Rollup élaguer le simulateur, si bien qu'un paquet construit pour la production
 
 ## Image
 
-`Dockerfile` commun, argument `APPLICATION` (et `SERVICES`, `http` par défaut) : les manifestes `package.json` de tous les espaces de travail (racine, `packages/*`, `apps/*`, `e2e`) sont d'abord extraits à leur place pour `npm ci` (tout nouvel espace de travail est pris en compte sans modifier le fichier), puis construction avec Node 22 et service par `nginx-unprivileged` sur le port 8080, sous un utilisateur non root, en lecture seule. `nginx/gimac.conf.template` et `nginx/securite.conf` fixent la politique de sécurité du contenu, le cache et le relais vers la passerelle (`/api`, `/bff`, `/logout` ; plus de `/oauth2` ni de `/login` depuis D-65) ; les flux SSE (`/api/plateforme/flux`, `/bff/<couche>/live`) passent sans mise en tampon (HTTP/1.1, `proxy_buffering off`, délai de lecture de 24 h). `/sante` sert de sonde. Chaque couche est servie à la racine de son port ou de son hôte (4200, 4201, 4202 sous Docker Compose ; `departement`, `portail`, `console.des.gimac.local` sous Kubernetes) et route elle-même `/des`, `/portail` ou `/console`.
+`Dockerfile` commun, argument `APPLICATION` (et `SERVICES`, `http` par défaut) : les manifestes `package.json` de tous les espaces de travail (racine, `packages/*`, `apps/*`, `e2e`) sont d'abord extraits à leur place pour `npm ci` (tout nouvel espace de travail est pris en compte sans modifier le fichier), puis construction avec Node 22 et service par `nginx-unprivileged` sur le port 8080, sous un utilisateur non root, en lecture seule. `nginx/gimac.conf.template` et `nginx/securite.conf` fixent la politique de sécurité du contenu, le cache et le relais vers la passerelle (`/api`, `/bff`, `/logout` ; plus de `/oauth2` ni de `/login` depuis D-65) ; le `proxy_pass` statique respecte `/etc/hosts`, notamment `host.docker.internal` pour joindre une passerelle sur l'hôte de recette ; les flux SSE (`/api/plateforme/flux`, `/bff/<couche>/live`) passent sans mise en tampon (HTTP/1.1, `proxy_buffering off`, délai de lecture de 24 h). `/sante` sert de sonde. Chaque couche est servie à la racine de son port ou de son hôte (4200, 4201, 4202 sous Docker Compose ; `departement`, `portail`, `console.des.gimac.local` sous Kubernetes) et route elle-même `/des`, `/portail` ou `/console`.
 
 ## Connexion, premier accès et sessions (D-65)
 
@@ -143,6 +143,12 @@ et le super administrateur, y a accès (D-64). Service HTTP `/bff/console/collab
 poussé `/bff/console/live` ; les liaisons citées s'y affichent en texte, sans citation ni lien vers le DES.
 La configuration du serveur d'envoi des courriels est sous « Courriels de la plateforme »
 (`/console/plateforme/courriels`).
+
+## Demande de changement (28/10/2026)
+
+Le processus simulé `DEMANDE_CHANGEMENT` reproduit le modèle MS-PILOTAGE : référence datée `CHG-AAAA-MM-JJ-NNNNNN`, douze champs de lancement, trois étapes du demandeur, dépôt du dossier PDF par le responsable désigné, puis décision SSI signée. Le suivi d'une instance affiche sa référence et propose **Télécharger le PDF** ; le service HTTP lit `/bff/des/pilotage/processus/instances/{id}/pdf` en `application/pdf`.
+
+Le scénario `e2e/specs/demande-changement.spec.ts` exécute ce cycle avec les services simulés et FIDO2 simulé, en clair et en sombre. Il conserve huit captures dans `e2e/captures/demande-changement/` : formulaire, étapes du demandeur, zone SSI et décision signée. Les seuils Vitest de 98 % ajoutés pour cette évolution visent uniquement ses nouveaux fichiers, pas l'ensemble du dépôt.
 
 ## Sandbox GIMAC : administration, supervision et recette
 
@@ -202,3 +208,4 @@ Enveloppe commune IHM-01, bibliothèque de composants IHM-02, navigation élagu�
 | 2026-10-23 | D-122 | DES : onglet « Résultats de la sandbox » du dossier de liaison (`OngletSandbox`, US-EXI-17), exécutions paginées ; captures (`e2e/captures/exi-homologation/capturer.mjs`) |
 | 2026-10-23 | D-123, D-124 | Console « Sandbox GIMAC » : onglets « Accès de prestataire » (US-EXI-24) et « Registre d'audit » (US-EXI-10) ; fiche du compte : verrouillage et déblocage (US-EXI-23) ; type de notification `SANDBOX` (US-EXI-09) |
 | 2026-10-27 | D-121 | Supervision de la sandbox dans `@gimac/sandbox-admin`, réexamen US-EXI-23 dans `@gimac/administration` ; DEMO-SBX-12 : 12 contrôles et 64 captures ; 189 puis 46 tests Vitest et couvertures documentées |
+| 2026-10-28 | - | Demande de changement : modèle simulé et références, téléchargement PDF d'une instance, tests ciblés à 98 %, scénario Playwright et huit captures clair/sombre |

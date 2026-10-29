@@ -110,6 +110,12 @@ Validations réellement exécutées et conservées dans les rapports du 27/10 :
 
 **Limites de preuve** : les assemblages spécifiques de recette restent à résorber dans l'assemblage courant ; l'autorité de certification mTLS locale n'est pas livrée ; le Compose complet n'a pas été démarré pour cette intégration ; aucune exécution ne démontre un raccordement à de vrais serveurs GIMAC. Les validations ci-dessus ne doivent donc pas être présentées comme une recette de production.
 
+## État au 28/10/2026 — Demande de changement
+
+- **Processus d'unité `DEMANDE_CHANGEMENT`** dans MS-PILOTAGE : unité SSI, ouvert à tout le GIMAC, référence automatique `CHG-{AAAA}-{MM}-{JJ}-{NNNNNN}`, douze champs de lancement et cinq étapes (identification, raison, impact, implémentation, décision SSI). Le dossier PDF est obligatoire et la décision SSI est signée sur son empreinte.
+- **Export PDF d'une instance** : `GET /api/v1/processus/instances/{id}/pdf`, avec les données du demandeur, les champs d'étapes et les signatures ; rendu par MS-DOCUMENT en production, adaptateur simulé hors production. Le bouton de téléchargement est disponible dans le suivi frontend.
+- **Preuves locales** : tests ciblés MS-PILOTAGE et scénario d'intégration réussis avec seuils JaCoCo à 98 % ; 214 tests OPA sur 214 ; scénario Playwright complet et huit captures en clair et sombre. Le service réel MS-DOCUMENT et FIDO2 réel n'ont pas été exercés ; aucun déploiement ni serveur GIMAC n'a été sollicité.
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -197,3 +203,4 @@ Validations réellement exécutées et conservées dans les rapports du 27/10 :
 | 2026-10-23 | D-124 | Sandbox GIMAC, US-EXI-23, US-EXI-10, US-EXI-09 : verrouillage et déblocage des comptes depuis la console ; registre d'audit de la sandbox (MS-AUDIT) ; notifications de la sandbox (MS-NOTIFICATION, type `SANDBOX`) ; US-EXI-25 en attente d'une décision |
 | 2026-10-27 | - | EXI : introspection MS-IAM et cloisonnement immédiat, sagas OUVERTURE/MATRICE, réexamen US-EXI-23, supervision D-121 et règles OPA ; DEMO-SBX-12 : 12 contrôles et 64 captures ; validations et limites de preuve actualisées |
 | 2026-10-27 | D-125 | US-EXI-25 réalisé : socle d'évaluation par empreinte, cycle et caducité des quitus, refus des signatures sur ancien socle ; `clean verify` réussi sur MS-HOMOLOGATION et MS-CERTIFICATION |
+| 2026-10-28 | - | Processus d'unité `DEMANDE_CHANGEMENT`, références automatiques et export PDF dans MS-PILOTAGE ; cycle simulé, téléchargement et captures clair/sombre dans le frontend ; habilitation de rendu et règle OPA documentées |

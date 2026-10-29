@@ -33,6 +33,7 @@ import cm.gimac.des.pilotage.domain.processus.Intervenant;
 import cm.gimac.des.pilotage.domain.processus.Livrable;
 import cm.gimac.des.pilotage.domain.processus.ModeIntervenant;
 import cm.gimac.des.pilotage.domain.processus.Processus;
+import cm.gimac.des.pilotage.domain.processus.ReferenceProcessus;
 import cm.gimac.des.pilotage.domain.processus.SignatureInstance;
 import cm.gimac.des.pilotage.domain.processus.SignatureRequise;
 import cm.gimac.des.pilotage.domain.service.ControleProcessus;
@@ -266,6 +267,9 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         Instant le = horloge.instant();
         InstanceProcessus i = new InstanceProcessus(p, intitule, appelant.id(), nPlus1, designations, le);
         i.renseignerFormulaire(formulaire);
+        if (p.getReferenceModele() != null) {
+            i.definirReference(ReferenceProcessus.suivante(p.getReferenceModele(), p.getCode(), ReglesActivite.aujourdhui(horloge), instances.prochaineReference()));
+        }
         instances.save(i);
         List<String> ordre = GrapheProcessus.kahn(p.getEtapes()).ordre();
         List<EtapeInstance> l2 = new ArrayList<>();

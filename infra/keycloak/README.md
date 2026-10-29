@@ -29,6 +29,8 @@ Le générateur réserve `INTERNAL_IAM_SBX_SAGA` au client `sbx-espace` et donne
 
 Le rattachement des jetons de service au certificat client (RFC 8705) reste une configuration de déploiement. Aucune autorité de certification mTLS locale n'est livrée dans cet environnement ; les tests du domaine et Testcontainers ne constituent pas une preuve de mTLS bout en bout ni de raccordement à des serveurs GIMAC réels.
 
+**Rendu PDF des processus (28/10/2026).** Le compte de service `pilotage-service` porte aussi `INTERNAL_DOCUMENT_RENDER`, limité à `POST /api/v1/interne/rendus/pdf` de MS-DOCUMENT pour l'export PDF des instances de processus. Les JSON de domaine sont régénérés par `generer-realm-gimac.py`, jamais édités directement.
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -47,3 +49,4 @@ Le rattachement des jetons de service au certificat client (RFC 8705) reste une 
 | 2026-10-13 | D-107 | D-107 : permission `REF_REPRISE_IMPORT` (super administrateur) et client de service `reprise-service` (`GIMAC_SECRET_REPRISE_SERVICE`) |
 | 2026-10-23 | D-123 | US-EXI-05 : clients `sbx-*` et `sbx-mifos`, permissions `INTERNAL_SBX_*` du tableau des appels synchrones (`APPELS_SBX`), `INTERNAL_SBX_LECTURE_READ` pour `homologation-service`, client `exploitation-service` (`INTERNAL_HOMOLOGATION_REPUBLISH`) ; matrice vérifiée par le générateur |
 | 2026-10-27 | - | Introspection du cloisonnement et sagas US-EXI-23 documentées ; rattachement RFC 8705 toujours dépendant d'une AC mTLS locale non livrée |
+| 2026-10-28 | - | `INTERNAL_DOCUMENT_RENDER` ajoutée au client `pilotage-service` pour le PDF des instances de processus ; domaines régénérés |

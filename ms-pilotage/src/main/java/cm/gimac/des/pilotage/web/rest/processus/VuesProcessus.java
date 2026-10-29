@@ -103,6 +103,7 @@ final class VuesProcessus {
         List<Etape> etapes,
         InitiateursVue initiateurs,
         Formulaire formulaire,
+        String referenceModele,
         String creeLe,
         PersonneVue creePar,
         String modifieLe,
@@ -150,6 +151,7 @@ final class VuesProcessus {
                 p.getEtapes(),
                 InitiateursVue.de(p.getInitiateurs(), noms),
                 p.getFormulaire(),
+                p.getReferenceModele(),
                 ReglesActivite.horodatage(p.getCreeLe()),
                 PersonneVue.de(p.getCreePar(), noms),
                 ReglesActivite.horodatage(p.getModifieLe()),
@@ -323,6 +325,7 @@ final class VuesProcessus {
 
     record InstanceVue(
         UUID id,
+        String reference,
         ProcessusRef processus,
         String unite,
         String intitule,
@@ -346,6 +349,7 @@ final class VuesProcessus {
             i.getDesignations().forEach((k, v) -> designations.put(k, PersonneVue.de(v, noms)));
             return new InstanceVue(
                 i.getId(),
+                i.getReference(),
                 ProcessusRef.de(i),
                 i.getUnite(),
                 i.getIntitule(),
@@ -472,6 +476,7 @@ final class VuesProcessus {
     /** Ligne de « Mes demandes » (GET /processus/demandes, D-98 §3). */
     record DemandeVue(
         UUID id,
+        String reference,
         ProcessusRef processus,
         String unite,
         String intitule,
@@ -510,6 +515,7 @@ final class VuesProcessus {
                 .toList();
             return new DemandeVue(
                 i.getId(),
+                i.getReference(),
                 ProcessusRef.de(i),
                 i.getUnite(),
                 i.getIntitule(),
@@ -532,6 +538,7 @@ final class VuesProcessus {
 
     record InstanceResumeVue(
         UUID id,
+        String reference,
         ProcessusRef processus,
         String unite,
         String intitule,
@@ -546,6 +553,7 @@ final class VuesProcessus {
             InstanceProcessus i = l.instance();
             return new InstanceResumeVue(
                 i.getId(),
+                i.getReference(),
                 ProcessusRef.de(i),
                 i.getUnite(),
                 i.getIntitule(),

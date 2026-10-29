@@ -1,6 +1,7 @@
 import { depotsHttp, http, televerser } from '@gimac/socle'
 import type { ServiceProcessus } from '../ports'
 import { PILOTAGE } from './pilotage'
+import { telechargerProcessusPdf } from './processus-pdf'
 
 // Processus d'unité (D-87, docs/lot1/processus-unite.md §3 et §5.1) : MS-PILOTAGE derrière la passerelle,
 // /bff/des/pilotage/processus/** réécrit vers /api/v1/processus/**. Livrables : dépôts fragmentés de MS-DOCUMENT
@@ -35,6 +36,7 @@ export const processusHttp: ServiceProcessus = {
   televerserPieceLancement: (fichier, processusId, o) => televerser(depotsHttp('des'), fichier, { finalite: 'PROCESSUS_UNITE', reference: processusId }, o),
   lancer: (id, l) => http.post(`${definition(id)}/instances`, { body: l }),
   instance: (id) => http.get(instance(id)),
+  telechargerPdf: telechargerProcessusPdf,
   documentInstance: (id, doc) => http.blob(`${instance(id)}/documents/${encodeURIComponent(doc)}`, '*/*'),
   televerserLivrable: (fichier, instanceId, o) => televerser(depotsHttp('des'), fichier, { finalite: 'PROCESSUS_UNITE', reference: instanceId }, o),
   deposerLivrable: (id, code, livrable, documentId) => http.post(`${etape(id, code)}/livrables`, { body: { livrable, documentId } }),

@@ -60,4 +60,7 @@ public interface InstanceProcessusRepository extends JpaRepository<InstanceProce
     Page<InstanceProcessus> miennes(@Param("moi") String moi, @Param("etat") String etat, Pageable page);
 
     long countByProcessusId(UUID processusId);
+
+    @Query(value = "select nextval('processus_instance_reference_seq')", nativeQuery = true)
+    long prochaineReference();
 }

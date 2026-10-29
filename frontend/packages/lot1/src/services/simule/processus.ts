@@ -13,6 +13,8 @@ import type { MagasinPouvoirs } from './pouvoirs'
 import { DUREE_ETAPE_DOCUMENT_MS, type PontTachesProcessus } from './pilotage'
 import { PRESENTATIONS_PROFILS } from './presentations'
 import { pdfDemo } from './messagerie'
+import { definitionChangementDemo } from './changement-modele'
+import { referenceSimulee } from './reference-processus'
 
 // MS-PILOTAGE simulé pour les processus d'unité (D-87, docs/lot1/processus-unite.md §5) : mêmes formes et mêmes codes de
 // refus que le service ; ses règles ne sont qu'une imitation (contrôle de publication, versions, résolution des
@@ -325,7 +327,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       delaiMaxJours: s.delaiMaxJours ?? null, etapes: s.etapes.map(normaliserEtape), creeLe: maintenant(), creePar: personne(auteur), modifieLe: null, modifiePar: null, publieeLe: null, publieePar: null, motifPublication: null,
       avertissementsLeves: false, retireeLe: null, retireePar: null, motifRetrait: null, droits: { modifier: false, publier: false, lancer: false, retirer: false }, versions: [],
       avertissements: [], personnes: {}, historique: [{ quand: maintenant(), acteur: personne(auteur), action: 'CREE', etape: null, detail: null }],
-      initiateurs: normaliserInitiateurs(s.initiateurs), formulaire: normaliserFormulaire(s.formulaire), ...o,
+      initiateurs: normaliserInitiateurs(s.initiateurs), formulaire: normaliserFormulaire(s.formulaire), referenceModele: s.referenceModele ?? null, ...o,
     }
     definitions.push(p)
     return p
@@ -794,8 +796,9 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     if (Object.values(l.designations ?? {}).some((pid) => !membre(pid) || membre(pid)!.actif === false)) throw refus(422, 'PIL_PROCESSUS_DESIGNATION_INVALIDE', 'Personne désignée invalide.')
     if (!l.intitule?.trim()) throw refus(400, 'PIL_REQUETE_INVALIDE', 'Intitulé obligatoire.', { champ: 'intitule' })
     const formulaire = valeursFormulaire(p, l.formulaire, lanceur)
+    const reference = referenceSimulee(p.referenceModele, p.code, new Date(), instances.length + 1)
     const inst: InstanceSim = {
-      id: id('INS'), processus: { id: p.id, code: p.code, version: p.version, libelle: p.libelle }, unite: p.unite, intitule: l.intitule.trim(), etat: 'EN_COURS', lanceur: personne(lanceur),
+      id: id('INS'), reference, processus: { id: p.id, code: p.code, version: p.version, libelle: p.libelle }, unite: p.unite, intitule: l.intitule.trim(), etat: 'EN_COURS', lanceur: personne(lanceur),
       lanceeLe: maintenant(), closeLe: null, motif: null, designations: Object.fromEntries(Object.entries(l.designations ?? {}).map(([k, v]) => [k, personne(v)])),
       avancement: { total: p.etapes.length, terminees: 0 }, historique: [], formulaire,
       etapes: p.etapes.map((def) => ({
@@ -837,6 +840,8 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     const flux = nouvelle({ code: 'OUVERTURE_FLUX_RESEAU', unite: 'POLE_RESEAU', libelle: 'Ouverture d’un flux réseau', description: 'Demande, analyse de sécurité, mise en œuvre et recette d’un flux entre la plateforme et un participant.', categorie: 'Réseau', delaiCibleJours: 10, delaiMaxJours: 15, etapes: definitionDemo() }, 'u-resp-info')
     Object.assign(flux, { etat: 'PUBLIEE', publieeLe: `${ajouterJours(aujourdhui(), -20)}T10:00:00+01:00`, publieePar: personne('u-resp-info'), motifPublication: null })
     flux.historique.push({ quand: flux.publieeLe!, acteur: personne('u-resp-info'), action: 'PUBLIE', etape: null, detail: null })
+    const changement = nouvelle(definitionChangementDemo(), 'systeme')
+    Object.assign(changement, { etat: 'PUBLIEE', publieeLe: maintenant(), publieePar: personne('u-resp-info') })
     nouvelle({
       code: 'ACCES_VPN_PARTICIPANT', unite: 'POLE_RESEAU', libelle: 'Accès VPN d’un participant', description: 'Ouverture d’un accès VPN de recette pour une institution membre.', categorie: 'Réseau', delaiCibleJours: 5,
       etapes: [
@@ -1153,6 +1158,11 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       return vueInstance(lancer(p, l, moiId))
     }),
     instance: (iid) => attendre(() => vueInstance(trouverInstance(iid))),
+    telechargerPdf: (iid) => attendre(() => {
+      const inst = trouverInstance(iid)
+      const signatures = inst.etapes.flatMap((e) => e.signatures.filter((s) => s.etat === 'SIGNEE').map((s) => `${s.code}:${s.signePar?.nomAffiche ?? ''}:${s.empreinte ?? ''}`))
+      return `%PDF-1.4\n% ${inst.reference ?? inst.id}\n${inst.intitule}\n${signatures.join('\n')}`
+    }).then((contenu) => new Blob([contenu], { type: 'application/pdf' })),
     // QUO-04 : pièce du formulaire de lancement ou livrable déposé, lisible de qui lit l'instance (comme MS-PILOTAGE).
     documentInstance: (iid, documentId) => attendre(() => {
       const inst = trouverInstance(iid)

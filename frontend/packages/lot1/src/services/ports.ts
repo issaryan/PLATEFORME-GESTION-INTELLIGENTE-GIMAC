@@ -423,6 +423,8 @@ export interface ServiceProcessus {
   televerserPieceLancement(fichier: File, processusId: string, o?: OptionsTeleversement): Promise<Televersement>
   lancer(id: string, l: Lancement): Promise<InstanceProcessus>
   instance(id: string): Promise<InstanceProcessus>
+  /** PDF de la demande initiée, de ses champs et signatures, lisible de qui lit l'instance. */
+  telechargerPdf(instanceId: string): Promise<Blob>
   /**
    * QUO-04 : pièce du formulaire de lancement ou livrable déposé d'une instance (GET …/instances/{id}/documents/{doc}),
    * lisible de qui lit l'instance ; 403 PIL_PROCESSUS_INTERDIT, 404 PIL_PROCESSUS_DOCUMENT_INCONNU.

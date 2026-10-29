@@ -18,6 +18,7 @@ import { ChampValeur, erreurValeur, valeurEnvoyee, valeurSaisie } from './Dialog
 import { BadgeEtape, BadgeInstance, ChoixPersonne, delais, useErreurProcessus } from './communs'
 import { ValeursFormulaire } from './FormulaireLancement'
 import { DocumentProcessus, tailleLisible, useTypesLisibles } from './DocumentProcessus'
+import { telechargerPdfInstance } from './pdf'
 import { useCatalogueFonctionnalites } from '../../../catalogue'
 import { accesFonctionnalite } from '../../../fonctionnalites'
 
@@ -73,6 +74,7 @@ function Suivi({ instance: i }: { instance: InstanceProcessus }) {
   const dates = useDates()
   const libelleUnite = useLibelleUnite()
   const erreur = useErreurProcessus()
+  const services = useServices()
   const [params, setParams] = useSearchParams()
   const vue = params.get('vue') === 'liste' ? 'liste' : 'canevas'
   const parDefaut = i.etapes.find((e) => e.moi.executer || e.moi.prendre || e.moi.signer.length || e.moi.valider) ?? i.etapes.find((e) => ['ACTIVE', 'A_SIGNER', 'A_VALIDER'].includes(e.etat)) ?? i.etapes[0]
@@ -110,6 +112,13 @@ function Suivi({ instance: i }: { instance: InstanceProcessus }) {
     m.mutate(motif, { onSuccess: () => setAnnonce(message), onError: setEchec })
   }
   const refus = erreur(echec)
+  const telecharger = async () => {
+    setEchec(null)
+    try {
+      await telechargerPdfInstance(services.processus, i)
+      setAnnonce(t('proc.suivi.pdfPret'))
+    } catch (e) { setEchec(e) }
+  }
   /** Clé d'une désignation (CODE_ETAPE, CODE_ETAPE.validateur, CODE_ETAPE.signature.CODE) en clair. */
   const libelleDesignation = (cle: string) => {
     const [code, role, signature] = cle.split('.')
@@ -134,6 +143,7 @@ function Suivi({ instance: i }: { instance: InstanceProcessus }) {
         actions={(
           <span className="gm-row" style={{ gap: 'var(--gm-space-2)', flexWrap: 'wrap' }}>
             <BadgeInstance etat={i.etat} />
+            <Button size="sm" variant="secondary" icon="download" onClick={telecharger}>{t('proc.suivi.telechargerPdf')}</Button>
             {i.droits.suspendre ? <Button size="sm" icon="pause" onClick={() => setGeste('suspendre')}>{t('proc.suivi.suspendre')}</Button> : null}
             {i.droits.reprendre ? <Button size="sm" icon="refresh" onClick={() => setGeste('reprendre')}>{t('proc.suivi.reprendre')}</Button> : null}
             {i.droits.annuler ? <Button size="sm" variant="danger" icon="x" onClick={() => setGeste('annuler')}>{t('proc.suivi.annuler')}</Button> : null}
@@ -142,6 +152,7 @@ function Suivi({ instance: i }: { instance: InstanceProcessus }) {
           </span>
         )} />
       <KeyValueList items={[
+        ...(i.reference ? [{ key: t('proc.suivi.reference'), value: <span className="gm-mono">{i.reference}</span> }] : []),
         { key: t('proc.suivi.lanceur'), value: `${i.lanceur.nomAffiche} · ${dates.instant(i.lanceeLe)}` },
         { key: t('proc.instance.avancement'), value: t('proc.instance.avancementDe', { n: i.avancement.terminees, total: i.avancement.total }) },
         ...Object.entries(i.designations).map(([k, p]) => ({ key: libelleDesignation(k), value: p.nomAffiche })),

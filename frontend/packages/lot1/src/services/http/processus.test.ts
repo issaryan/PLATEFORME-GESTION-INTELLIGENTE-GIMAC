@@ -75,6 +75,7 @@ describe('processusHttp', () => {
     await processusHttp.reprendre('I1')
     await processusHttp.reprendre('I1', 'Fin du gel')
     await processusHttp.annuler('I1', 'Abandon')
+    await processusHttp.telechargerPdf('I/1')
     expect(appels().map((_, i) => appel(i))).toEqual([
       'GET /bff/des/pilotage/processus/instances?vue=miennes&page=0&taille=20',
       'GET /bff/des/pilotage/processus/instances?vue=unite&etat=EN_COURS&page=2&taille=50',
@@ -91,6 +92,7 @@ describe('processusHttp', () => {
       'POST /bff/des/pilotage/processus/instances/I1/reprise',
       'POST /bff/des/pilotage/processus/instances/I1/reprise',
       'POST /bff/des/pilotage/processus/instances/I1/annulation',
+      'GET /bff/des/pilotage/processus/instances/I%2F1/pdf',
     ])
     expect(corps(2)).toEqual(l)
     expect(corps(4)).toEqual({ livrable: 'NOTE', documentId: 'DOC-1' })

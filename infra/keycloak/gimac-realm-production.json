@@ -2420,7 +2420,8 @@
       "realmRoles": [
         "default-roles-gimac",
         "INTERNAL_IAM_READ",
-        "INTERNAL_DOCUMENT_READ"
+        "INTERNAL_DOCUMENT_READ",
+        "INTERNAL_DOCUMENT_RENDER"
       ]
     },
     {

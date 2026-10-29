@@ -41,6 +41,8 @@ MS-IAM (`SIGNATURE_PROCESSUS`), validation et renvoi, réaffectation, suspension
 (`iam.account-administered.v1`, sujet `iam.account`) ; routes `/api/v1/processus/**`, événements `pilotage.process-*`.
 Démonstration (profil dev) : `OUVERTURE_FLUX_RESEAU` du pôle réseau.
 
+**Demande de changement (28/10/2026, `docs/lot1/processus-unite.md` §8)** : le modèle publié `DEMANDE_CHANGEMENT` appartient à l'unité SSI et est ouvert à tout le GIMAC. Il comporte douze champs de lancement et les étapes IDENTIFICATION, RAISON, IMPACT, IMPLEMENTATION et SSI. La référence `CHG-{AAAA}-{MM}-{JJ}-{NNNNNN}` est allouée au lancement par une séquence PostgreSQL et figure dans les vues d'instance. `DOSSIER_CHANGEMENT` (PDF) est obligatoire ; `DECISION_SSI` porte sur ce livrable. `GET /api/v1/processus/instances/{id}/pdf` produit le dossier de l'instance, réservé à qui peut la lire, avec `Cache-Control: no-store`. L'adaptateur `gimac.adaptateurs.rendu-pdf` vaut `stub` hors production et `real` avec le profil `prod` (`POST /api/v1/interne/rendus/pdf` de MS-DOCUMENT, permission de service `INTERNAL_DOCUMENT_RENDER`).
+
 **Tâche de l'approbateur d'une transition (D-98, `docs/lot1/lancement-processus.md` §8.8)** : consommateur
 `TransitionsParticipantConsumer` (groupe `pilotage-transitions-participant`, sujet `participant.transition`,
 `gimac.consommateurs.transitions.sujet`) : `participant.transition-requested.v1` crée une tâche à prendre d'origine
@@ -83,6 +85,7 @@ Copié et adapté (paquet `cm.gimac.des.pilotage`) ; chaque bean est inactif tan
 | 2026-10-06 | - | Tâches confiées (D-81 §6) : à plusieurs personnes (groupe), à une unité (à prendre, prise, attribution), relance ; contrôles par la matrice des pouvoirs de MS-IAM (`TACHE_CONFIER`, `TACHE_SUIVRE`, `ACTIVITE_LIRE`, `RAPPORT_VISER`) ; événements `pilotage.task-offered.v1` et `pilotage.task-reminded.v1` |
 | 2026-10-07 | - | Processus d'unité (D-87) : définitions, contrôle, publication, versions ; moteur d'exécution, tâches liées, signatures FIDO2, départ d'un compte ; changelog `20261007090000_pil_processus_unite.xml` |
 | 2026-10-13 | - | D-106 : délai maximal du processus (`processus.delai_max_jours`) et des étapes (`delaiMaxJours` en JSONB), contrôle maximum >= cible (400), tâche et retard sur l'échéance maximale, `echeance_cible` et « échéance proche » des étapes, `delais` de l'instance (changelog `20261013090000_pil_delai_maximal.xml`) ; public seul : version publiée seule, sans historique ni contrôle (403) |
+| 2026-10-28 | - | `DEMANDE_CHANGEMENT` : modèle SSI publié, référence datée par séquence, export PDF des instances via MS-DOCUMENT ; tests unitaires et `ProcessusChangementIT`, seuils JaCoCo à 98 % sur le nouveau code |
 <!-- GIMAC:FIN -->
 
 # pilotage

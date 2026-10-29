@@ -150,6 +150,7 @@ export type Processus = {
   /** D-98 : qui peut lancer, formulaire de lancement (absents d'un service antérieur : défauts). */
   initiateurs?: Initiateurs
   formulaire?: Formulaire
+  referenceModele?: string | null
   creeLe: string | null
   creePar: PersonneActivite | null
   modifieLe: string | null
@@ -180,6 +181,7 @@ export type SaisieProcessus = {
   etapes: EtapeProcessus[]
   initiateurs?: Initiateurs
   formulaire?: Formulaire
+  referenceModele?: string | null
 }
 
 export type ControleProcessus = { publiable: boolean; anomalies: AnomalieProcessus[] }
@@ -238,6 +240,8 @@ export type EtapeInstance = {
 
 export type InstanceProcessus = {
   id: string
+  /** Référence lisible datée, si le modèle du processus en définit une. */
+  reference?: string | null
   processus: { id: string; code: string; version: number; libelle: string }
   unite: string
   intitule: string
@@ -265,6 +269,7 @@ export const delaiMaxEffectif = (cible: number, max: number | null | undefined):
 
 export type ResumeInstance = {
   id: string
+  reference?: string | null
   processus: { id: string; code: string; version: number; libelle: string }
   unite: string
   intitule: string
@@ -300,6 +305,7 @@ export type EtapeDemande = {
 /** « Mes demandes » (GET /processus/demandes, D-98 §3) : instances lancées par moi. */
 export type DemandeProcessus = {
   id: string
+  reference?: string | null
   processus: { id: string; code: string; version: number; libelle: string }
   unite: string
   intitule: string

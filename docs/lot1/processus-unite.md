@@ -441,3 +441,39 @@ candidats, revue d'organisation), tests du service simulé et des écrans, E2E `
   maximal). Changelog `20261013090000_pil_delai_maximal.xml`.
 - **Tests** : `DelaisProcessusTest`, `EtapeInstanceTest.delaiCibleEtMaximal`, `ProcessusDelaisIT`, interface
   `Processus.test.tsx`, `services/simule/delais-d104.test.ts`.
+
+## 8. Demande de changement et export PDF (28/10/2026)
+
+Le modèle `DEMANDE_CHANGEMENT` est provisionné publié par `DemandeChangementConfiguration`, sauf si un processus de
+même code existe déjà (`gimac.processus.demande-changement=false` désactive ce provisionnement). Son unité est `SSI`
+et son public `TOUT_LE_GIMAC`. Il ne s'agit pas d'un circuit de certification.
+
+Le formulaire de lancement contient douze champs obligatoires : unité du demandeur, élément de configuration,
+identifiant EC, priorité, déclencheur, contact du demandeur, raison détaillée, EC impactés, description de l'impact,
+contact du responsable de mise en œuvre, plan de test et plan de retour. Les étapes sont chaînées ainsi :
+
+| Étape | Intervenant | Sortie exigée |
+|---|---|---|
+| `IDENTIFICATION` | lanceur | vérification de l'identification |
+| `RAISON` | lanceur | vérification de la raison |
+| `IMPACT` | lanceur | vérification de l'impact |
+| `IMPLEMENTATION` | responsable désigné au lancement | livrable obligatoire `DOSSIER_CHANGEMENT`, PDF seulement |
+| `SSI` | profil `ROLE_AGENT_SSI` | dates de déploiement et de revue, évaluation, décision et description ; signature `DECISION_SSI` portant sur `DOSSIER_CHANGEMENT` |
+
+Chaque processus peut définir `referenceModele`. Pour ce modèle, `CHG-{AAAA}-{MM}-{JJ}-{NNNNNN}` est résolu au
+lancement avec la date locale et une séquence PostgreSQL ; la référence est persistée sur l'instance
+et exposée dans ses résumés et sa vue détaillée. Les instances sans modèle conservent leur comportement antérieur.
+
+`GET /api/v1/processus/instances/{id}/pdf` (passerelle
+`/bff/des/pilotage/processus/instances/{id}/pdf`) rend un PDF A4 nommé `<reference>.pdf`, en `application/pdf` avec
+`Cache-Control: no-store`. La lecture suit exactement les droits de l'instance. Le document reprend les données figées
+du formulaire, les champs des étapes et les signatures (signataire, date, empreinte), jamais l'assertion FIDO2.
+MS-PILOTAGE échappe les valeurs dans le HTML transmis à `POST /api/v1/interne/rendus/pdf` de MS-DOCUMENT ; le client
+`pilotage-service` utilise `INTERNAL_DOCUMENT_RENDER`. `gimac.adaptateurs.rendu-pdf` vaut `real` en production et
+`stub` sinon ; une réponse non PDF ou indisponible produit `PIL_PDF_INDISPONIBLE`.
+
+Validations locales : tests unitaires de la référence, du modèle et du rendu, scénario `ProcessusChangementIT`, seuils
+JaCoCo à 98 % sur le nouveau code ; tests Vitest ciblés et seuils de 98 % limités aux nouveaux fichiers frontend ;
+scénario Playwright complet en clair et sombre avec huit captures. Le rendu réel de MS-DOCUMENT, une assertion FIDO2
+réelle et le Compose complet n'ont pas été exercés : ces preuves ne constituent ni une recette de production ni un
+raccordement à des serveurs GIMAC.

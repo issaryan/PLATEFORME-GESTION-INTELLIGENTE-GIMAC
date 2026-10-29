@@ -40,7 +40,7 @@ describe('D-98 : qui peut lancer', () => {
     const sna = qui('u-sna')
     const l = await sna.lancables({})
     // D-100 : l'analyste du SNA est l'une des deux personnes désignées de la création d'une machine virtuelle.
-    expect(l.groupes.map((g) => [g.unite, g.processus.map((p) => p.code)])).toEqual([['POLE_RESEAU', ['CHANGEMENT_ADRESSE_IP']], ['POLE_SYSTEME', ['CREATION_MACHINE_VIRTUELLE']], ['RH', ['DEMANDE_CONGE']]])
+    expect(l.groupes.map((g) => [g.unite, g.processus.map((p) => p.code)])).toEqual([['POLE_RESEAU', ['CHANGEMENT_ADRESSE_IP']], ['POLE_SYSTEME', ['CREATION_MACHINE_VIRTUELLE']], ['RH', ['DEMANDE_CONGE']], ['SSI', ['DEMANDE_CHANGEMENT']]])
     expect(l.groupes[0].processus[0]).toMatchObject({ droits: { lancer: true }, nombreChampsFormulaire: 4, initiateurs: { regles: ['TOUT_LE_GIMAC'] } })
     expect((await sna.lancables({ q: 'congé' })).groupes.map((g) => g.unite)).toEqual(['RH'])
     const reseau = (await qui('u-res').lancables({})).groupes.find((g) => g.unite === 'POLE_RESEAU')!

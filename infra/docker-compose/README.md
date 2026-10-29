@@ -80,6 +80,8 @@ La politique OPA autorise dans le DES, en plus de `/bff/des/sbx-espace`, uniquem
 
 Ces contrôles statiques et les tests Testcontainers ne sont pas un démarrage du Compose complet, qui n'a pas été effectué pour cette intégration. Les assemblages spécifiques de recette restent à résorber dans l'assemblage courant ; l'AC mTLS locale n'est pas livrée et aucune preuve de serveurs GIMAC réels n'existe.
 
+La route `GET /bff/des/pilotage/processus/instances/{id}/pdf` relève de la même entrée OPA `PIL_ACTIVITY_OWN` que le suivi des processus ; MS-PILOTAGE revérifie que l'appelant peut lire l'instance. La réponse PDF n'est pas mise en cache. Les 214 tests OPA, dont cette route, ont été rejoués localement le 28/10/2026 ; cela ne vaut pas exécution du Compose complet.
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -118,3 +120,4 @@ Ces contrôles statiques et les tests Testcontainers ne sont pas un démarrage d
 | 2026-10-19 | D-111 | `observabilite/loki.yaml` (conservation d'un jour) et `block_retention: 24h` de Tempo ; `GIMAC_EXPLOITATION=1` : `gimac-dev.sh` génère `docker-compose.exploitation.yml` (redémarrage `unless-stopped` sauf `*-init`, journaux de conteneur bornés par `GIMAC_JOURNAUX_TAILLE` et `GIMAC_JOURNAUX_FICHIERS`, 10 Mo et 2 par défaut), fichier non versionné |
 | 2026-10-23 | D-123, D-124 | Secrets `GIMAC_SECRET_SBX_<SERVICE>` et `GIMAC_SECRET_EXPLOITATION_SERVICE` créés par `gimac-dev.sh` et transmis à Keycloak ; règles OPA : accès de prestataire, déblocage, registre d'audit et notifications de la sandbox, résultats de la sandbox du DES |
 | 2026-10-27 | D-121 | OPA : quatre lectures SBX-TRACE et réexamens US-EXI-23, 213/213 ; Compose complet non démarré pour cette intégration, limites AC mTLS et serveurs réels documentées |
+| 2026-10-28 | - | Route PDF des instances de processus couverte par OPA ; 214/214 tests locaux, sans démarrage du Compose complet |

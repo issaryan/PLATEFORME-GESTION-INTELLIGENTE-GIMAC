@@ -89,10 +89,11 @@ public interface ProcessusUseCase {
         List<EtapeSaisie> etapes,
         InitiateursSaisie initiateurs,
         FormulaireSaisie formulaire,
-        Integer delaiMaxJours
+        Integer delaiMaxJours,
+        String referenceModele
     ) {
         public ProcessusSaisie(String code, String unite, String libelle, String description, String categorie, Integer delaiCibleJours, List<EtapeSaisie> etapes) {
-            this(code, unite, libelle, description, categorie, delaiCibleJours, etapes, null, null, null);
+            this(code, unite, libelle, description, categorie, delaiCibleJours, etapes, null, null, null, null);
         }
 
         /** Saisie antérieure à D-106 : sans délai maximal du processus. */
@@ -107,7 +108,7 @@ public interface ProcessusUseCase {
             InitiateursSaisie initiateurs,
             FormulaireSaisie formulaire
         ) {
-            this(code, unite, libelle, description, categorie, delaiCibleJours, etapes, initiateurs, formulaire, null);
+            this(code, unite, libelle, description, categorie, delaiCibleJours, etapes, initiateurs, formulaire, null, null);
         }
     }
 

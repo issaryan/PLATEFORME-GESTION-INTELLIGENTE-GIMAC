@@ -71,6 +71,10 @@ public class Processus extends EntitePilotage {
     @Column(name = "formulaire", columnDefinition = "jsonb", nullable = false)
     private Formulaire formulaire = Formulaire.vide();
 
+    /** Gabarit de référence lisible des instances : CODE, AAAA, MM, JJ et NNNNNN remplacés au lancement. */
+    @Column(name = "reference_modele", length = 120)
+    private String referenceModele;
+
     @Column(name = "cree_le", nullable = false, updatable = false)
     private Instant creeLe;
 
@@ -139,6 +143,7 @@ public class Processus extends EntitePilotage {
         p.etapes = etapes;
         p.initiateurs = getInitiateurs();
         p.formulaire = getFormulaire();
+        p.referenceModele = referenceModele;
         return p;
     }
 
@@ -167,6 +172,12 @@ public class Processus extends EntitePilotage {
         this.formulaire = formulaire == null ? Formulaire.vide() : formulaire;
         this.modifieLe = le;
         this.modifiePar = acteur;
+    }
+
+    /** Gabarit de référence d'une version, figé à sa publication comme les étapes. */
+    public void definirReference(String modele) {
+        exigerBrouillon();
+        this.referenceModele = ReferenceProcessus.valider(modele);
     }
 
     /**
@@ -277,6 +288,10 @@ public class Processus extends EntitePilotage {
 
     public Formulaire getFormulaire() {
         return formulaire == null ? Formulaire.vide() : formulaire;
+    }
+
+    public String getReferenceModele() {
+        return referenceModele;
     }
 
     public Instant getCreeLe() {

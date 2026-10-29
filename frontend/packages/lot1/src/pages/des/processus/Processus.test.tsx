@@ -476,6 +476,22 @@ describe('D-87 : désignation hors de l’unité', () => {
   })
 })
 
+describe('PDF d’une instance', () => {
+  it('télécharge la demande et ses signatures avec son nom de fichier', async () => {
+    const s = services(PERSONNES.membre)
+    const i = await ouvrirInstance(s, PERSONNES.membre, 'Flux SFTP')
+    const creation = vi.fn(() => 'blob:pdf-test')
+    const revocation = vi.fn()
+    Object.assign(URL, { createObjectURL: creation, revokeObjectURL: revocation })
+    const clic = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+    fireEvent.click(screen.getByRole('button', { name: 'Télécharger le PDF' }))
+    await waitFor(() => expect(creation).toHaveBeenCalled())
+    expect(clic).toHaveBeenCalled()
+    expect(revocation).toHaveBeenCalled()
+    expect(i.id).toBeTruthy()
+  })
+})
+
 describe('D-87 : Mon activité', () => {
   it('« Mes étapes » dans la journée ; tâche d’étape à prendre avec le profil requis', async () => {
     const s = services(PERSONNES.membre)
