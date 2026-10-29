@@ -43,6 +43,11 @@ CONF
   touch "$DONNEES/.amorce-mon"
 fi
 cp "$DONNEES/ceph.conf" "$CONF"
+# La recette locale peut fonctionner sur un poste dont le disque est presque plein ; conserver une marge
+# de sécurité de 1 % sans supprimer les données du volume. Les environnements partagés gardent leur réglage Ceph.
+sed -i '/^mon data avail crit =/d' "$CONF"
+sed -i '/^\[global\]$/a mon data avail crit = 1' "$CONF"
+cp "$CONF" "$DONNEES/ceph.conf"
 
 ceph-mon -i a
 # Sous charge (démarrage de toute la plateforme), le moniteur peut tarder :
