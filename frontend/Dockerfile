@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 # Image d'une couche de présentation (D-46, D-51) : construction Vite puis service
 # des fichiers statiques par nginx sans privilège (port 8080, utilisateur non root).
 #   docker build --build-arg APPLICATION=departement -t frontend-departement .
