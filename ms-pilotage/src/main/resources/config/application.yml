@@ -304,6 +304,8 @@ gimac:
     documents: stub
     # Réauthentification FIDO2 des signatures de processus (MS-IAM, D-87).
     reauthentification: stub
+    # Rendu PDF des instances de processus (MS-DOCUMENT).
+    rendu-pdf: stub
   # Services joints par les adaptateurs réels (surchargés par l'environnement).
   services:
     iam:

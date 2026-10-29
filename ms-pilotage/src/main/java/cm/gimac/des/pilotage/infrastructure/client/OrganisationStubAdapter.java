@@ -75,6 +75,7 @@ public class OrganisationStubAdapter implements OrganisationPort {
         "ROLE_PRODUCTION_MONETIQUE",
         "ROLE_POLE_RESEAU",
         "ROLE_POLE_SYSTEME",
+        "ROLE_AGENT_SSI",
         "ROLE_RSSI",
         "ROLE_CONFORMITE",
         "ROLE_CONDUCTEUR_PROJET"

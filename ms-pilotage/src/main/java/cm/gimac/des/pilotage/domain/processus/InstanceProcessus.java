@@ -41,6 +41,10 @@ public class InstanceProcessus extends EntitePilotage {
     @Column(name = "intitule", nullable = false, length = 200)
     private String intitule;
 
+    /** Référence lisible datée, nulle pour les instances antérieures ou sans gabarit de référence. */
+    @Column(name = "reference", unique = true, length = 120, updatable = false)
+    private String reference;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "etat", nullable = false, length = 16)
     private EtatInstance etat = EtatInstance.EN_COURS;
@@ -99,6 +103,14 @@ public class InstanceProcessus extends EntitePilotage {
     /** Valeurs du formulaire de lancement, fixées avant l'enregistrement de l'instance. */
     public void renseignerFormulaire(Map<String, Object> valeurs) {
         this.formulaire = valeurs == null ? Map.of() : new java.util.LinkedHashMap<>(valeurs);
+    }
+
+    /** Référence affectée une seule fois au lancement. */
+    public void definirReference(String reference) {
+        if (this.reference != null) {
+            throw PilotageException.conflit("PIL_PROCESSUS_REFERENCE_DEFINIE", "La référence de l'instance est déjà définie", Map.of());
+        }
+        this.reference = reference;
     }
 
     /** Actes sur les étapes : instance en cours (409 PIL_PROCESSUS_INSTANCE_ETAT sinon). */
@@ -167,6 +179,10 @@ public class InstanceProcessus extends EntitePilotage {
 
     public String getIntitule() {
         return intitule;
+    }
+
+    public String getReference() {
+        return reference;
     }
 
     public EtatInstance getEtat() {

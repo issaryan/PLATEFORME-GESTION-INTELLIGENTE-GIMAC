@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet id="pil-references-instances" author="lot1">
+        <addColumn tableName="processus">
+            <column name="reference_modele" type="varchar(120)"/>
+        </addColumn>
+        <addColumn tableName="processus_instance">
+            <column name="reference" type="varchar(120)"/>
+        </addColumn>
+        <addUniqueConstraint tableName="processus_instance" columnNames="reference" constraintName="uk_processus_instance_reference"/>
+        <createSequence sequenceName="processus_instance_reference_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+</databaseChangeLog>

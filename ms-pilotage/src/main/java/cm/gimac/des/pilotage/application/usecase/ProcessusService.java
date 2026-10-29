@@ -564,6 +564,7 @@ public class ProcessusService implements ProcessusUseCase {
         Formulaire formulaire = s.formulaire() == null ? p.getFormulaire() : SaisieProcessus.formulaire(s.formulaire());
         p.decrire(libelle, description, categorie, delai, delaiMax, etapes, appelant.id(), le);
         p.definirLancement(initiateurs, formulaire, appelant.id(), le);
+        p.definirReference(s.referenceModele() == null ? p.getReferenceModele() : s.referenceModele());
     }
 
     private void exigerLecture(Appelant appelant, Processus p) {

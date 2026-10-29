@@ -405,7 +405,7 @@ SERVICES = {
     # Mon activité (D-76) : rattachements et équipes (MS-IAM), documents des rapports (MS-DOCUMENT). Processus d'unité
     # (D-87) : unités et membres, pouvoirs, vérification des assertions FIDO2 SIGNATURE_PROCESSUS (MS-IAM, routes
     # /api/v1/interne/** sous INTERNAL_IAM_READ), livrables PROCESSUS_UNITE (GET /api/v1/interne/documents/{id}).
-    "pilotage-service": ["INTERNAL_IAM_READ", "INTERNAL_DOCUMENT_READ"],
+    "pilotage-service": ["INTERNAL_IAM_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_DOCUMENT_RENDER"],
     # Supervision et astreintes (D-114) : opérateurs qualifiés, absences validées et vérification des assertions FIDO2
     # (MS-IAM), dépôt des rapports de quart scellés (MS-DOCUMENT) ; programme en PDF (D-117) : mise en page par MS-DOCUMENT.
     "monitoring-service": ["INTERNAL_IAM_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_DOCUMENT_DEPOSIT", "INTERNAL_DOCUMENT_RENDER"],
