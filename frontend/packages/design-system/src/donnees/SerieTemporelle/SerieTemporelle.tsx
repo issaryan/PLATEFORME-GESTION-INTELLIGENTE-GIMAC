@@ -81,7 +81,7 @@ export function SerieTemporelle(p: SerieTemporelleProps) {
   }, [vue])
 
   const series = p.series
-  const fmt = (v: number | null) => (v === null ? '—' : p.format ? p.format(v) : formatCompact(v, langue) + (p.unit ? ' ' + p.unit : ''))
+  const fmt = (v: number | null) => (v === null ? '-' : p.format ? p.format(v) : formatCompact(v, langue) + (p.unit ? ' ' + p.unit : ''))
   const instants = useMemo(() => Array.from(new Set(series.flatMap((s) => s.points.map((q) => q.t)))).sort((a, b) => a - b), [series])
   const valeurs = series.flatMap((s) => s.points.map((q) => q.v))
   const aMesures = valeurs.some((v) => v !== null)

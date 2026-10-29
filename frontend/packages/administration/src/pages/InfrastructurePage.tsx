@@ -147,14 +147,14 @@ export default function InfrastructurePage() {
         { key: t('infra.etat'), value: t(`infra.etat.${c.etat}`) },
         { key: t('infra.repliques.colonne'), value: t('infra.widget.repliques', { pretes: c.repliques.pretes, voulues: c.repliques.voulues }) },
         ...(g === 'RETABLIR'
-          ? [{ key: t('infra.image'), value: c.image ?? '—', mono: true }, { key: t('infra.imagePrecedente'), value: c.imagePrecedente ?? '—', mono: true }]
+          ? [{ key: t('infra.image'), value: c.image ?? '-', mono: true }, { key: t('infra.imagePrecedente'), value: c.imagePrecedente ?? '-', mono: true }]
           : []),
       ],
       contenu: { charge: c.nom, geste: g },
       succes: t('infra.geste.accepte', { nom: c.nom }),
       extra: g === 'ECHELLE'
         ? <ChampRepliques initial={c.repliques.voulues} surChangement={(v) => { repliques.current = v }} />
-        : <InlineAlert level={g === 'ARRETER' || g === 'RETABLIR' ? 'warn' : 'info'}>{t(`infra.geste.${g}.texte`, { image: c.imagePrecedente ?? '—' })}</InlineAlert>,
+        : <InlineAlert level={g === 'ARRETER' || g === 'RETABLIR' ? 'warn' : 'info'}>{t(`infra.geste.${g}.texte`, { image: c.imagePrecedente ?? '-' })}</InlineAlert>,
       executer: async (motif, assertion) => {
         if (motif.length > BORNES_INFRASTRUCTURE.motifMax) throw new Error(t('erreur.OPS_MOTIF_INVALIDE'))
         const r = Number(repliques.current)

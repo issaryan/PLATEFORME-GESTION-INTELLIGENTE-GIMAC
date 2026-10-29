@@ -106,8 +106,8 @@ export function SectionActes() {
     { key: 'horodatage', header: t('console.journal.horodatage'), render: (j) => dateHeure(j.horodatage, i18n.language) },
     { key: 'acteurNom', header: t('console.journal.acteur'), render: (j) => j.acteurNom ?? j.acteurId },
     { key: 'action', header: t('console.journal.action'), render: (j) => t(`console.journal.action.${j.action}`, { defaultValue: j.action }) },
-    { key: 'cibleLibelle', header: t('console.journal.cible'), render: (j) => <span className="gm-mono">{j.cibleLibelle ?? '—'}</span> },
-    { key: 'motif', header: t('console.journal.motif'), render: (j) => j.motif ?? '—' },
+    { key: 'cibleLibelle', header: t('console.journal.cible'), render: (j) => <span className="gm-mono">{j.cibleLibelle ?? '-'}</span> },
+    { key: 'motif', header: t('console.journal.motif'), render: (j) => j.motif ?? '-' },
   ]
   return (
     <Section titre={t('console.actes.titre')} id="gm-actes" action={<Link href={`${base}/journal`}>{t('console.actes.voirTout')}</Link>}>

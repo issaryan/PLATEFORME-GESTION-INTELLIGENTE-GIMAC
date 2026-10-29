@@ -42,7 +42,7 @@ function Resultat({ creation, onAutre, onFermer }: { creation: Creation; onAutre
         <KeyValueList
           items={[
             { key: t('compte.identifiant'), value: creation.compte.identifiant, mono: true },
-            { key: t('compte.email'), value: creation.compte.email ?? '—' },
+            { key: t('compte.email'), value: creation.compte.email ?? '-' },
             { key: t('console.creation.invitation'), value: t(creation.invitationEnvoyee ? 'console.creation.invitation.envoyee' : 'console.creation.invitation.non') },
           ]}
         />

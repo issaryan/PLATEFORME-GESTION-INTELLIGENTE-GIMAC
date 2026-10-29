@@ -18,7 +18,7 @@ export function useMessageErreur() {
 
 /** Date et heure locales (fuseau de Douala), ou tiret si absente. */
 export function dateHeure(iso: string | null | undefined, langue: string): string {
-  if (!iso) return '—'
+  if (!iso) return '-'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleString(langue, { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Douala' })

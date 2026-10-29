@@ -95,13 +95,13 @@ function Fiche({ moi }: { moi: Moi }) {
         <KeyValueList
           items={[
             { key: t('compte.identifiant'), value: c.identifiant, mono: true },
-            { key: t('compte.email'), value: c.email ?? '—' },
+            { key: t('compte.email'), value: c.email ?? '-' },
             { key: t('compte.profils'), value: <span className="gm-row">{c.profils.map((p) => <Tag key={p}>{libelleProfil(p)}</Tag>)}</span> },
-            { key: t('compte.prenom'), value: c.prenom || '—' },
-            { key: t('compte.nom'), value: c.nom || '—' },
-            { key: t('compte.telephone'), value: c.telephone || '—' },
-            { key: t('compte.fonction'), value: c.fonction || '—' },
-            { key: t('compte.langue'), value: c.langue ? t(`compte.langue.${c.langue}`) : '—' },
+            { key: t('compte.prenom'), value: c.prenom || '-' },
+            { key: t('compte.nom'), value: c.nom || '-' },
+            { key: t('compte.telephone'), value: c.telephone || '-' },
+            { key: t('compte.fonction'), value: c.fonction || '-' },
+            { key: t('compte.langue'), value: c.langue ? t(`compte.langue.${c.langue}`) : '-' },
           ]}
         />
         <Note>{t('compte.fiche.administration')}</Note>

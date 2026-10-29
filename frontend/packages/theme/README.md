@@ -14,4 +14,4 @@ Usage : `import '@gimac/theme/jetons.css'` dans le point d'entrée de chaque cou
 | Date | Commit | Modification |
 |---|---|---|
 | 2026-09-28 | b20a049 | Création des jetons à partir du CC 6.2 |
-| 2026-09-28 | — | Ajout de ce README |
+| 2026-09-28 | - | Ajout de ce README |

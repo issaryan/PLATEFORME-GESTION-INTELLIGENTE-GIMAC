@@ -80,7 +80,7 @@ export function GraphiqueMetrique(p: GraphiqueMetriqueProps) {
 /** Mini-courbe d'une série d'une métrique (colonne de tableau) : la série nommée `nom`, sinon rien. */
 export function TendanceMetrique({ series, nom, libelle }: { series: SeriesMetriques | undefined; nom: string; libelle: string }) {
   const s = series?.series.find((x) => x.nom === nom)
-  if (!s || !series) return <span className="gm-field-help">—</span>
+  if (!s || !series) return <span className="gm-field-help">-</span>
   return (
     <span style={{ display: 'block', minWidth: 96 }}>
       <Sparkline points={s.points.map((p) => p.v)} label={libelle} unit={series.unite} hauteur={24} />

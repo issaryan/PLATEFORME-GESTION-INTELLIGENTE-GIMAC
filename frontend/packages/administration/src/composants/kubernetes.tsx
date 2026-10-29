@@ -26,7 +26,7 @@ function PodsCharge({ nom }: { nom: string }) {
       render: (p) => <StatusBadge status={p.pret ? 'ok' : p.attente ? 'crit' : 'warn'} label={p.attente ?? p.phase ?? t('k8s.inconnu')} />,
     },
     { key: 'redemarrages', header: t('infra.redemarrages'), type: 'number', render: (p) => p.redemarrages },
-    { key: 'noeud', header: t('k8s.noeud'), render: (p) => <span className="gm-mono">{p.noeud ?? '—'}</span> },
+    { key: 'noeud', header: t('k8s.noeud'), render: (p) => <span className="gm-mono">{p.noeud ?? '-'}</span> },
     { key: 'demarreLe', header: t('infra.demarreeLe'), render: (p) => dateHeure(p.demarreLe, i18n.language) },
   ]
   return (
@@ -41,9 +41,9 @@ function EvenementsCharge({ nom }: { nom: string }) {
   const evenements = useEvenementsCharge(nom)
   const colonnes: Column<EvenementCharge>[] = [
     { key: 'instant', header: t('k8s.quand'), render: (e) => dateHeure(e.instant, i18n.language) },
-    { key: 'type', header: t('k8s.type'), render: (e) => <StatusBadge status={e.type === 'Warning' ? 'warn' : 'info'} label={e.type ?? '—'} /> },
-    { key: 'raison', header: t('k8s.raison'), render: (e) => <span className="gm-mono">{e.raison ?? '—'}</span> },
-    { key: 'message', header: t('k8s.message'), render: (e) => e.message ?? '—' },
+    { key: 'type', header: t('k8s.type'), render: (e) => <StatusBadge status={e.type === 'Warning' ? 'warn' : 'info'} label={e.type ?? '-'} /> },
+    { key: 'raison', header: t('k8s.raison'), render: (e) => <span className="gm-mono">{e.raison ?? '-'}</span> },
+    { key: 'message', header: t('k8s.message'), render: (e) => e.message ?? '-' },
     { key: 'objet', header: t('k8s.objet'), render: (e) => <span className="gm-mono">{e.objet}</span> },
     { key: 'nombre', header: t('k8s.nombre'), type: 'number', render: (e) => e.nombre },
   ]
@@ -102,9 +102,9 @@ export function CarteNoeuds() {
         </span>
       ),
     },
-    { key: 'roles', header: t('k8s.roles'), render: (n) => (n.roles.length ? n.roles.join(', ') : '—') },
-    { key: 'versionKubelet', header: t('k8s.kubelet'), render: (n) => <span className="gm-mono">{n.versionKubelet ?? '—'}</span> },
-    { key: 'cpuAllouable', header: t('k8s.cpuAllouable'), render: (n) => <span className="gm-mono">{n.cpuAllouable ?? '—'}</span> },
+    { key: 'roles', header: t('k8s.roles'), render: (n) => (n.roles.length ? n.roles.join(', ') : '-') },
+    { key: 'versionKubelet', header: t('k8s.kubelet'), render: (n) => <span className="gm-mono">{n.versionKubelet ?? '-'}</span> },
+    { key: 'cpuAllouable', header: t('k8s.cpuAllouable'), render: (n) => <span className="gm-mono">{n.cpuAllouable ?? '-'}</span> },
     { key: 'memoireAllouableOctets', header: t('k8s.memoireAllouable'), type: 'number', render: (n) => octets(n.memoireAllouableOctets) },
   ]
   return (
@@ -145,9 +145,9 @@ export function CarteTaches() {
           <StatusBadge status={x.suspendue ? 'warn' : 'ok'} label={t(x.suspendue ? 'k8s.suspendue' : 'k8s.active')} />
         ) : x.etat ? (
           <StatusBadge status={STATUT_TACHE[x.etat]} label={t(`k8s.etatTache.${x.etat}`)} />
-        ) : '—',
+        ) : '-',
     },
-    { key: 'planification', header: t('k8s.planification'), render: (x) => <span className="gm-mono">{x.planification ?? x.origine ?? '—'}</span> },
+    { key: 'planification', header: t('k8s.planification'), render: (x) => <span className="gm-mono">{x.planification ?? x.origine ?? '-'}</span> },
     { key: 'debut', header: t('k8s.debut'), render: (x) => dateHeure(x.debut, i18n.language) },
     { key: 'fin', header: t('k8s.fin'), render: (x) => dateHeure(x.fin, i18n.language) },
   ]

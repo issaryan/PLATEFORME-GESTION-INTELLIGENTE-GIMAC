@@ -38,8 +38,8 @@ describe('outils des graphiques', () => {
     expect(aire.startsWith('M0.0 30.0')).toBe(true)
   })
   it('nombres compacts et libellés temporels selon la langue', () => {
-    expect(formatCompact(null)).toBe('—')
-    expect(formatCompact(Number.NaN)).toBe('—')
+    expect(formatCompact(null)).toBe('-')
+    expect(formatCompact(Number.NaN)).toBe('-')
     expect(formatCompact(12.345)).toBe('12,3')
     expect(formatCompact(1.234, 'en')).toBe('1.23')
     expect(formatCompact(250)).toBe('250')
@@ -126,7 +126,7 @@ describe('SerieTemporelle', () => {
     expect(screen.getByText('Autres (2)')).toBeTruthy()
     expect(screen.queryByText('s5', { selector: '.gm-chart-legend span' })).toBeNull()
   })
-  it('réticule et infobulle au survol, listant toutes les séries ; trou rendu « — »', () => {
+  it('réticule et infobulle au survol, listant toutes les séries ; trou rendu « - »', () => {
     const { container } = render(<SerieTemporelle title="CPU" series={series} unit="%" />)
     const zone = screen.getByTestId('zone-survol')
     const svg = container.querySelector('svg') as SVGSVGElement
@@ -134,7 +134,7 @@ describe('SerieTemporelle', () => {
     fireEvent.pointerMove(zone, { clientX: 400 })
     const bulle = screen.getByRole('status')
     expect(within(bulle).getByText('gateway')).toBeTruthy()
-    expect(within(bulle).getByText('—')).toBeTruthy()
+    expect(within(bulle).getByText('-')).toBeTruthy()
     expect(container.querySelector('.gm-graphique-reticule')).toBeTruthy()
     fireEvent.pointerMove(zone, { clientX: 630 })
     expect(within(screen.getByRole('status')).getByText('20 %')).toBeTruthy()
@@ -167,7 +167,7 @@ describe('SerieTemporelle', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Table' }))
     const tableau = screen.getByRole('table')
     expect(within(tableau).getAllByRole('row').length).toBe(5)
-    expect(within(tableau).getByText('—')).toBeTruthy()
+    expect(within(tableau).getByText('-')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Export (controlled)' }))
     expect(exporter).toHaveBeenCalled()
     expect(screen.getByText('Détail')).toBeTruthy()

@@ -41,7 +41,7 @@ export function OngletReexamens() {
 
   return <div className="gm-col">
     <InlineAlert level="info" title={t('sbx.revue.aide.titre')}>{t('sbx.revue.aide')}</InlineAlert>
-    {campagnes.data?.length ? <Select label={t('sbx.revue.campagne')} value={selection ?? ''} onChange={setSelection} options={campagnes.data.map((c) => ({ value: c.id, label: `${c.period} — ${t(`sbx.revue.etat.${c.state}`)}` }))} /> : null}
+    {campagnes.data?.length ? <Select label={t('sbx.revue.campagne')} value={selection ?? ''} onChange={setSelection} options={campagnes.data.map((c) => ({ value: c.id, label: `${c.period} - ${t(`sbx.revue.etat.${c.state}`)}` }))} /> : null}
     {campagne ? <Card title={t('sbx.revue.titrePeriode', { periode: campagne.period })} actions={<div className="gm-row"><StatusBadge status={campagne.state === 'CLOSE' ? 'ok' : 'warn'} label={t(`sbx.revue.etat.${campagne.state}`)} />{campagne.state === 'OUVERTE' && peutDecider ? <Button variant="primary" disabled={campagne.enAttente > 0} disabledReason={campagne.enAttente > 0 ? t('sbx.revue.restant', { count: campagne.enAttente }) : undefined} onClick={() => setConfirmation(true)}>{t('sbx.revue.cloturer')}</Button> : null}</div>}>
       <p>{t('sbx.revue.ouverteLe', { date: new Date(campagne.openedAt).toLocaleString() })}</p>
       {campagne.digest ? <p>{t('sbx.revue.empreinte')} <Hash value={campagne.digest} /></p> : null}

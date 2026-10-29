@@ -123,7 +123,7 @@ function Sessions({ id }: { id: string }) {
   const { t, i18n } = useTranslation()
   const sessions = useSessionsCompte(id)
   const colonnes: Column<SessionCompte>[] = [
-    { key: 'adresseIp', header: t('compte.sessions.adresse'), render: (s) => <span className="gm-mono">{s.adresseIp ?? '—'}</span> },
+    { key: 'adresseIp', header: t('compte.sessions.adresse'), render: (s) => <span className="gm-mono">{s.adresseIp ?? '-'}</span> },
     { key: 'debut', header: t('compte.sessions.debut'), render: (s) => dateHeure(s.debut, i18n.language) },
     { key: 'dernierAcces', header: t('compte.sessions.dernierAcces'), render: (s) => dateHeure(s.dernierAcces, i18n.language) },
     { key: 'applications', header: t('compte.sessions.applications'), render: (s) => s.applications.join(', ') },
@@ -144,7 +144,7 @@ function Journal({ id }: { id: string }) {
     { key: 'horodatage', header: t('console.journal.horodatage'), render: (j) => dateHeure(j.horodatage, i18n.language) },
     { key: 'acteurNom', header: t('console.journal.acteur'), render: (j) => j.acteurNom ?? j.acteurId },
     { key: 'action', header: t('console.journal.action'), render: (j) => t(`console.journal.action.${j.action}`, { defaultValue: j.action }) },
-    { key: 'motif', header: t('console.journal.motif'), render: (j) => j.motif ?? '—' },
+    { key: 'motif', header: t('console.journal.motif'), render: (j) => j.motif ?? '-' },
   ]
   return (
     <DataTable columns={colonnes} rows={lignes} rowKey={(j) => j.id} total={journal.data?.total} page={page} pageSize={10} onPage={setPage} density="compact"
@@ -160,11 +160,11 @@ function Fiche({ compte }: { compte: Compte }) {
     <KeyValueList
       items={[
         { key: t('compte.identifiant'), value: compte.identifiant, mono: true },
-        { key: t('compte.email'), value: `${compte.email ?? '—'} (${t(compte.emailVerifie ? 'compte.email.verifie' : 'compte.email.nonVerifie')})` },
-        { key: t('compte.telephone'), value: compte.telephone ?? '—' },
-        { key: t('compte.fonction'), value: compte.fonction ?? '—' },
-        { key: t('compte.langue'), value: compte.langue ? t(`compte.langue.${compte.langue}`, { defaultValue: compte.langue }) : '—' },
-        { key: t('console.creation.institution'), value: compte.institutionId ?? '—', mono: true },
+        { key: t('compte.email'), value: `${compte.email ?? '-'} (${t(compte.emailVerifie ? 'compte.email.verifie' : 'compte.email.nonVerifie')})` },
+        { key: t('compte.telephone'), value: compte.telephone ?? '-' },
+        { key: t('compte.fonction'), value: compte.fonction ?? '-' },
+        { key: t('compte.langue'), value: compte.langue ? t(`compte.langue.${compte.langue}`, { defaultValue: compte.langue }) : '-' },
+        { key: t('console.creation.institution'), value: compte.institutionId ?? '-', mono: true },
         { key: t('console.compte.creeLe'), value: dateHeure(compte.creeLe, i18n.language) },
         { key: t('console.compte.ficheComplete'), value: oui(compte.profilComplet) },
         { key: t('compte.profils'), value: <span className="gm-row">{compte.profils.map((p) => <Tag key={p}>{libelleProfil(p)}</Tag>)}</span> },

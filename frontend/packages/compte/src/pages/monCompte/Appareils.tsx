@@ -48,7 +48,7 @@ export function Appareils() {
       setRetour({ niveau: 'crit', message: message(x) })
     }
   }
-  const couche = (c: string | null) => (c ? t(`appareils.couche.${c}`, { defaultValue: c }) : '—')
+  const couche = (c: string | null) => (c ? t(`appareils.couche.${c}`, { defaultValue: c }) : '-')
   const colonnes: Column<Appareil>[] = [
     {
       key: 'appareil', header: t('appareils.appareil'),
@@ -60,9 +60,9 @@ export function Appareils() {
         </span>
       ),
     },
-    { key: 'navigateur', header: t('appareils.navigateur'), render: (a) => a.appareil.navigateur ?? '—' },
-    { key: 'systeme', header: t('appareils.systeme'), render: (a) => a.appareil.systeme ?? '—' },
-    { key: 'adresseIp', header: t('appareils.adresse'), render: (a) => <span className="gm-mono">{a.adresseIp ?? '—'}</span> },
+    { key: 'navigateur', header: t('appareils.navigateur'), render: (a) => a.appareil.navigateur ?? '-' },
+    { key: 'systeme', header: t('appareils.systeme'), render: (a) => a.appareil.systeme ?? '-' },
+    { key: 'adresseIp', header: t('appareils.adresse'), render: (a) => <span className="gm-mono">{a.adresseIp ?? '-'}</span> },
     { key: 'couche', header: t('appareils.couche'), render: (a) => couche(a.couche) },
     { key: 'ouverteLe', header: t('appareils.ouverteLe'), render: (a) => dateHeure(a.ouverteLe, i18n.language) },
     { key: 'derniereActivite', header: t('appareils.derniereActivite'), render: (a) => dateHeure(a.derniereActivite, i18n.language) },
@@ -90,7 +90,7 @@ export function Appareils() {
           submitLabel={t('appareils.fermer.titre')} submitIcon="log-out" submitting={fermer.isPending}
           object={[
             { key: t('appareils.appareil'), value: libelle.complet(aFermer.appareil) },
-            { key: t('appareils.adresse'), value: aFermer.adresseIp ?? '—', mono: true },
+            { key: t('appareils.adresse'), value: aFermer.adresseIp ?? '-', mono: true },
             { key: t('appareils.couche'), value: couche(aFermer.couche) },
             { key: t('appareils.derniereActivite'), value: dateHeure(aFermer.derniereActivite, i18n.language) },
           ]}
@@ -114,8 +114,8 @@ export function Historique() {
     { key: 'le', header: t('historique.le'), render: (c) => <span className="gm-num">{dateHeure(c.le, i18n.language)}</span> },
     { key: 'resultat', header: t('historique.resultat'), render: (c) => <StatusBadge status={ETAT[c.resultat] ?? 'neutral'} label={t(`historique.resultat.${c.resultat}`, { defaultValue: c.resultat })} /> },
     { key: 'appareil', header: t('appareils.appareil'), render: (c) => libelle.complet(c.appareil) },
-    { key: 'adresseIp', header: t('appareils.adresse'), render: (c) => <span className="gm-mono">{c.adresseIp ?? '—'}</span> },
-    { key: 'couche', header: t('appareils.couche'), render: (c) => (c.couche ? t(`appareils.couche.${c.couche}`, { defaultValue: c.couche }) : '—') },
+    { key: 'adresseIp', header: t('appareils.adresse'), render: (c) => <span className="gm-mono">{c.adresseIp ?? '-'}</span> },
+    { key: 'couche', header: t('appareils.couche'), render: (c) => (c.couche ? t(`appareils.couche.${c.couche}`, { defaultValue: c.couche }) : '-') },
   ]
   const rows = lignes.map((c, i) => ({ ...c, id: `${c.le}-${i}` }))
   return (

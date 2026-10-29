@@ -146,10 +146,10 @@ export function Essais({ op, dossier }: { op: OperationParcours; dossier: Dossie
   const colonnes: Column<ServicePerimetre>[] = [
     { key: 'libelle', header: t('parcoursOps.essais.service') },
     { key: 'etat', header: t('parcoursOps.col.etat'), render: (s) => <StatusBadge status={tonService[s.etat]} label={t(`parcours.servicePerimetre.${s.etat}`)} /> },
-    { key: 'entreeEssai', header: t('parcoursOps.essais.entree'), render: (s) => (s.entreeEssai ? date(s.entreeEssai) : '—') },
-    { key: 'sortieEssai', header: t('parcoursOps.essais.sortie'), render: (s) => (s.sortieEssai ? date(s.sortieEssai) : '—') },
+    { key: 'entreeEssai', header: t('parcoursOps.essais.entree'), render: (s) => (s.entreeEssai ? date(s.entreeEssai) : '-') },
+    { key: 'sortieEssai', header: t('parcoursOps.essais.sortie'), render: (s) => (s.sortieEssai ? date(s.sortieEssai) : '-') },
     ...(simulateur
-      ? [{ key: 'avancementSimulateur', header: t('parcoursOps.essais.avancement'), type: 'number' as const, render: (s: ServicePerimetre) => (s.avancementSimulateur === null ? '—' : `${s.avancementSimulateur} %`) }]
+      ? [{ key: 'avancementSimulateur', header: t('parcoursOps.essais.avancement'), type: 'number' as const, render: (s: ServicePerimetre) => (s.avancementSimulateur === null ? '-' : `${s.avancementSimulateur} %`) }]
       : []),
   ]
   return (

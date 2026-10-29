@@ -38,11 +38,11 @@ Scénarios de bout en bout par acteur : `e2e/specs/departement-*.spec.ts` (voir 
 | Date | Commit | Modification |
 |---|---|---|
 | 2026-09-28 | b20a049 | Génération `create-vite`, page d'accueil provisoire, thème, relais /api vers la passerelle |
-| 2026-09-28 | — | Remplacement du README du gabarit Vite par ce README |
-| 2026-09-29 | — | Routes du lot 1, enveloppe commune, connexion TRA-01, services simulés par défaut (`VITE_SERVICES=http` pour la passerelle), i18n FR, EN, ES, relais `/bff` |
-| 2026-09-29 | — | Garde de session à double facteur, matrice des rôles depuis `/api/session`, tableau de bord par acteur, registre des institutions, pied de page GIMAC (D-58, D-61) |
-| 2026-09-29 | — | D-62 : premier accès (`GardePremierAcces`) avant tout écran, « Mon compte » (`/des/mon-compte`) et déconnexion (`/des/deconnexion`) dans l'espace personnel de l'enveloppe (`@gimac/compte`, `/bff/des/iam/moi`) ; `gm.premierAccesDemo=1` pour la démonstration en services simulés |
-| 2026-09-29 | — | Étape 3, cadrage (D-57, D-58) : profils de démonstration alignés sur le domaine « gimac » (`src/profils.ts` ; chefs du DES et de la DDRM ouvrent et désignent, ingénieur sans ouverture, conducteur de projet, SNA), choix par `gm.profilDemo`, « Mon compte » simulé au nom du profil ; tests Vitest (15, 80 % bloquants) et scénarios de bout en bout par acteur, construction instrumentée `dist-e2e-http` (D-61) |
+| 2026-09-28 | - | Remplacement du README du gabarit Vite par ce README |
+| 2026-09-29 | - | Routes du lot 1, enveloppe commune, connexion TRA-01, services simulés par défaut (`VITE_SERVICES=http` pour la passerelle), i18n FR, EN, ES, relais `/bff` |
+| 2026-09-29 | - | Garde de session à double facteur, matrice des rôles depuis `/api/session`, tableau de bord par acteur, registre des institutions, pied de page GIMAC (D-58, D-61) |
+| 2026-09-29 | - | D-62 : premier accès (`GardePremierAcces`) avant tout écran, « Mon compte » (`/des/mon-compte`) et déconnexion (`/des/deconnexion`) dans l'espace personnel de l'enveloppe (`@gimac/compte`, `/bff/des/iam/moi`) ; `gm.premierAccesDemo=1` pour la démonstration en services simulés |
+| 2026-09-29 | - | Étape 3, cadrage (D-57, D-58) : profils de démonstration alignés sur le domaine « gimac » (`src/profils.ts` ; chefs du DES et de la DDRM ouvrent et désignent, ingénieur sans ouverture, conducteur de projet, SNA), choix par `gm.profilDemo`, « Mon compte » simulé au nom du profil ; tests Vitest (15, 80 % bloquants) et scénarios de bout en bout par acteur, construction instrumentée `dist-e2e-http` (D-61) |
 | 2026-10-19 | D-114 | Routes `/des/exploitation/{supervision,astreintes,releve}` (`@gimac/exploitation`), services HTTP ou simulés au nom du profil de démonstration, catalogues fr, en, es ; test de la navigation par profil |
 | 2026-10-20 | - | D-116 : routes /des/exploitation/aujourdhui, /rapports, /activite ; aperçu bureautique transmis au module d’exploitation |
 | 2026-10-20 | - | D-117 : aperçu bureautique et permissions de démonstration transmis au module d’exploitation |

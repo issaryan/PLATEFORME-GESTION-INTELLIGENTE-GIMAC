@@ -48,7 +48,7 @@ export default function JournalisationPage() {
   const colonnes: Column<NiveauLogger>[] = [
     { key: 'nom', header: t('console.journalisation.logger'), render: (l) => <span className="gm-mono">{l.nom}</span> },
     { key: 'niveauConfigure', header: t('console.journalisation.configure'), render: (l) => l.niveauConfigure ?? t('console.journalisation.herite') },
-    { key: 'niveauEffectif', header: t('console.journalisation.effectif'), render: (l) => <StatusBadge status={l.niveauEffectif === 'DEBUG' || l.niveauEffectif === 'TRACE' ? 'warn' : 'neutral'} label={l.niveauEffectif ?? '—'} /> },
+    { key: 'niveauEffectif', header: t('console.journalisation.effectif'), render: (l) => <StatusBadge status={l.niveauEffectif === 'DEBUG' || l.niveauEffectif === 'TRACE' ? 'warn' : 'neutral'} label={l.niveauEffectif ?? '-'} /> },
     ...(edition
       ? [{ key: 'actions', header: '', type: 'actions' as const, render: (l: NiveauLogger) => <Button size="sm" onClick={() => setOuvert(l)}>{t('console.journalisation.modifier')}</Button> }]
       : []),

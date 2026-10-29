@@ -29,10 +29,10 @@ npm run lint -w @gimac/socle
 
 | Date | Commit | Modification |
 |---|---|---|
-| 2026-09-29 | — | Création : client HTTP corrigé après revue du F0, canal poussé, FIDO2, quatre états, i18n FR/EN/ES, enveloppe, connexion |
-| 2026-09-29 | — | Session et garde à double facteur (D-61), préfixes du registre et de la gestion documentaire, pied de page GIMAC dans l'enveloppe ; 24 tests, couverture au-dessus de 80 % |
-| 2026-09-29 | — | D-62 : couche `console`, préfixe IAM par couche, `http.delete`, finalité `ADMIN_SENSITIVE` et `refusReauth`, enrôlement WebAuthn (`enrolement.ts`), déconnexion et reconnexion par la passerelle, espace personnel de l'enveloppe, `LangueComposants` ; 40 tests, couverture de http, session et reauth au-dessus de 80 % |
-| 2026-09-30 | — | D-65 : connexion sur la plateforme (`src/connexion/`), session restreinte, fermeture après inactivité, appels de fond `X-Gimac-Fond`, 401 `CNX_SESSION_EXPIREE` ; couverture étendue à `src/connexion/` (92 tests) |
+| 2026-09-29 | - | Création : client HTTP corrigé après revue du F0, canal poussé, FIDO2, quatre états, i18n FR/EN/ES, enveloppe, connexion |
+| 2026-09-29 | - | Session et garde à double facteur (D-61), préfixes du registre et de la gestion documentaire, pied de page GIMAC dans l'enveloppe ; 24 tests, couverture au-dessus de 80 % |
+| 2026-09-29 | - | D-62 : couche `console`, préfixe IAM par couche, `http.delete`, finalité `ADMIN_SENSITIVE` et `refusReauth`, enrôlement WebAuthn (`enrolement.ts`), déconnexion et reconnexion par la passerelle, espace personnel de l'enveloppe, `LangueComposants` ; 40 tests, couverture de http, session et reauth au-dessus de 80 % |
+| 2026-09-30 | - | D-65 : connexion sur la plateforme (`src/connexion/`), session restreinte, fermeture après inactivité, appels de fond `X-Gimac-Fond`, 401 `CNX_SESSION_EXPIREE` ; couverture étendue à `src/connexion/` (92 tests) |
 | 2026-10-13 | - | D-106 : `permissionsEffectives` et `PERMISSIONS_EQUIVALENTES` (miroir d'OPA : `REF_METIER_ADMIN` vaut les permissions `HOM_REFERENTIEL_*`), appliqués par `SessionProvider` |
 | 2026-10-20 | D-118 | `src/habillage.ts` : `HabillageConnexion` (fond, marque ou `null` pour une carte centrée, logo, nom de l'onglet, mention du pied), `HabillageEnveloppe` (logo, bandeau, pied), `ReglesAiguillage` et `AIGUILLAGE_PLATEFORME`, la règle par défaut. Propriétés facultatives de `PageConnexion`, `Enveloppe` et `Aiguillage`, une vérification par propriété (`src/habillage.test.tsx`, 14 tests). |
 | 2026-10-22 | - | Thème suivi d'un onglet à l'autre : un changement de `gm.theme` fait dans un autre onglet (événement storage) s'applique sans recharger ; 191 tests |

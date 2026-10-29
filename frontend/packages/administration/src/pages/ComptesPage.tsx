@@ -53,7 +53,7 @@ export default function ComptesPage({ creation = false }: { creation?: boolean }
         </span>
       ),
     },
-    { key: 'email', header: t('compte.email'), render: (c) => c.email ?? '—' },
+    { key: 'email', header: t('compte.email'), render: (c) => c.email ?? '-' },
     { key: 'profils', header: t('compte.profils'), render: (c) => <span className="gm-row">{c.profils.map((p) => <Tag key={p}>{libelleProfil(p)}</Tag>)}</span> },
     {
       key: 'actif', header: t('console.comptes.etat'),
