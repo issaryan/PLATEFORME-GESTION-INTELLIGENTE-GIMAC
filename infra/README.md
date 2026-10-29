@@ -15,7 +15,18 @@ La politique `docker-compose/opa/politiques/lot1_authz.rego` et sa copie `kubern
 
 Le domaine généré attribue `INTERNAL_IAM_SBX_SAGA` au seul `sbx-espace` et `INTERNAL_IAM_SBX_INTROSPECT` à `gateway-service` ; les secrets restent injectés par l'environnement. La liaison des jetons au certificat client est un réglage de déploiement : l'AC mTLS locale n'est pas livrée.
 
-Les validations OPA, Maven et Vitest ne remplacent pas un déploiement. Pour cette intégration, le Compose complet n'a pas été démarré, les assemblages spécifiques de recette restent à résorber dans l'assemblage courant et aucune preuve de connexion à de vrais serveurs GIMAC n'existe.
+Les validations OPA, Maven et Vitest ne remplacent pas un déploiement. Le Compose complet n'a pas été démarré pour cette intégration ; la recette intégrée `infra/recette/recette.sh` du dépôt Sandbox utilise en revanche les artefacts des 14 microservices en JVM sur l'hôte, avec le domaine Keycloak, les politiques OPA et les règles Prometheus de ce dépôt. Les assemblages spécifiques de recette restent à résorber dans l'assemblage courant et aucune preuve de connexion à de vrais serveurs GIMAC n'existe.
+
+## Supervision Actuator de la recette intégrée
+
+Les 14 configurations de sécurité acceptent `/management` et `/actuator` avec des règles strictement équivalentes :
+`health`, `info` et `prometheus` restent publics, tandis que `env`, `loggers` et les autres endpoints restent réservés à
+`ROLE_ADMIN`. La recette utilise `/actuator` ; la propriété `gimac.supervision.actuator-base-path` de la passerelle
+conserve `/management` comme valeur par défaut hors recette. MS-DOCUMENT utilise le registre
+`micrometer-registry-prometheus`, requis par l'auto-configuration Spring Boot 4. Prometheus, cAdvisor et node-exporter
+sont publiés uniquement sur 127.0.0.1 ; les deux endpoints mTLS conservent la vérification complète du certificat.
+Validation du 29/10 : 25/25 services sains et 25/25 cibles UP, cAdvisor et node-exporter UP, endpoints DOCUMENT et IAM
+en 200, `/actuator/env` refusé en 401 sans jeton et test ciblé `AdaptateursSupervisionTest` réussi.
 
 ## Journal des mises à jour
 

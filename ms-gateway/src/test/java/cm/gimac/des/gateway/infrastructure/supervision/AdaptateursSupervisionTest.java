@@ -80,6 +80,17 @@ class AdaptateursSupervisionTest {
     }
 
     @Test
+    @DisplayName("Santé : base Actuator configurable sans changer la valeur par défaut")
+    void santeBaseActuatorConfigurable() {
+        ActuatorWebClientAdapter personnalise = new ActuatorWebClientAdapter(
+            ClientsSupervision.webClient(DELAI, null), () -> Mono.just("jeton-de-service"), "/actuator"
+        );
+        service.json("/actuator/health", 200, "{\"status\":\"UP\"}");
+        assertThat(personnalise.sante(cible).block().etat()).isEqualTo(EtatSante.UP);
+        assertThat(service.recues().get(0).chemin()).isEqualTo("/actuator/health");
+    }
+
+    @Test
     @DisplayName("Santé 503 : DOWN lu dans le corps ; corps illisible : état déduit du statut HTTP")
     void santeEnPanne() {
         service.json("/management/health", 503, "{\"status\":\"OUT_OF_SERVICE\"}");

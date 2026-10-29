@@ -117,11 +117,11 @@ public class SecurityConfiguration {
                     // Couches de présentation du lot 1 (PI-GIMAC-01 §0.6) : authentification exigée, puis OPA.
                     .pathMatchers("/bff/**").authenticated()
                     .pathMatchers("/v3/api-docs/**").hasAuthority(AuthoritiesConstants.ADMIN)
-                    .pathMatchers("/management/health").permitAll()
-                    .pathMatchers("/management/health/**").permitAll()
-                    .pathMatchers("/management/info").permitAll()
-                    .pathMatchers("/management/prometheus").permitAll()
-                    .pathMatchers("/management/**").hasAuthority(AuthoritiesConstants.ADMIN)
+                    .pathMatchers("/management/health", "/actuator/health").permitAll()
+                    .pathMatchers("/management/health/**", "/actuator/health/**").permitAll()
+                    .pathMatchers("/management/info", "/actuator/info").permitAll()
+                    .pathMatchers("/management/prometheus", "/actuator/prometheus").permitAll()
+                    .pathMatchers("/management/**", "/actuator/**").hasAuthority(AuthoritiesConstants.ADMIN)
             )
             // D-65 : ni oauth2Login ni oauth2Client (plus de redirection vers le fournisseur d'identité) ;
             // la session est ouverte par POST /api/connexion (octroi direct de serveur à serveur).

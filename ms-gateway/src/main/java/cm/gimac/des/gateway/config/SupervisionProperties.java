@@ -52,6 +52,9 @@ public class SupervisionProperties {
         /** Sonde de santé de Keycloak (port de gestion) ; vide : non sondé. */
         private String keycloakSanteUrl = "http://localhost:9990/health/ready";
 
+        /** Base des endpoints Actuator des services supervisés. */
+        private String actuatorBasePath = "/management";
+
         public String getPasserelleUrl() {
             return passerelleUrl;
         }
@@ -106,6 +109,14 @@ public class SupervisionProperties {
 
         public void setKeycloakSanteUrl(String keycloakSanteUrl) {
             this.keycloakSanteUrl = keycloakSanteUrl;
+        }
+
+        public String getActuatorBasePath() {
+            return actuatorBasePath;
+        }
+
+        public void setActuatorBasePath(String actuatorBasePath) {
+            this.actuatorBasePath = actuatorBasePath;
         }
     }
 }

@@ -45,7 +45,7 @@ public class SupervisionConfiguration {
         JetonServiceSupervision jeton = new JetonServiceSupervision(gestionnaire(enregistrements, clientsAutorises));
         return new SupervisionPlateformeService(
             parametres(proprietes),
-            new ActuatorWebClientAdapter(ClientsSupervision.webClient(s.getDelai(), null), jeton),
+            new ActuatorWebClientAdapter(ClientsSupervision.webClient(s.getDelai(), null), jeton, s.getActuatorBasePath()),
             new PrometheusWebClientAdapter(ClientsSupervision.webClient(s.getDelai(), s.getPrometheusUrl()), s.getProjetConteneurs()),
             new AlertmanagerWebClientAdapter(ClientsSupervision.webClient(s.getDelai(), s.getAlertmanagerUrl())),
             new RoutesPasserelleAdapter(routeLocator),
