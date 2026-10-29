@@ -45,19 +45,25 @@ public class ActuatorWebClientAdapter implements SondeService {
 
     private final WebClient client;
     private final Supplier<Mono<String>> jeton;
+    private final String gestion;
 
     /**
      * @param client client HTTP sans adresse de base (les adresses sont absolues)
      * @param jeton  fournisseur du jeton de service ; vide s'il n'est pas disponible
      */
     public ActuatorWebClientAdapter(WebClient client, Supplier<Mono<String>> jeton) {
+        this(client, jeton, GESTION);
+    }
+
+    public ActuatorWebClientAdapter(WebClient client, Supplier<Mono<String>> jeton, String gestion) {
         this.client = client;
         this.jeton = jeton;
+        this.gestion = gestion;
     }
 
     @Override
     public Mono<Sante> sante(ServiceCible service) {
-        return santeA(adresse(service, "/health"));
+        return santeA(adresseAvecBase(service, "/health"));
     }
 
     @Override
@@ -104,7 +110,7 @@ public class ActuatorWebClientAdapter implements SondeService {
 
     @Override
     public Mono<InfoService> info(ServiceCible service) {
-        return requete(HttpMethod.GET, adresse(service, "/info"), null)
+        return requete(HttpMethod.GET, adresseAvecBase(service, "/info"), null)
             .flatMap(spec -> spec.retrieve().bodyToMono(CARTE))
             .map(ActuatorWebClientAdapter::lireInfo);
     }
@@ -126,7 +132,7 @@ public class ActuatorWebClientAdapter implements SondeService {
 
     @Override
     public Mono<Metriques> metriques(ServiceCible service) {
-        return requete(HttpMethod.GET, adresse(service, "/prometheus"), null)
+        return requete(HttpMethod.GET, adresseAvecBase(service, "/prometheus"), null)
             .flatMap(spec ->
                 spec
                     .accept(MediaType.TEXT_PLAIN)
@@ -140,7 +146,7 @@ public class ActuatorWebClientAdapter implements SondeService {
 
     @Override
     public Mono<EnvironnementService> environnement(ServiceCible service) {
-        return requete(HttpMethod.GET, adresse(service, "/env"), null)
+        return requete(HttpMethod.GET, adresseAvecBase(service, "/env"), null)
             .flatMap(spec -> spec.retrieve().bodyToMono(CARTE))
             .map(ActuatorWebClientAdapter::lireEnvironnement);
     }
@@ -161,7 +167,7 @@ public class ActuatorWebClientAdapter implements SondeService {
 
     @Override
     public Mono<NiveauxJournalisation> journalisation(ServiceCible service) {
-        return requete(HttpMethod.GET, adresse(service, "/loggers"), null)
+        return requete(HttpMethod.GET, adresseAvecBase(service, "/loggers"), null)
             .flatMap(spec -> spec.retrieve().bodyToMono(CARTE))
             .map(corps -> lireLoggers(service.nom(), corps));
     }
@@ -178,7 +184,7 @@ public class ActuatorWebClientAdapter implements SondeService {
 
     @Override
     public Mono<Void> modifierNiveau(ServiceCible service, String logger, String niveau) {
-        String url = adresse(service, "/loggers/" + UriUtils.encodePathSegment(logger, StandardCharsets.UTF_8));
+        String url = adresseAvecBase(service, "/loggers/" + UriUtils.encodePathSegment(logger, StandardCharsets.UTF_8));
         // Niveau nul admis : Actuator rétablit alors le niveau hérité (Map.of refuserait null).
         Map<String, String> corps = new HashMap<>();
         corps.put("configuredLevel", niveau);
@@ -191,6 +197,10 @@ public class ActuatorWebClientAdapter implements SondeService {
 
     static String adresse(ServiceCible service, String chemin) {
         return sansBarreFinale(service.url()) + GESTION + chemin;
+    }
+
+    private String adresseAvecBase(ServiceCible service, String chemin) {
+        return sansBarreFinale(service.url()) + gestion + chemin;
     }
 
     private Mono<WebClient.RequestHeadersSpec<?>> requete(HttpMethod methode, String url, Object corps) {
