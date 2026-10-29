@@ -1,5 +1,5 @@
-# Service d'une couche de présentation. Seules ${GIMAC_PASSERELLE} et ${GIMAC_RESOLVEUR}
-# sont substituées au démarrage par l'image nginx ; les autres variables sont celles de nginx.
+# Service d'une couche de présentation. ${GIMAC_PASSERELLE} est substituée au démarrage ;
+# les autres variables sont celles de nginx. Le proxy_pass statique respecte /etc/hosts.
 # Protocole d'origine (D-75) : derrière le relais HTTPS du serveur (nginx de l'hôte), celui qu'il
 # transmet, pour que la passerelle pose ses témoins Secure et forme ses adresses en https ; à défaut,
 # celui de la requête reçue.
@@ -14,10 +14,6 @@ server {
     root /usr/share/nginx/html;
     server_tokens off;
 
-    # Résolution différée de la passerelle : la couche démarre même si MS-GATEWAY est absente.
-    resolver ${GIMAC_RESOLVEUR} valid=30s ipv6=off;
-    set $passerelle ${GIMAC_PASSERELLE};
-
     include /etc/nginx/gimac-securite.conf;
 
     # Sonde de santé pour Docker et Kubernetes.
@@ -31,7 +27,7 @@ server {
     # et canal poussé des couches (/bff/<couche>/live). Aucune mise en tampon ni en cache, HTTP/1.1
     # persistant, connexion longue : chaque événement est remis dès son émission par la passerelle.
     location = /api/plateforme/flux {
-        proxy_pass $passerelle;
+        proxy_pass ${GIMAC_PASSERELLE};
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         proxy_set_header Host $host;
@@ -43,7 +39,7 @@ server {
         proxy_send_timeout 24h;
     }
     location ~ ^/bff/(des|portail|console)/live$ {
-        proxy_pass $passerelle;
+        proxy_pass ${GIMAC_PASSERELLE};
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         proxy_set_header Host $host;
@@ -64,7 +60,7 @@ server {
         # 110 Mo couvre la plus large, et le corps est transmis au fil de l'eau, sans tampon disque.
         client_max_body_size 110m;
         proxy_request_buffering off;
-        proxy_pass $passerelle;
+        proxy_pass ${GIMAC_PASSERELLE};
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto $proto_origine;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
