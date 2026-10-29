@@ -76,7 +76,7 @@ git checkout -- ../../ms-*/.yo-rc.json   # annule la réécriture de version par
 
 ## Règles Sandbox et état de la preuve locale
 
-La politique OPA autorise dans le DES, en plus de `/bff/des/sbx-espace`, uniquement les quatre lectures D-121 de SBX-TRACE sous `SBX_SUP_CONSULTATION`. Les écritures de réexamen US-EXI-23 sont réservées à `IAM_ACCOUNT_CREATE` (ouverture) et `IAM_ACCOUNT_ROLES` (décision et clôture). Exécution du 27/10/2026 : `opa test opa/politiques`, 213/213. La même politique est déployée dans `infra/kubernetes-gimac/partages/opa/`.
+La politique OPA autorise dans le DES, en plus de `/bff/des/sbx-espace`, uniquement les quatre lectures D-121 de SBX-TRACE sous `SBX_SUP_CONSULTATION`. Les écritures de réexamen US-EXI-23 sont réservées à `IAM_ACCOUNT_CREATE` (ouverture) et `IAM_ACCOUNT_ROLES` (décision et clôture). Les POST réels `/traces/{ref}/exports` (console et portail) et `/traces/{ref}/acces-integral` (console) relèvent de `SBX_TRA_CONSULTATION`. Sur le portail, seuls `/espace`, `/espaces-personnels/moi` et `/perimetre` sont ouverts sans permission HAB à un compte d'institution authentifié à deux facteurs ; SBX-ESPACE revérifie le titulaire et le mandat. Exécution du 29/10/2026 : `opa check --strict` et `opa test opa/politiques`, **214/214**. La même politique est déployée dans `infra/kubernetes-gimac/partages/opa/`.
 
 Ces contrôles statiques et les tests Testcontainers ne sont pas un démarrage du Compose complet, qui n'a pas été effectué pour cette intégration. Les assemblages spécifiques de recette restent à résorber dans l'assemblage courant ; l'AC mTLS locale n'est pas livrée et aucune preuve de serveurs GIMAC réels n'existe.
 

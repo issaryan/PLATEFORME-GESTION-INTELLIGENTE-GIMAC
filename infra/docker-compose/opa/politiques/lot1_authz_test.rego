@@ -1594,17 +1594,38 @@ test_sbx_fonctions_ecriture if {
 }
 
 test_sbx_trace_post_lecture_motivee if {
-	every chemin in ["/bff/console/sbx-trace/exports", "/bff/console/sbx-trace/acces-integral"] {
+	every chemin in ["/bff/console/sbx-trace/traces/TRC-1/exports", "/bff/console/sbx-trace/traces/TRC-1/acces-integral"] {
 		authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "2"}
 		not authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["SBX_TRA_ADMINISTRATION"], "authentifie": true, "acr": "2"}
 		not authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["SBX_TRA_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
 		not authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "1"}
 	}
 
-	# Les autres POST restent des écritures ; un chemin voisin n'hérite pas de l'exception.
+	# L'export du portail est aussi une lecture motivée ; l'accès intégral reste réservé à la console GIMAC.
+	authz.allow with input as {"method": "POST", "path": "/bff/portail/sbx-trace/traces/TRC-1/exports", "permissions": ["SBX_TRA_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/portail/sbx-trace/traces/TRC-1/acces-integral", "permissions": ["SBX_TRA_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+
+	# Les autres POST restent des écritures ; les anciens littéraux et chemins voisins n'héritent pas de l'exception.
 	authz.allow with input as {"method": "POST", "path": "/bff/console/sbx-trace/regles", "permissions": ["SBX_TRA_ADMINISTRATION"], "authentifie": true, "acr": "2"}
 	not authz.allow with input as {"method": "POST", "path": "/bff/console/sbx-trace/regles", "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "2"}
-	not authz.allow with input as {"method": "POST", "path": "/bff/console/sbx-trace/exports/e1", "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "2"}
+	every chemin in ["/bff/console/sbx-trace/exports", "/bff/console/sbx-trace/acces-integral", "/bff/console/sbx-trace/traces/TRC-1/exports/e1"] {
+		not authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_sbx_espace_personnel_non_administrateur if {
+	every chemin in ["/bff/portail/sbx-espace/espace", "/bff/portail/sbx-espace/espaces-personnels/moi", "/bff/portail/sbx-espace/perimetre"] {
+		authz.allow with input as {"method": "GET", "path": chemin, "permissions": [], "institution_id": "99001", "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": [], "institution_id": "", "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": [], "institution_id": "99001", "authentifie": false, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": [], "institution_id": "99001", "authentifie": true, "acr": "1"}
+		not authz.allow with input as {"method": "POST", "path": chemin, "permissions": [], "institution_id": "99001", "authentifie": true, "acr": "2"}
+	}
+
+	# Ni liste des autres espaces, ni historique arbitraire, ni administration déléguée sans la permission requise.
+	every chemin in ["/bff/portail/sbx-espace/espaces-personnels", "/bff/portail/sbx-espace/espaces-personnels/EP-1/historique", "/bff/portail/sbx-espace/collaborateurs"] {
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": [], "institution_id": "99001", "authentifie": true, "acr": "2"}
+	}
 }
 
 test_sbx_espace_departement if {

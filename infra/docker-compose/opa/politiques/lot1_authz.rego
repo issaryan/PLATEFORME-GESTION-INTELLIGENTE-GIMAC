@@ -212,9 +212,10 @@ regles := [
 	# Candidats d'un intervenant (désignation hors de l'unité) : /processus/candidats et …/etapes/{code}/candidats.
 	# D-98 : « processus que je peux lancer » (/processus/lancables) et « mes demandes » (/processus/demandes), même règle.
 	# QUO-04 : pièce du formulaire de lancement ou livrable d'une instance (/processus/instances/{id}/documents/{doc}).
+	# PDF de la demande initiée et de ses signatures (/processus/instances/{id}/pdf).
 	# D-103 : public d'un brouillon ou d'une version publiée (PUT /processus/{id}/public), même permission que la
 	# modification d'une définition ; qui définit les processus de l'unité est vérifié par MS-PILOTAGE.
-	{"m": "GET", "re": `^/bff/des/pilotage/processus(/[^/]+|/instances/[^/]+(/etapes/[^/]+/candidats|/documents/[^/]+)?)?$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "GET", "re": `^/bff/des/pilotage/processus(/[^/]+|/instances/[^/]+(/pdf|/etapes/[^/]+/candidats|/documents/[^/]+)?)?$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "POST", "re": `^/bff/des/pilotage/processus(/[^/]+/(controle|publication|nouvelle-version|retrait|instances))?$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "POST", "re": `^/bff/des/pilotage/processus/instances/[^/]+/(suspension|reprise|annulation)$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "POST", "re": `^/bff/des/pilotage/processus/instances/[^/]+/etapes/[^/]+/(livrables|signature|fin|validation|reaffectation)$`, "p": "PIL_ACTIVITY_OWN"},
@@ -586,7 +587,13 @@ sbx_lecture if input.method in {"GET", "HEAD", "OPTIONS"}
 sbx_lecture if {
 	input.method == "POST"
 	sbx_route.service == "trace"
-	regex.match(`^/bff/console/sbx-trace/(exports|acces-integral)$`, input.path)
+	regex.match(`^/bff/(console|portail)/sbx-trace/traces/[^/]+/exports$`, input.path)
+}
+
+sbx_lecture if {
+	input.method == "POST"
+	sbx_route.service == "trace"
+	regex.match(`^/bff/console/sbx-trace/traces/[^/]+/acces-integral$`, input.path)
 }
 
 sbx_fonctions_ecriture := {"ADMINISTRATION", "SIMULATION", "EXECUTION", "VALIDATION"}
@@ -618,6 +625,22 @@ sbx_couche_admise if {
 	sbx_route.couche == "des"
 	sbx_route.service == "espace"
 	not compte_externe
+}
+
+# Espace personnel d'un compte non administrateur : uniquement les trois lectures qui ne listent pas les autres
+# espaces ; SBX-ESPACE revérifie le titulaire, l'institution et le mandat. Aucune permission HAB n'est exigée ici.
+sbx_espace_personnel if {
+	input.method == "GET"
+	regex.match(`^/bff/portail/sbx-espace/(espace|espaces-personnels/moi|perimetre)$`, input.path)
+}
+
+allow if {
+	not restreinte
+	not interne
+	sbx_espace_personnel
+	compte_externe
+	input.authentifie == true
+	double_facteur
 }
 
 # D-121 : quatre lectures exactes de la supervision dans le DES, permission SUP dédiée ; aucun repli sur TRA.
