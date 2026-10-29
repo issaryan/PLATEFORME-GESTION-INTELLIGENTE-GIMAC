@@ -74,7 +74,7 @@ describe('Sandbox GIMAC : listes', () => {
     echec = false
     fireEvent.click(screen.getByRole('button', { name: 'Réessayer' }))
     expect(await screen.findByText('99009')).toBeTruthy()
-    expect(screen.getByText('—')).toBeTruthy()
+    expect(screen.getByText('-')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Taille de page'), { target: { value: '50' } })
     await waitFor(() => expect(appels).toContain(50))
   })

@@ -40,7 +40,7 @@ export default function ConfigurationPlateformePage() {
                     <KeyValueList
                       items={[
                         { key: t('console.config.adresse'), value: s.url, mono: true },
-                        { key: t('console.config.profilsActifs'), value: s.profilsActifs.length ? <span className="gm-row">{s.profilsActifs.map((p) => <Tag key={p}>{p}</Tag>)}</span> : '—' },
+                        { key: t('console.config.profilsActifs'), value: s.profilsActifs.length ? <span className="gm-row">{s.profilsActifs.map((p) => <Tag key={p}>{p}</Tag>)}</span> : '-' },
                         ...Object.entries(s.proprietes).map(([k, v]) => ({ key: k, value: v, mono: true })),
                       ]}
                     />

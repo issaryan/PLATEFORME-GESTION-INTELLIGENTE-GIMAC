@@ -17,10 +17,10 @@ export const etatDirect = (e: EtatFlux): LiveState => (e === 'connecte' ? 'live'
 
 // ------------------------------------------------------------------ formats
 
-export const pourcent = (v: number | null | undefined, echelle = 1) => (v === null || v === undefined ? '—' : `${(v * echelle).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`)
-export const nombre = (v: number | null | undefined, decimales: number) => (v === null || v === undefined ? '—' : v.toLocaleString('fr-FR', { maximumFractionDigits: decimales }))
+export const pourcent = (v: number | null | undefined, echelle = 1) => (v === null || v === undefined ? '-' : `${(v * echelle).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`)
+export const nombre = (v: number | null | undefined, decimales: number) => (v === null || v === undefined ? '-' : v.toLocaleString('fr-FR', { maximumFractionDigits: decimales }))
 export function octets(v: number | null | undefined): string {
-  if (v === null || v === undefined) return '—'
+  if (v === null || v === undefined) return '-'
   const u = ['o', 'Ko', 'Mo', 'Go', 'To']
   let x = v
   let i = 0

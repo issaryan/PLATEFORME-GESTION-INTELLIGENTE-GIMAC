@@ -40,5 +40,5 @@ npm run lint -w @gimac/compte
 
 | Date | Commit | Modification |
 |---|---|---|
-| 2026-09-29 | — | Création (D-62) : port, services HTTP et simulé, hooks, garde de premier accès, assistant, page Mon compte, FR/EN/ES ; 25 tests, couverture 98,5 % des instructions, 85,6 % des branches |
-| 2026-10-01 | — | Photo de profil (`PUT`/`DELETE /moi/avatar`, `useMonAvatar`), appareils connectés et historique (`/api/session/appareils`, `/api/session/historique`), `fermerAutresSessions` ; 38 tests |
+| 2026-09-29 | - | Création (D-62) : port, services HTTP et simulé, hooks, garde de premier accès, assistant, page Mon compte, FR/EN/ES ; 25 tests, couverture 98,5 % des instructions, 85,6 % des branches |
+| 2026-10-01 | - | Photo de profil (`PUT`/`DELETE /moi/avatar`, `useMonAvatar`), appareils connectés et historique (`/api/session/appareils`, `/api/session/historique`), `fermerAutresSessions` ; 38 tests |

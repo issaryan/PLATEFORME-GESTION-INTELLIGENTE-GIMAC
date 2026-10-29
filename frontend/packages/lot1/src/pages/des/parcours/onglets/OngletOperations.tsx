@@ -193,7 +193,7 @@ function TableOperations({ operations, selection, onOuvrir }: { operations: Oper
         </span>
       ),
     },
-    { key: 'plateforme', header: t('parcoursOps.col.plateforme'), width: 170, render: (o) => (o.plateforme ? t(`parcours.plateforme.${o.plateforme}`) : '—') },
+    { key: 'plateforme', header: t('parcoursOps.col.plateforme'), width: 170, render: (o) => (o.plateforme ? t(`parcours.plateforme.${o.plateforme}`) : '-') },
     {
       key: 'responsable', header: t('parcours.qualite.R'), width: 190,
       render: (o) => (o.raci.R ? <span className="gm-col" style={{ gap: 2, alignItems: 'flex-start' }}><span>{fonctions.libelle(o.raci.R.fonction)}</span>{o.raci.R.aAffecter ? <StatusBadge status="warn" label={t('parcoursOps.aAffecterCourt')} /> : null}</span> : t('parcoursOps.nonDesigne')),
@@ -218,7 +218,7 @@ function TableOperations({ operations, selection, onOuvrir }: { operations: Oper
           <span style={{ whiteSpace: 'nowrap' }}>{date(o.faiteLe)}</span>
         ) : (
           <span className="gm-col" style={{ gap: 2, alignItems: 'flex-start' }}>
-            <span style={{ whiteSpace: 'nowrap' }}>{o.echeance ? date(o.echeance) : '—'}</span>
+            <span style={{ whiteSpace: 'nowrap' }}>{o.echeance ? date(o.echeance) : '-'}</span>
             {o.sla ? <StatusBadge status={tonSla[o.sla]} label={t(`parcours.sla.${o.sla}`)} /> : null}
           </span>
         ),

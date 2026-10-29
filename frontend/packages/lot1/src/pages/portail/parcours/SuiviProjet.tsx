@@ -71,10 +71,10 @@ function Progression({ d }: { d: DossierLiaison }) {
     },
     {
       key: 'porteurs', header: t('pp.porteurs'),
-      render: (e) => (e.porteurs.length ? qui(e.porteurs) : '—'),
+      render: (e) => (e.porteurs.length ? qui(e.porteurs) : '-'),
     },
-    { key: 'actions', header: t('pp.avancement'), render: (e) => (e.actionsTotal ? <span className="gm-num">{t('pp.actionsFaites', { n: e.actionsFaites, total: e.actionsTotal })}</span> : '—') },
-    { key: 'echeance', header: t('pp.echeanceOuCloture'), render: (e) => (e.closeLe ? <span className="gm-num">{t('pp.closeLe', { date: ecrire(e.closeLe) })}</span> : e.etat === 'SANS_OBJET' ? '—' : <Echeance date={e.echeance} sla={e.sla} />) },
+    { key: 'actions', header: t('pp.avancement'), render: (e) => (e.actionsTotal ? <span className="gm-num">{t('pp.actionsFaites', { n: e.actionsFaites, total: e.actionsTotal })}</span> : '-') },
+    { key: 'echeance', header: t('pp.echeanceOuCloture'), render: (e) => (e.closeLe ? <span className="gm-num">{t('pp.closeLe', { date: ecrire(e.closeLe) })}</span> : e.etat === 'SANS_OBJET' ? '-' : <Echeance date={e.echeance} sla={e.sla} />) },
   ]
   return (
     <Section titre={t('pp.progression.titre')}>
@@ -193,7 +193,7 @@ function EtatPv({ id }: { id: string }) {
   const { t } = useTranslation()
   const q = useProcesVerbalPortail(id)
   if (q.isPending) return <Skeleton width="60%" />
-  if (!q.data) return <StatusBadge status="neutral" label="—" />
+  if (!q.data) return <StatusBadge status="neutral" label="-" />
   const e = q.data.etat
   return <StatusBadge status={e === 'SIGNE' ? 'ok' : e === 'NON_ETABLI' ? 'neutral' : 'warn'} label={t(`parcours.pv.etat.${e}`)} />
 }
@@ -201,7 +201,7 @@ function EtatApprobation({ id }: { id: string }) {
   const { t } = useTranslation()
   const q = useApprobationPortail(id)
   if (q.isPending) return <Skeleton width="60%" />
-  if (!q.data) return <StatusBadge status="neutral" label="—" />
+  if (!q.data) return <StatusBadge status="neutral" label="-" />
   const fournies = q.data.attestations.filter((a) => a.preuve).length
   // CER-09 : aucune attestation exigée (modèle générique) : rien n'est attendu, ni maintenant ni plus tard.
   if (q.data.attestations.length === 0) return <StatusBadge status="neutral" label={t('pp.attestations.aucuneExigee')} />
@@ -212,7 +212,7 @@ function EtatFiche({ id }: { id: string }) {
   const { t } = useTranslation()
   const q = useFicheSuiviPortail(id)
   if (q.isPending) return <Skeleton width="60%" />
-  if (!q.data) return <StatusBadge status="neutral" label="—" />
+  if (!q.data) return <StatusBadge status="neutral" label="-" />
   const e = q.data.etat
   return <StatusBadge status={e === 'REMISE' ? 'warn' : e === 'A_REMETTRE' ? 'neutral' : 'ok'} label={t(`pp.fiche.etat.${e}`)} />
 }

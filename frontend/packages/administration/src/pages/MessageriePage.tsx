@@ -132,7 +132,7 @@ export default function MessageriePage() {
                 { key: t('console.messagerie.hote'), value: m.hote, mono: true },
                 { key: t('console.messagerie.port'), value: String(m.port), mono: true },
                 { key: t('console.messagerie.expediteur'), value: m.expediteur },
-                { key: t('console.messagerie.nomExpediteur'), value: m.nomExpediteur || '—' },
+                { key: t('console.messagerie.nomExpediteur'), value: m.nomExpediteur || '-' },
                 { key: t('console.messagerie.starttls'), value: oui(m.starttls) },
                 { key: t('console.messagerie.ssl'), value: oui(m.ssl) },
               ]} />
@@ -140,7 +140,7 @@ export default function MessageriePage() {
             <Card title={t('console.messagerie.authentification')}>
               <KeyValueList items={[
                 { key: t('console.messagerie.authentification.active'), value: oui(m.authentification) },
-                { key: t('console.messagerie.utilisateur'), value: m.utilisateur ?? '—', mono: true },
+                { key: t('console.messagerie.utilisateur'), value: m.utilisateur ?? '-', mono: true },
                 { key: t('console.messagerie.motDePasse'), value: <StatusBadge status={m.motDePasseDefini ? 'ok' : 'warn'} label={t(m.motDePasseDefini ? 'console.messagerie.etat.defini' : 'console.messagerie.etat.nonDefini')} /> },
               ]} />
             </Card>

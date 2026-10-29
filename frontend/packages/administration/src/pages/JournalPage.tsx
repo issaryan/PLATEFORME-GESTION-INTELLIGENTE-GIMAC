@@ -30,11 +30,11 @@ export default function JournalPage() {
     { key: 'action', header: t('console.journal.action'), render: (j) => t(`console.journal.action.${j.action}`, { defaultValue: j.action }) },
     {
       key: 'cibleLibelle', header: t('console.journal.cible'),
-      render: (j) => (j.cibleId ? <Link href={`${base}/comptes/${j.cibleId}`} mono>{j.cibleLibelle ?? j.cibleId}</Link> : <span className="gm-mono">{j.cibleLibelle ?? '—'}</span>),
+      render: (j) => (j.cibleId ? <Link href={`${base}/comptes/${j.cibleId}`} mono>{j.cibleLibelle ?? j.cibleId}</Link> : <span className="gm-mono">{j.cibleLibelle ?? '-'}</span>),
     },
-    { key: 'motif', header: t('console.journal.motif'), render: (j) => j.motif ?? '—' },
-    { key: 'details', header: t('console.journal.details'), render: (j) => j.details || '—' },
-    { key: 'correlationId', header: t('console.journal.correlation'), render: (j) => (j.correlationId ? <CorrelationIdChip id={j.correlationId} /> : '—') },
+    { key: 'motif', header: t('console.journal.motif'), render: (j) => j.motif ?? '-' },
+    { key: 'details', header: t('console.journal.details'), render: (j) => j.details || '-' },
+    { key: 'correlationId', header: t('console.journal.correlation'), render: (j) => (j.correlationId ? <CorrelationIdChip id={j.correlationId} /> : '-') },
   ]
 
   return (

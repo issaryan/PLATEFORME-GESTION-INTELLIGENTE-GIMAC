@@ -82,14 +82,14 @@ function Lecture({ fiche }: { fiche: FicheSuiviServices }) {
   const ecrire = useDate()
   const cols: Column<Ligne>[] = [
     { key: 'libelle', header: t('pp.fiche.service') },
-    { key: 'ouvert', header: t('pp.fiche.etatService'), render: (l) => (l.ouvert === null ? '—' : <StatusBadge status={l.ouvert ? 'ok' : 'warn'} label={t(l.ouvert ? 'pp.fiche.ouvert' : 'pp.fiche.nonOuvert')} />) },
-    { key: 'commentaire', header: t('pp.fiche.commentaire'), render: (l) => l.commentaire ?? '—' },
+    { key: 'ouvert', header: t('pp.fiche.etatService'), render: (l) => (l.ouvert === null ? '-' : <StatusBadge status={l.ouvert ? 'ok' : 'warn'} label={t(l.ouvert ? 'pp.fiche.ouvert' : 'pp.fiche.nonOuvert')} />) },
+    { key: 'commentaire', header: t('pp.fiche.commentaire'), render: (l) => l.commentaire ?? '-' },
   ]
   return (
     <Card title={t('pp.fiche.renseignee')}>
       <div className="gm-col">
         <KeyValueList items={[
-          { key: t('pp.fiche.renseigneeLe'), value: ecrire(fiche.renseigneeLe) || '—' },
+          { key: t('pp.fiche.renseigneeLe'), value: ecrire(fiche.renseigneeLe) || '-' },
           { key: t('pp.fiche.constat'), value: fiche.constateeLe ? t('pp.fiche.constateeLe', { date: ecrire(fiche.constateeLe) }) : t('pp.fiche.constatAttendu') },
         ]} />
         <DataTable columns={cols} rows={fiche.lignes} rowKey={(l) => l.serviceCode} density="compact" />

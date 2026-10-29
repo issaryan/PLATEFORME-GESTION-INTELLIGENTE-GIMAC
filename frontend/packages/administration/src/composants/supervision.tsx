@@ -57,14 +57,14 @@ export function SectionSupervision({ periode = 'UNE_HEURE' }: { periode?: Period
   const colServices: Column<EtatService>[] = [
     { key: 'nom', header: t('console.plateforme.service'), render: (s) => <span className="gm-mono">{s.nom}</span> },
     { key: 'etat', header: t('console.plateforme.etat'), render: (s) => <StatusBadge status={statutService(s.etat)} label={t(`console.plateforme.sante.${s.etat}`)} /> },
-    { key: 'latenceMs', header: t('console.plateforme.latence'), type: 'number', render: (s) => (s.latenceMs === null ? '—' : `${s.latenceMs} ms`) },
+    { key: 'latenceMs', header: t('console.plateforme.latence'), type: 'number', render: (s) => (s.latenceMs === null ? '-' : `${s.latenceMs} ms`) },
     { key: 'tendance', header: t('graphiques.colonne.latence'), render: (s) => <TendanceMetrique series={latences.data} nom={s.nom} libelle={t('graphiques.metrique.SERVICE_LATENCE_P95') + ' · ' + s.nom} /> },
-    { key: 'version', header: t('console.plateforme.version'), render: (s) => <span className="gm-mono">{s.info?.version ?? '—'}</span> },
+    { key: 'version', header: t('console.plateforme.version'), render: (s) => <span className="gm-mono">{s.info?.version ?? '-'}</span> },
     { key: 'cpu', header: t('console.plateforme.cpu'), type: 'number', render: (s) => pourcent(s.metriques?.cpuProcessus, 100) },
     { key: 'tas', header: t('console.plateforme.tas'), type: 'number', render: (s) => pourcent(s.metriques?.memoireTasPourcent) },
     {
       key: 'disque', header: t('console.plateforme.disque'), type: 'number',
-      render: (s) => (s.metriques?.disqueTotalOctets && s.metriques.disqueLibreOctets !== null ? pourcent(1 - s.metriques.disqueLibreOctets / s.metriques.disqueTotalOctets, 100) : '—'),
+      render: (s) => (s.metriques?.disqueTotalOctets && s.metriques.disqueLibreOctets !== null ? pourcent(1 - s.metriques.disqueLibreOctets / s.metriques.disqueTotalOctets, 100) : '-'),
     },
   ]
   const colHotes: Column<EtatHote>[] = [
@@ -83,8 +83,8 @@ export function SectionSupervision({ periode = 'UNE_HEURE' }: { periode?: Period
   const colAlertes: Column<Alerte>[] = [
     { key: 'severite', header: t('console.alertes.severite'), render: (a) => <StatusBadge status={statutSeverite(a.severite)} label={t(`console.alertes.severite.${a.severite ?? 'info'}`, { defaultValue: a.severite ?? '' })} /> },
     { key: 'nom', header: t('console.alertes.nom'), render: (a) => <span className="gm-mono">{a.nom}</span> },
-    { key: 'resume', header: t('console.alertes.resume'), render: (a) => a.resume ?? '—' },
-    { key: 'cible', header: t('console.alertes.cible'), render: (a) => <span className="gm-mono">{a.cible ?? '—'}</span> },
+    { key: 'resume', header: t('console.alertes.resume'), render: (a) => a.resume ?? '-' },
+    { key: 'cible', header: t('console.alertes.cible'), render: (a) => <span className="gm-mono">{a.cible ?? '-'}</span> },
     { key: 'depuis', header: t('console.alertes.depuis'), render: (a) => dateHeure(a.depuis, i18n.language) },
   ]
 
@@ -114,10 +114,10 @@ export function SectionSupervision({ periode = 'UNE_HEURE' }: { periode?: Period
               status: STATUT_PLATEFORME[instantane.global.etat], statusLabel: t(`console.plateforme.etat.${instantane.global.etat}`) },
             { key: 'services', label: t('console.plateforme.servicesUp'), value: `${instantane.global.up} / ${instantane.global.total}`,
               status: instantane.global.down > 0 ? 'warn' : 'ok', statusLabel: t('console.plateforme.servicesDown', { n: instantane.global.down }) },
-            { key: 'alertes', label: t('console.alertes.actives'), value: nombreAlertes === undefined ? '—' : nombreAlertes < 0 ? t('console.alertes.injoignable') : nombreAlertes,
+            { key: 'alertes', label: t('console.alertes.actives'), value: nombreAlertes === undefined ? '-' : nombreAlertes < 0 ? t('console.alertes.injoignable') : nombreAlertes,
               status: nombreAlertes && nombreAlertes > 0 ? 'warn' : 'ok', statusLabel: t(nombreAlertes && nombreAlertes > 0 ? 'console.aTraiter' : 'console.aJour') },
             ...(instantane.keycloak
-              ? [{ key: 'keycloak', label: t('console.plateforme.keycloak'), value: instantane.keycloak.latenceMs === null ? '—' : `${instantane.keycloak.latenceMs} ms`,
+              ? [{ key: 'keycloak', label: t('console.plateforme.keycloak'), value: instantane.keycloak.latenceMs === null ? '-' : `${instantane.keycloak.latenceMs} ms`,
                   status: statutService(instantane.keycloak.etat), statusLabel: t(`console.plateforme.sante.${instantane.keycloak.etat}`) }]
               : []),
           ]}

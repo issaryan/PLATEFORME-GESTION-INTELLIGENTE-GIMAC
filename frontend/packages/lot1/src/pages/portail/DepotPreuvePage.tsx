@@ -89,7 +89,7 @@ function Livrable({ d, operationId }: { d: DossierLiaison; operationId: string }
       <div className="gm-col">
         <KeyValueList items={[
           // D-109 : pièces attendues du participant lues dans le référentiel, sinon le libellé historique.
-          { key: t('pp.preuveAttendueLibelle'), value: livrablesParticipant(d, tache.rang).map((l) => l.libelle).join(' ; ') || t(`parcours.preuveAttendue.${tache.rang}`, { defaultValue: '—' }) },
+          { key: t('pp.preuveAttendueLibelle'), value: livrablesParticipant(d, tache.rang).map((l) => l.libelle).join(' ; ') || t(`parcours.preuveAttendue.${tache.rang}`, { defaultValue: '-' }) },
           { key: t('pp.etape'), value: t(`parcours.etape.${tache.etape}`) },
           { key: t('pp.qualite'), value: <Tag>{t(`parcours.qualite.${tache.qualite}`)}</Tag> },
           { key: t('pp.echeance'), value: <Echeance date={tache.echeance} sla={tache.sla} /> },

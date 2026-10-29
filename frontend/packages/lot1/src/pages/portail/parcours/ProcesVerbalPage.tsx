@@ -67,7 +67,7 @@ function Pv({ d, pv }: { d: DossierLiaison; pv: ProcesVerbalCertification }) {
           },
           { key: t('pp.pv.services'), value: <span className="gm-row" style={{ gap: 'var(--gm-space-2)' }}>{pv.servicesCouverts.map((s) => <Tag key={s}>{libelleService(s)}</Tag>)}</span> },
           { key: t('pp.pv.etabli'), value: t('pp.pv.etabliLe', { date: ecrire(pv.etabliLe), par: fonction('CONDUCTEUR') }) },
-          { key: t('pp.pv.empreinte'), value: pv.empreinte ? <Hash value={pv.empreinte} /> : '—' },
+          { key: t('pp.pv.empreinte'), value: pv.empreinte ? <Hash value={pv.empreinte} /> : '-' },
           { key: t('pp.pv.signatureGimac'), value: signature(pv.signatureGimac, true) },
           { key: t('pp.pv.signatureParticipant'), value: signature(pv.signatureParticipant, false) },
         ]} />

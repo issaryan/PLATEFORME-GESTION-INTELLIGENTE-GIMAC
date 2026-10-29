@@ -57,7 +57,7 @@ export function OngletPerimetres() {
     { key: 'code', header: t('sbx.iam.perimetre.code'), render: (p) => <span className="gm-mono">{p.code}</span> },
     { key: 'etat', header: t('sbx.iam.perimetre.etat'), render: () => <StatusBadge status="crit" label={t('sbx.iam.perimetre.suspendu')} /> },
     { key: 'depuis', header: t('sbx.iam.perimetre.depuis'), render: (p) => dateHeure(p.depuis, i18n.language) },
-    { key: 'motif', header: t('sbx.iam.perimetre.motif'), render: (p) => p.motif ?? '—' },
+    { key: 'motif', header: t('sbx.iam.perimetre.motif'), render: (p) => p.motif ?? '-' },
     { key: 'acteurId', header: t('sbx.iam.perimetre.acteur'), render: (p) => <span className="gm-mono">{p.acteurId}</span> },
   ]
   return (
@@ -270,7 +270,7 @@ export function OngletRegistre() {
     { key: 'index', header: t('sbx.audit.index'), render: (e) => <span className="gm-mono">{e.index}</span> },
     { key: 'survenueLe', header: t('sbx.audit.survenue'), render: (e) => dateHeure(e.survenueLe, i18n.language) },
     { key: 'type', header: t('sbx.audit.type'), render: (e) => <span className="gm-mono">{e.type}</span> },
-    { key: 'institution', header: t('sbx.audit.institution'), render: (e) => (e.institution ? <span className="gm-mono">{e.institution}</span> : '—') },
+    { key: 'institution', header: t('sbx.audit.institution'), render: (e) => (e.institution ? <span className="gm-mono">{e.institution}</span> : '-') },
     { key: 'acteur', header: t('sbx.audit.acteur'), render: (e) => <span className="gm-mono">{e.acteur}</span> },
     { key: 'empreinte', header: t('sbx.audit.empreinte'), render: (e) => <Hash value={e.empreinte} onCopy={() => void navigator.clipboard?.writeText(e.empreinte).catch(() => undefined)} /> },
   ]
@@ -311,7 +311,7 @@ function RebutRegistre() {
   const colonnes: Column<RebutSandbox>[] = [
     { key: 'recuLe', header: t('sbx.audit.rebut.recu'), render: (r) => dateHeure(r.recuLe, i18n.language) },
     { key: 'sujet', header: t('sbx.audit.rebut.sujet'), render: (r) => <span className="gm-mono">{r.sujet}</span> },
-    { key: 'eventId', header: t('sbx.audit.rebut.identifiant'), render: (r) => <span className="gm-mono">{r.eventId ?? '—'}</span> },
+    { key: 'eventId', header: t('sbx.audit.rebut.identifiant'), render: (r) => <span className="gm-mono">{r.eventId ?? '-'}</span> },
     { key: 'motif', header: t('sbx.audit.rebut.motif'), render: (r) => <StatusBadge status="warn" label={t(`sbx.audit.motif.${r.motif}`, { defaultValue: r.motif })} /> },
   ]
   return (

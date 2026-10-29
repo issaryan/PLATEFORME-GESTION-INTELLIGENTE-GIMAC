@@ -21,6 +21,6 @@ npm run dev:portail      # depuis frontend/
 | Date | Commit | Modification |
 |---|---|---|
 | 2026-09-28 | b20a049 | Génération `create-vite`, page d'accueil provisoire, thème, relais /api vers la passerelle |
-| 2026-09-28 | — | Remplacement du README du gabarit Vite par ce README |
-| 2026-09-29 | — | Routes du lot 1, enveloppe commune, connexion TRA-01, services simulés par défaut (`VITE_SERVICES=http` pour la passerelle), i18n FR, EN, ES, relais `/bff` |
-| 2026-09-29 | — | D-61, D-62 : session lue sur `/api/session` avec second facteur exigé (services réels), premier accès avant tout écran, « Mon compte » (`/portail/mon-compte`) et déconnexion dans l'espace personnel (`@gimac/compte`, `/bff/portail/iam/moi`) |
+| 2026-09-28 | - | Remplacement du README du gabarit Vite par ce README |
+| 2026-09-29 | - | Routes du lot 1, enveloppe commune, connexion TRA-01, services simulés par défaut (`VITE_SERVICES=http` pour la passerelle), i18n FR, EN, ES, relais `/bff` |
+| 2026-09-29 | - | D-61, D-62 : session lue sur `/api/session` avec second facteur exigé (services réels), premier accès avant tout écran, « Mon compte » (`/portail/mon-compte`) et déconnexion dans l'espace personnel (`@gimac/compte`, `/bff/portail/iam/moi`) |

@@ -72,7 +72,7 @@ export function locale(langue: string): string {
 
 /** Nombre compact (1 284 · 12,9 k · 4,2 M), décimales selon l'ordre de grandeur. */
 export function formatCompact(v: number | null | undefined, langue = 'fr'): string {
-  if (v === null || v === undefined || !Number.isFinite(v)) return '—'
+  if (v === null || v === undefined || !Number.isFinite(v)) return '-'
   const a = Math.abs(v)
   const decimales = a >= 100 || Number.isInteger(v) ? 0 : a >= 10 ? 1 : 2
   if (a >= 10000) {
