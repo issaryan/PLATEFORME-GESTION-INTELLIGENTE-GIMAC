@@ -528,6 +528,7 @@ privilège, règle placée avant celle de `/api/v1/interne/**`).
 |---|---|---|---|---|
 | `ouvrirCompte(…, cle)` (saga OUVERTURE) | `POST /api/v1/interne/sandbox/comptes` | `INTERNAL_IAM_SBX_SAGA` | `{ identifiant, prenom, nom, email, telephone?, fonction?, institutionId, profils }` | 201, ou 200 au rejeu : compte, profils et `permissionsSbx`, `rejouee` ; invitation, aucun mot de passe rendu |
 | `attribuerRole(…, cle)` (saga MATRICE) | `PUT /api/v1/interne/sandbox/comptes/{id}/profils-sandbox` | `INTERNAL_IAM_SBX_SAGA` | `{ profils, motif }` | Compte et permissions SBX ; seuls les profils SBX changent, les autres accès sont conservés |
+| `publierMatrice(…, cle)` (saga MATRICE, US-INS-07) | `PUT /api/v1/interne/sandbox/matrice` | `INTERNAL_IAM_SBX_SAGA` | `{ version, profils: { CODE: [SBX_*] } }` | `{ version, rejouee }` ; seules les permissions SBX des profils fournis changent, leurs autres permissions sont conservées |
 | (lecture du compte) | `GET /api/v1/interne/sandbox/comptes/{id}` | `INTERNAL_IAM_SBX_SAGA` | | même forme |
 | `suspendrePerimetre(code, suspendu, cle)` | `PUT /api/v1/interne/sandbox/perimetres/{code}/suspension` | `INTERNAL_IAM_SBX_SAGA` | `{ suspendu, motif? }` | `{ code, suspendu, depuis, sessionsRevoquees, rejouee }` |
 | (lecture) | `GET /api/v1/interne/sandbox/perimetres/{code}` | `INTERNAL_IAM_SBX_SAGA` | | même forme |
@@ -541,8 +542,10 @@ générateur) et `INTERNAL_PARTICIPANT_READ` ; `gateway-service` reçoit `INTERN
 
 OUVERTURE et MATRICE réutilisent `AdministrationComptesService`, `EtapesIdempotentes` et `ReglesSandbox`. Seuls des
 profils externes dont la composition porte une permission SBX sont acceptés (`IAM_SBX_PROFIL_REQUIS` ou
-`IAM_SBX_PROFIL_INVALIDE`) ; MATRICE préserve les profils non SBX du compte. Contrats et reprises :
-`ComptesSandboxSagaServiceTest`, `ComptesSandboxSagaIT.ouvertureEtMatrice`, `SandboxPerimetresRoutesTest.ouvertureMatrice`.
+`IAM_SBX_PROFIL_INVALIDE`) ; MATRICE préserve les profils non SBX du compte. La matrice globale US-INS-07 réutilise de
+même `ConfigurationAuthentificationService` : toutes les entrées sont validées avant écriture, chaque recomposition est
+auditée, les permissions hors SBX sont fusionnées et la validation externe reste refusée. Contrats et reprises :
+`ComptesSandboxSagaServiceTest`, `MatriceSandboxSagaServiceTest`, `ComptesSandboxSagaIT`, `SandboxPerimetresRoutesTest`.
 
 ### 8.2 Suspension d'institution et dernier administrateur (US-EXI-06)
 

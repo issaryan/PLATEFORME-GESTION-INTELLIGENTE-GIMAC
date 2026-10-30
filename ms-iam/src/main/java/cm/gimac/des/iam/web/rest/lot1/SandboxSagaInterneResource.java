@@ -5,6 +5,8 @@ import cm.gimac.des.iam.application.usecase.sandbox.PerimetresSandboxService.Eta
 import cm.gimac.des.iam.application.usecase.sandbox.PerimetresSandboxService.EtatProtection;
 import cm.gimac.des.iam.application.usecase.sandbox.ComptesSandboxSagaService;
 import cm.gimac.des.iam.application.usecase.sandbox.ComptesSandboxSagaService.CompteSaga;
+import cm.gimac.des.iam.application.usecase.sandbox.MatriceSandboxSagaService;
+import cm.gimac.des.iam.application.usecase.sandbox.MatriceSandboxSagaService.Publication;
 import cm.gimac.des.iam.application.usecase.sandbox.DelegationsSandboxService;
 import cm.gimac.des.iam.application.usecase.sandbox.DelegationsSandboxService.VueDelegation;
 import cm.gimac.des.iam.domain.compte.NouveauCompte;
@@ -71,14 +73,24 @@ public class SandboxSagaInterneResource {
 
     public record MatriceRequest(@NotNull Set<@NotBlank @Size(max = 64) String> profils, @NotBlank @Size(max = 500) String motif) {}
 
+    /** Composition SBX globale, par profil ; les autres permissions de chaque profil sont conservées par MS-IAM. */
+    public record MatriceGlobaleRequest(@NotNull Long version, @NotNull @Size(min = 1) java.util.Map<String, Set<@NotBlank @Size(max = 64) String>> profils) {}
+
     private final PerimetresSandboxService perimetres;
     private final DelegationsSandboxService delegations;
     private final ComptesSandboxSagaService comptes;
+    private final MatriceSandboxSagaService matriceGlobale;
 
-    public SandboxSagaInterneResource(PerimetresSandboxService perimetres, DelegationsSandboxService delegations, ComptesSandboxSagaService comptes) {
+    public SandboxSagaInterneResource(
+        PerimetresSandboxService perimetres,
+        DelegationsSandboxService delegations,
+        ComptesSandboxSagaService comptes,
+        MatriceSandboxSagaService matriceGlobale
+    ) {
         this.perimetres = perimetres;
         this.delegations = delegations;
         this.comptes = comptes;
+        this.matriceGlobale = matriceGlobale;
     }
 
     /** Saga OUVERTURE : création unique du compte et invitation ; 201, ou 200 pour une étape rejouée. */
@@ -97,6 +109,12 @@ public class SandboxSagaInterneResource {
     @PutMapping("/comptes/{id}/profils-sandbox")
     public CompteSaga matrice(@PathVariable String id, @Valid @RequestBody MatriceRequest r, @RequestHeader(name = CLE, required = false) String cle, Authentication auth) {
         return comptes.matrice(ActeurCourant.de(auth), id, r.profils(), r.motif(), cle);
+    }
+
+    /** Saga MATRICE globale (US-INS-07) : publication idempotente sur les profils, sans ouvrir l'administration publique. */
+    @PutMapping("/matrice")
+    public Publication matriceGlobale(@Valid @RequestBody MatriceGlobaleRequest r, @RequestHeader(name = CLE, required = false) String cle, Authentication auth) {
+        return matriceGlobale.publier(ActeurCourant.de(auth), r.version(), r.profils(), cle);
     }
 
     /** Saga MANDAT : délégation temporaire d'un intervenant ; 201, ou 200 pour une étape rejouée. */
