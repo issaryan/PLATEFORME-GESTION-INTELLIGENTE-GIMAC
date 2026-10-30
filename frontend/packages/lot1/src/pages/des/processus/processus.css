@@ -34,6 +34,8 @@
 
 /* Mise en page du suivi : graphe et panneau de l'étape. */
 .gm-proc-suivi { display: grid; grid-template-columns: minmax(0, 7fr) minmax(300px, 5fr); gap: var(--gm-space-5); align-items: start; }
+.gm-proc-suivi > * { min-width: 0; }
+.gm-proc-suivi .gm-timeline { overflow-wrap: anywhere; }
 .gm-proc-graphe .gm-mod-canevas { height: 300px; min-height: 260px; }
 .gm-proc-legende { display: flex; flex-wrap: wrap; gap: var(--gm-space-2); }
 .gm-proc-bloc { border: var(--gm-border-1) solid var(--gm-color-border); padding: var(--gm-space-3); display: flex; flex-direction: column; gap: var(--gm-space-2); background: var(--gm-color-surface); }
