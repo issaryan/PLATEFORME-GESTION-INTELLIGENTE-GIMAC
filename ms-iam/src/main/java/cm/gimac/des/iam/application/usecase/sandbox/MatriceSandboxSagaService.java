@@ -76,7 +76,10 @@ public class MatriceSandboxSagaService {
             ReglesSandbox.verifierValidationReservee(externes.contains(profil), permissions);
             Set<String> composees = new TreeSet<>(permissions);
             actuelles.stream().filter(p -> !ReglesSandbox.sandbox(p)).forEach(composees::add);
-            fusion.put(profil, Set.copyOf(composees));
+            // Une publication globale ne doit pas recomposer les profils inchangés : chaque écriture appelle Keycloak.
+            if (!composees.equals(actuelles)) {
+                fusion.put(profil, Set.copyOf(composees));
+            }
         });
         Optional<String> deja = cle == null || cle.isBlank()
             ? Optional.empty()
