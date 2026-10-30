@@ -16,6 +16,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import cm.gimac.des.iam.application.usecase.AvatarService;
 import cm.gimac.des.iam.application.usecase.sandbox.ComptesSandboxSagaService;
 import cm.gimac.des.iam.application.usecase.sandbox.ComptesSandboxSagaService.CompteSaga;
+import cm.gimac.des.iam.application.usecase.sandbox.MatriceSandboxSagaService;
+import cm.gimac.des.iam.application.usecase.sandbox.MatriceSandboxSagaService.Publication;
 import cm.gimac.des.iam.application.usecase.sandbox.DelegationsSandboxService;
 import cm.gimac.des.iam.application.usecase.sandbox.DelegationsSandboxService.VueDelegation;
 import cm.gimac.des.iam.application.usecase.sandbox.ReexamensAccesService;
@@ -85,6 +87,9 @@ class SandboxPerimetresRoutesTest {
     ComptesSandboxSagaService comptesSaga;
 
     @MockitoBean
+    MatriceSandboxSagaService matriceGlobale;
+
+    @MockitoBean
     ReexamensAccesService reexamens;
 
     static VueDelegation vue(boolean rejouee) {
@@ -130,6 +135,8 @@ class SandboxPerimetresRoutesTest {
         when(comptesSaga.ouvrir(any(), any(), eq("saga-o/replay"))).thenReturn(new CompteSaga("c1", "awa.test", "Awa Test", "awa@test.cm", "99001", true, T, List.of("ROLE_SBX_TESTEUR"), List.of("SBX_CER_EXECUTION"), true));
         when(comptesSaga.lire("c1")).thenReturn(compte);
         when(comptesSaga.matrice(any(), eq("c1"), eq(Set.of("ROLE_SBX_TESTEUR")), eq("Revue"), eq("saga-m/2"))).thenReturn(compte);
+        when(matriceGlobale.publier(any(), eq(7L), eq(java.util.Map.of("ROLE_SBX_LECTEUR", Set.of("SBX_ISO_SIMULATION"))), eq("saga-m/7")))
+            .thenReturn(new Publication(7, false));
         java.util.UUID rid = java.util.UUID.fromString("00000000-0000-0000-0000-000000000101");
         Campagne campagne = new Campagne(rid, "2026-T4", cm.gimac.des.iam.domain.enumeration.ReviewState.OUVERTE, T, null, null, null, 1);
         VueCampagne vueCampagne = new VueCampagne(campagne, List.of());
@@ -158,6 +165,17 @@ class SandboxPerimetresRoutesTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.protege").value(true));
         mvc.perform(put("/api/v1/interne/sandbox/perimetres/99001/suspension").with(service("INTERNAL_IAM_SBX_SAGA")).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("US-INS-07 : matrice globale interne, jamais ouverte à l'administration ordinaire")
+    void matriceGlobaleInterne() throws Exception {
+        String corps = "{\"version\":7,\"profils\":{\"ROLE_SBX_LECTEUR\":[\"SBX_ISO_SIMULATION\"]}}";
+        mvc.perform(put("/api/v1/interne/sandbox/matrice").with(service("INTERNAL_IAM_SBX_SAGA")).header("Idempotency-Key", "saga-m/7").contentType(MediaType.APPLICATION_JSON).content(corps))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(7)).andExpect(jsonPath("$.rejouee").value(false));
+        mvc.perform(put("/api/v1/interne/sandbox/matrice").with(service("IAM_PROFILE_EDIT")).contentType(MediaType.APPLICATION_JSON).content(corps)).andExpect(status().isForbidden());
+        mvc.perform(put("/api/v1/interne/sandbox/matrice").with(service("INTERNAL_IAM_SBX_SAGA")).contentType(MediaType.APPLICATION_JSON).content("{\"version\":7,\"profils\":{}}"))
+            .andExpect(status().isBadRequest());
     }
 
     @Test

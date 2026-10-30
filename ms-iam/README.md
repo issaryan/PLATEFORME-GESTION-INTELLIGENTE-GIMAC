@@ -219,6 +219,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | 2026-10-23 | D-123 | US-EXI-24 : accès de prestataire (`/api/v1/sandbox/delegations/prestataire`, approbation, refus, révocation), introspection par composant appelé, refus journalisé des données d'une institution |
 | 2026-10-23 | D-124 | US-EXI-23 : `GET /api/v1/comptes/{id}/verrouillage`, `POST /api/v1/comptes/{id}/deblocage` (`COMPTE_DEBLOQUE`), refus journalisé du déblocage par l'institution (`IAM_SBX_DEBLOCAGE_RESERVE`, `TENTATIVE_DEBLOCAGE`) |
 | 2026-10-27 | - | Introspection branchée à la passerelle ; sagas OUVERTURE/MATRICE et réexamen trimestriel US-EXI-23 ; 458 tests unitaires/sécurité (2 ignorés) et 450 d'intégration/recette, seuils globaux et EXI 98 % ; DEMO-SBX-12 documenté |
+| 2026-10-29 | US-INS-07 | `MatriceSandboxSagaService` et `PUT /api/v1/interne/sandbox/matrice` : publication globale idempotente par `ConfigurationAuthentificationService` et `ReglesSandbox`, permissions hors SBX et profils non concernés conservés, validation des verdicts réservée au GIMAC, audit de chaque recomposition et aucun second effet au rejeu ; route réservée à `INTERNAL_IAM_SBX_SAGA`, sans exposition dans l'administration publique |
 
 # iam
 

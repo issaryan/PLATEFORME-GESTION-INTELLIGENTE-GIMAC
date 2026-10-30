@@ -45,4 +45,18 @@ class ComptesSandboxSagaIT extends AbstractIamIT {
         assertThat(annuaire.lire(id).orElseThrow().profils()).containsExactlyInAnyOrder("ROLE_CORRESPONDANT", "ROLE_SBX_LECTEUR");
         assertThat(jdbc.queryForObject("select count(*) from etape_idempotente where cle in (?, ?)", Integer.class, cle, "saga-" + suffixe + "/2")).isEqualTo(2);
     }
+
+    @Test
+    @DisplayName("US-INS-07 : matrice globale rejouée, permissions hors SBX et validation GIMAC conservées")
+    void matriceGlobale() throws Exception {
+        String cle = "saga-matrice-" + UUID.randomUUID() + "/1";
+        String corps = "{\"version\":7,\"profils\":{\"ROLE_SBX_LECTEUR\":[\"SBX_ISO_SIMULATION\"],\"ROLE_SNA\":[\"SBX_CER_VALIDATION\",\"SBX_CER_CONSULTATION\"]}}";
+        mvc.perform(put("/api/v1/interne/sandbox/matrice").with(sbxEspace()).header("Idempotency-Key", cle).contentType(MediaType.APPLICATION_JSON).content(corps))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(7)).andExpect(jsonPath("$.rejouee").value(false));
+        assertThat(annuaire.compositions().get("ROLE_SBX_LECTEUR")).contains("SBX_ISO_SIMULATION", "NOT_INBOX_READ").noneMatch(p -> p.startsWith("SBX_LEC_"));
+        assertThat(annuaire.compositions().get("ROLE_SNA")).contains("SBX_CER_VALIDATION", "SBX_CER_CONSULTATION");
+        mvc.perform(put("/api/v1/interne/sandbox/matrice").with(sbxEspace()).header("Idempotency-Key", cle).contentType(MediaType.APPLICATION_JSON).content(corps))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(7)).andExpect(jsonPath("$.rejouee").value(true));
+        assertThat(jdbc.queryForObject("select count(*) from etape_idempotente where cle = ?", Integer.class, cle)).isEqualTo(1);
+    }
 }
