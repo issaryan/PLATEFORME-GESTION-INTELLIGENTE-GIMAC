@@ -74,6 +74,15 @@ class MatriceSandboxSagaServiceTest {
     }
 
     @Test
+    void publicationInchangeeNeRecomposeAucunProfil() {
+        var publication = service.publier(SERVICE, 8, Map.of("ROLE_SBX_LECTEUR", Set.of("SBX_LEC_CONSULTATION")), "saga-8/1");
+
+        assertThat(publication.version()).isEqualTo(8);
+        assertThat(publication.rejouee()).isFalse();
+        verify(profils, never()).definirPermissions(any(), any(), any(), any());
+    }
+
+    @Test
     void entreeInvalideOuProfilHorsMatriceNEcritRien() {
         assertThatThrownBy(() -> service.publier(SERVICE, 0, Map.of(), "x")).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.code()).isEqualTo("IAM_SBX_MATRICE_INVALIDE"));
         assertThatThrownBy(() -> service.publier(SERVICE, 1, null, "x")).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.code()).isEqualTo("IAM_SBX_MATRICE_INVALIDE"));
