@@ -474,6 +474,7 @@ MS-PILOTAGE échappe les valeurs dans le HTML transmis à `POST /api/v1/interne/
 
 Validations locales : tests unitaires de la référence, du modèle et du rendu, scénario `ProcessusChangementIT`, seuils
 JaCoCo à 98 % sur le nouveau code ; tests Vitest ciblés et seuils de 98 % limités aux nouveaux fichiers frontend ;
-scénario Playwright complet en clair et sombre avec huit captures. Le rendu réel de MS-DOCUMENT, une assertion FIDO2
-réelle et le Compose complet n'ont pas été exercés : ces preuves ne constituent ni une recette de production ni un
-raccordement à des serveurs GIMAC.
+scénario Playwright complet en clair et sombre avec huit captures. Le 30/10/2026, DEMO-SBX 13 a aussi vérifié sur les
+vrais services la création, trois transitions, les captures et un PDF Gotenberg de deux pages (`13-changement/`). Une
+assertion FIDO2 réelle, les étapes 4 et 5 et une recette de production ne sont pas prouvés ; aucun appel aux serveurs
+GIMAC n'a été fait.

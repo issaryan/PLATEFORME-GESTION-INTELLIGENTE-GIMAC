@@ -960,7 +960,8 @@ public class TacheService implements TachesUseCase {
         Tache t = d.responsable() == null ? Tache.pourUniteEtProfil(d.createur(), d.unite(), d.profil(), le) : new Tache(d.createur(), d.responsable(), le);
         t.decrire(tronquer(d.titre(), ReglesActivite.TITRE_MAX), d.description() == null ? null : tronquer(d.description(), ReglesActivite.DESCRIPTION_MAX), d.echeance(), PrioriteTache.NORMALE, le);
         t.provenirDe(TypeOrigine.PROCESSUS, d.reference(), "pilotage", d.lien());
-        taches.save(t);
+        // L'historique porte une clé étrangère vers la tâche : sur PostgreSQL, son insertion ne doit pas la devancer.
+        taches.saveAndFlush(t);
         consigner(
             t,
             d.createur(),
