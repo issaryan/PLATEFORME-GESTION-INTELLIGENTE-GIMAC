@@ -86,6 +86,7 @@ Copié et adapté (paquet `cm.gimac.des.pilotage`) ; chaque bean est inactif tan
 | 2026-10-07 | - | Processus d'unité (D-87) : définitions, contrôle, publication, versions ; moteur d'exécution, tâches liées, signatures FIDO2, départ d'un compte ; changelog `20261007090000_pil_processus_unite.xml` |
 | 2026-10-13 | - | D-106 : délai maximal du processus (`processus.delai_max_jours`) et des étapes (`delaiMaxJours` en JSONB), contrôle maximum >= cible (400), tâche et retard sur l'échéance maximale, `echeance_cible` et « échéance proche » des étapes, `delais` de l'instance (changelog `20261013090000_pil_delai_maximal.xml`) ; public seul : version publiée seule, sans historique ni contrôle (403) |
 | 2026-10-28 | - | `DEMANDE_CHANGEMENT` : modèle SSI publié, référence datée par séquence, export PDF des instances via MS-DOCUMENT ; tests unitaires et `ProcessusChangementIT`, seuils JaCoCo à 98 % sur le nouveau code |
+| 2026-10-30 | - | Kafka : `ByteArraySerializer` rétabli sur le binder Cloud Stream, sans changer le `StringSerializer` des enveloppes CloudEvents de l'outbox ; tests `SerialisationKafkaIT` et `ProcessusChangementIT` |
 <!-- GIMAC:FIN -->
 
 # pilotage
