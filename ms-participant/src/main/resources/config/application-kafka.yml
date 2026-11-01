@@ -19,3 +19,8 @@ spring:
         kafkaProducer-out-0:
           content-type: text/plain
           group: participant
+          producer:
+            # Le binding du gabarit JHipster publie des octets ; l'outbox garde StringSerializer
+            # dans spring.kafka.producer (application.yml) pour ses enveloppes CloudEvents.
+            key-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+            value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
