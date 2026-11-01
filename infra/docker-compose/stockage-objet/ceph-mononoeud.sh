@@ -65,14 +65,21 @@ for essai in 1 2 3 4 5; do
   sleep 5
 done
 until ceph osd stat 2>/dev/null | grep -q "1 up"; do sleep 2; done
-radosgw -n client.rgw.gimac
-until curl -fsS http://127.0.0.1:7480 >/dev/null 2>&1; do sleep 2; done
 
+# Les clés doivent être prêtes avant que la sonde HTTP ne rende le service disponible à l'initialisation S3.
 if [ ! -f "$DONNEES/.amorce" ]; then
   radosgw-admin user create --uid=gimac --display-name="Plateforme Moabi (DEV)" \
     --access-key="$GIMAC_S3_CLE_ACCES" --secret="$GIMAC_S3_CLE_SECRETE" >/dev/null
   touch "$DONNEES/.amorce"
+else
+  # Le volume peut survivre à une régénération du .env : réaligne les clés au lieu de conserver
+  # d'anciens identifiants qui rendent toutes les réponses S3 interdites.
+  radosgw-admin user modify --uid=gimac \
+    --access-key="$GIMAC_S3_CLE_ACCES" --secret="$GIMAC_S3_CLE_SECRETE" >/dev/null
 fi
+radosgw -n client.rgw.gimac
+until curl -fsS http://127.0.0.1:7480 >/dev/null 2>&1; do sleep 2; done
+
 echo "Passerelle S3 prête sur le port 7480."
 # Le conteneur vit tant que la passerelle vit.
 exec tail --pid="$(pgrep -o radosgw)" -f /dev/null
