@@ -10,6 +10,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -31,6 +32,7 @@ public class IamDestinatairesSandboxAdapter implements DestinatairesSandboxPort 
     private final CacheExpirant<String, Map<String, Set<String>>> institutions;
     private final CacheExpirant<String, List<String>> porteurs;
 
+    @Autowired
     public IamDestinatairesSandboxAdapter(
         RestClient.Builder builder,
         ServiceTokenInterceptor jeton,

@@ -341,6 +341,10 @@ services:
         PORT_CONSOLE: ${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
     environment:
       GIMAC_PASSERELLE: http://gateway:8080
+    # nginx résout l'amont statique au démarrage : la passerelle doit déjà être enregistrée et saine.
+    depends_on:
+      gateway:
+        condition: service_healthy
     ports:
       - 127.0.0.1:${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}:8080
     healthcheck:
@@ -366,6 +370,10 @@ services:
         PORT_CONSOLE: ${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
     environment:
       GIMAC_PASSERELLE: http://gateway:8080
+    # nginx résout l'amont statique au démarrage : la passerelle doit déjà être enregistrée et saine.
+    depends_on:
+      gateway:
+        condition: service_healthy
     ports:
       - 127.0.0.1:${GIMAC_PORT_FRONTEND_PORTAIL:-4201}:8080
     healthcheck:
@@ -392,6 +400,10 @@ services:
         PORT_CONSOLE: ${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
     environment:
       GIMAC_PASSERELLE: http://gateway:8080
+    # nginx résout l'amont statique au démarrage : la passerelle doit déjà être enregistrée et saine.
+    depends_on:
+      gateway:
+        condition: service_healthy
     ports:
       - 127.0.0.1:${GIMAC_PORT_FRONTEND_CONSOLE:-4202}:8080
     healthcheck:
