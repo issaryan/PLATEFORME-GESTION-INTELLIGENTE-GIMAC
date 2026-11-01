@@ -23,10 +23,12 @@ const services = (u = COLLAB) => servicesSimules({ latenceMs: 0, utilisateur: u 
 const session = (u = COLLAB, role = 'ROLE_COLLABORATEUR') => ({ ...sessionTest(PROFILS[role], [role]), sujet: u.id, nom: u.nom })
 const page = (chemin = '/des/agenda', o: { s?: Services; u?: typeof COLLAB; role?: string } = {}) =>
   rendrePage(<AgendaPage />, { chemin, motif: '/des/agenda', services: o.s ?? services(o.u), session: session(o.u, o.role) })
+// L'invitation est prévue demain : le dimanche, sa semaine est donc la semaine suivante.
+const pageAvecInvitation = (o: { s?: Services } = {}) => page(`/des/agenda?jour=${voisin('jour', aujourdhui(), 1)}`, o)
 
 describe('Agenda', () => {
   it('semaine, invitation acceptée, fiche d’un événement reçu', async () => {
-    page()
+    pageAvecInvitation()
     expect(await screen.findByRole('heading', { level: 1, name: 'Agenda' })).toBeTruthy()
     // Grille horaire de la semaine (D-113) : sept colonnes de jours.
     const semaine = await waitFor(() => { const g = document.querySelector<HTMLElement>('.gm-agenda'); expect(g?.getAttribute('aria-label')).toMatch(/^Semaine \d+ : du /); return g! })
@@ -117,7 +119,7 @@ describe('Agenda', () => {
   it('refus du service : agenda indisponible, réponse refusée', async () => {
     const s = services()
     vi.spyOn(s.pilotage, 'repondre').mockRejectedValue(new ApiError(404, 'PIL_EVENEMENT_INTROUVABLE', 'Événement introuvable.', 'cid-2'))
-    page('/des/agenda', { s })
+    pageAvecInvitation({ s })
     fireEvent.click((await screen.findAllByRole('button', { name: 'Décliner' }))[0])
     expect(await screen.findByText('Événement introuvable.')).toBeTruthy()
     cleanup()
@@ -128,7 +130,7 @@ describe('Agenda', () => {
   })
 
   it('vues jour et mois, filtre des catégories, création depuis une case de la grille (D-113)', async () => {
-    page()
+    pageAvecInvitation()
     expect(await screen.findAllByRole('button', { name: /Comité de pilotage des liaisons/ })).toBeTruthy()
     fireEvent.click(screen.getByLabelText('Réunion'))
     await waitFor(() => expect(screen.queryByRole('button', { name: /Comité de pilotage des liaisons/ })).toBeNull())
