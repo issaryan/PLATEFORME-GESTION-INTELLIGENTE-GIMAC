@@ -1,5 +1,6 @@
-# Service d'une couche de présentation. ${GIMAC_PASSERELLE} est substituée au démarrage ;
-# les autres variables sont celles de nginx. Le proxy_pass statique respecte /etc/hosts.
+# Service d'une couche de présentation. ${GIMAC_PASSERELLE} et ${GIMAC_RESOLVEUR} sont
+# substituées au démarrage ; les autres variables sont celles de nginx. La variable de
+# proxy_pass impose une résolution DNS à chaque connexion après expiration du cache.
 # Protocole d'origine (D-75) : derrière le relais HTTPS du serveur (nginx de l'hôte), celui qu'il
 # transmet, pour que la passerelle pose ses témoins Secure et forme ses adresses en https ; à défaut,
 # celui de la requête reçue.
@@ -11,6 +12,8 @@ map $http_x_forwarded_proto $proto_origine {
 server {
     listen 8080;
     server_name _;
+    resolver ${GIMAC_RESOLVEUR} valid=10s;
+    set $passerelle ${GIMAC_PASSERELLE};
     root /usr/share/nginx/html;
     server_tokens off;
 
@@ -27,7 +30,7 @@ server {
     # et canal poussé des couches (/bff/<couche>/live). Aucune mise en tampon ni en cache, HTTP/1.1
     # persistant, connexion longue : chaque événement est remis dès son émission par la passerelle.
     location = /api/plateforme/flux {
-        proxy_pass ${GIMAC_PASSERELLE};
+        proxy_pass $passerelle;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         proxy_set_header Host $host;
@@ -39,7 +42,7 @@ server {
         proxy_send_timeout 24h;
     }
     location ~ ^/bff/(des|portail|console)/live$ {
-        proxy_pass ${GIMAC_PASSERELLE};
+        proxy_pass $passerelle;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         proxy_set_header Host $host;
@@ -60,7 +63,7 @@ server {
         # 110 Mo couvre la plus large, et le corps est transmis au fil de l'eau, sans tampon disque.
         client_max_body_size 110m;
         proxy_request_buffering off;
-        proxy_pass ${GIMAC_PASSERELLE};
+        proxy_pass $passerelle;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto $proto_origine;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
