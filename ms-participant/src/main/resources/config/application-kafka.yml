@@ -8,6 +8,14 @@ spring:
           replicationFactor: 1
           auto-create-topics: true
           brokers: localhost:9092
+        bindings:
+          kafkaProducer-out-0:
+            producer:
+              configuration:
+                # Le binding du gabarit JHipster publie des octets ; l'outbox garde StringSerializer
+                # dans spring.kafka.producer (application.yml) pour ses enveloppes CloudEvents.
+                key.serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+                value.serializer: org.apache.kafka.common.serialization.ByteArraySerializer
       bindings:
         binding-out-0:
           content-type: text/plain
@@ -19,8 +27,3 @@ spring:
         kafkaProducer-out-0:
           content-type: text/plain
           group: participant
-          producer:
-            # Le binding du gabarit JHipster publie des octets ; l'outbox garde StringSerializer
-            # dans spring.kafka.producer (application.yml) pour ses enveloppes CloudEvents.
-            key-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
-            value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
