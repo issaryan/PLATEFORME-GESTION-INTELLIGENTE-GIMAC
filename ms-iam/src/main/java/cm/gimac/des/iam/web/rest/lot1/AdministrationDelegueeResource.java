@@ -28,7 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Administration déléguée des comptes d'une institution dans la sandbox (D-115, docs/lot1/sandbox-existant-adapte.md §4
- * US-EXI-03) : administrateur de l'institution (SBX_HAB_ADMINISTRATION), institution lue dans le jeton
+ * US-EXI-03) : écritures de l'administrateur de l'institution (SBX_HAB_ADMINISTRATION), liste également lisible
+ * par le chef de projet pour affecter les cas, institution lue dans le jeton
  * (institution_id), jeton à deux facteurs (D-61). En-tête {@value #CLE} : clé d'idempotence d'une étape de saga de
  * SBX-ESPACE, rejouable sans double effet.
  */
@@ -70,6 +71,7 @@ public class AdministrationDelegueeResource {
     }
 
     @GetMapping("/comptes")
+    @PreAuthorize("hasAnyAuthority('SBX_HAB_ADMINISTRATION', 'ROLE_SBX_CHEF_PROJET')")
     public PageComptes comptes(
         @RequestParam(name = "page", defaultValue = "0") int page,
         @RequestParam(name = "taille", defaultValue = "20") int taille,
@@ -79,6 +81,7 @@ public class AdministrationDelegueeResource {
     }
 
     @GetMapping("/comptes/{id}")
+    @PreAuthorize("hasAnyAuthority('SBX_HAB_ADMINISTRATION', 'ROLE_SBX_CHEF_PROJET')")
     public Compte compte(@PathVariable String id, Authentication auth) {
         return service.lire(institution(auth), id);
     }

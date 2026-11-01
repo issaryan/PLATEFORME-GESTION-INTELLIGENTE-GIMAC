@@ -530,3 +530,7 @@ Voir docs/lot1/ecrans-par-configuration.md, section « Mise en œuvre » : catal
 configurable (`GET` et `PUT /api/v1/configuration/fonctionnalites`, table `fonctionnalite`, valeurs de départ
 `config/fonctionnalites-initiales.json`), attribut externe des profils (`gimac_externe`, `PUT
 /api/v1/configuration/profils/{code}` avec `externe`), qualités des profils et des comptes déduites des permissions.
+
+## Annuaire délégué au chef de projet (01/11/2026)
+
+`GET /api/v1/administration-deleguee/comptes` et `GET /api/v1/administration-deleguee/comptes/{id}` acceptent aussi `ROLE_SBX_CHEF_PROJET` afin de permettre l'affectation des cas de certification, toujours bornée à `institution_id` et au second facteur. Les écritures restent réservées à `SBX_HAB_ADMINISTRATION`. `AdministrationDelegueeRoutesTest` vérifie les accès en lecture et le refus en écriture.
