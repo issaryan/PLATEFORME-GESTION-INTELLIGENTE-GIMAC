@@ -18,6 +18,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.cloud.stream.binder.test.InputDestination;
 import org.springframework.cloud.stream.binder.test.OutputDestination;
 import org.springframework.cloud.stream.binder.test.TestChannelBinderConfiguration;
+import org.springframework.core.env.Environment;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.GenericMessage;
@@ -43,6 +44,9 @@ class ParticipantKafkaResourceIT {
     @Autowired
     private OutputDestination output;
 
+    @Autowired
+    private Environment environment;
+
     @Test
     void producesMessages() throws Exception {
         restMockMvc.perform(post("/api/participant-kafka/publish?message=value-produce").with(csrf())).andExpect(status().isOk());
@@ -51,6 +55,11 @@ class ParticipantKafkaResourceIT {
 
     @Test
     void producesPooledMessages() throws Exception {
+        String prefix = "spring.cloud.stream.kafka.bindings.kafkaProducer-out-0.producer.configuration.";
+        assertThat(environment.getProperty(prefix + "key.serializer"))
+            .isEqualTo("org.apache.kafka.common.serialization.ByteArraySerializer");
+        assertThat(environment.getProperty(prefix + "value.serializer"))
+            .isEqualTo("org.apache.kafka.common.serialization.ByteArraySerializer");
         assertThat(output.receive(1500, "kafkaProducer-out-0").getPayload()).isEqualTo("kafka_producer".getBytes());
     }
 
