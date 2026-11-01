@@ -54,8 +54,11 @@ class DestinatairesSandboxAdaptersTest {
 
     @Test
     @DisplayName("Construction par Spring : URL de MS-IAM et jeton de service")
-    void construction() {
+    void construction() throws NoSuchMethodException {
         assertThat(new IamDestinatairesSandboxAdapter(RestClient.builder(), org.mockito.Mockito.mock(ServiceTokenInterceptor.class), IAM, 60)).isNotNull();
+        assertThat(
+            IamDestinatairesSandboxAdapter.class.getConstructor(RestClient.Builder.class, ServiceTokenInterceptor.class, String.class, long.class).getAnnotation(org.springframework.beans.factory.annotation.Autowired.class)
+        ).isNotNull();
     }
 
     @Test

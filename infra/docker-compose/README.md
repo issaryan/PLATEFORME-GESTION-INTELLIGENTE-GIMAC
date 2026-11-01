@@ -122,3 +122,4 @@ La route `GET /bff/des/pilotage/processus/instances/{id}/pdf` relève de la mêm
 | 2026-10-27 | D-121 | OPA : quatre lectures SBX-TRACE et réexamens US-EXI-23, 213/213 ; Compose complet non démarré pour cette intégration, limites AC mTLS et serveurs réels documentées |
 | 2026-10-28 | - | Route PDF des instances de processus couverte par OPA ; 214/214 tests locaux, sans démarrage du Compose complet |
 | 2026-11-01 | - | Ceph : clés du compte RGW réalignées sur le `.env` à chaque démarrage, avant l'ouverture de la sonde HTTP ; conservation du volume sans anciennes clés interdites ni course avec `stockage-objet-init`. Initialisation des cinq compartiments vérifiée après recréation du conteneur. |
+| 2026-11-01 | - | Les trois frontends attendent une passerelle saine avant le démarrage de nginx, dont la résolution de l'amont est statique. Compose complet démarré : 14 backends et trois frontends sains ; `/bff/des/live` répond 401 sans session au lieu de 502. |

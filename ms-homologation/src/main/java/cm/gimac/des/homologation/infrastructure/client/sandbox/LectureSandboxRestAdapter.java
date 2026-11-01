@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
@@ -30,6 +31,7 @@ public class LectureSandboxRestAdapter implements LectureSandboxPort {
     static final Duration DELAI_PAR_DEFAUT = Duration.ofMinutes(5);
     private final RestClient client;
 
+    @Autowired
     public LectureSandboxRestAdapter(RestClient.Builder builder, ServiceTokenInterceptor jeton, @Value("${gimac.services.sbx-lecture.url}") String url) {
         this(builder.baseUrl(url).requestInterceptor(jeton).build());
     }
