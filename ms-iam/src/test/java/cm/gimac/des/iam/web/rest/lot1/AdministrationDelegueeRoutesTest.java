@@ -42,7 +42,7 @@ import tech.jhipster.config.JHipsterProperties;
 
 /**
  * Routes de l'administration déléguée de la sandbox (D-115, US-EXI-03) avec la vraie chaîne de filtres : permission
- * SBX_HAB_ADMINISTRATION, institution du jeton transmise au service, clé d'idempotence relayée, 201 pour une création et
+ * SBX_HAB_ADMINISTRATION, lecture de la liste par ROLE_SBX_CHEF_PROJET, institution du jeton transmise au service, clé d'idempotence relayée, 201 pour une création et
  * 200 pour une étape rejouée, corps validé, refus normalisés.
  */
 @WebMvcTest(controllers = AdministrationDelegueeResource.class)
@@ -87,6 +87,12 @@ class AdministrationDelegueeRoutesTest {
     void lectures() throws Exception {
         mvc.perform(get(U + "/roles").with(administrateur())).andExpect(status().isOk()).andExpect(jsonPath("$[0]").value("ROLE_SBX_TESTEUR"));
         mvc.perform(get(U + "/comptes?page=0&taille=20").with(administrateur())).andExpect(status().isOk()).andExpect(jsonPath("$.contenu[0].id").value("c1")).andExpect(jsonPath("$.total").value(1));
+        var chef = jwt().jwt(j -> j.subject(ADMIN).claim("acr", "2").claim("institution_id", "99001")).authorities(new SimpleGrantedAuthority("ROLE_SBX_CHEF_PROJET"));
+        mvc.perform(get(U + "/comptes").with(chef)).andExpect(status().isOk()).andExpect(jsonPath("$.contenu[0].id").value("c1"));
+        mvc.perform(get(U + "/comptes/c1").with(chef)).andExpect(status().isOk()).andExpect(jsonPath("$.id").value("c1"));
+        mvc
+            .perform(post(U + "/comptes").with(chef).contentType(MediaType.APPLICATION_JSON).content("{\"identifiant\":\"x\",\"prenom\":\"X\",\"nom\":\"Y\",\"email\":\"x@y.test\",\"roles\":[]}"))
+            .andExpect(status().isForbidden());
         mvc.perform(get(U + "/comptes/c1").with(administrateur())).andExpect(status().isOk()).andExpect(jsonPath("$.institutionId").value("99001"));
         mvc.perform(get(U + "/comptes/c9").with(administrateur())).andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("IAM_ACCOUNT_NOT_FOUND"));
     }
