@@ -112,6 +112,7 @@ JaCoCo bloque la construction sous 80 % : à `test`, chaque classe du lot en lig
 | 2026-10-13 | D-107 | D-107 : `POST /api/v1/interne/reprise/institutions` et `/api/v1/reprise/institutions` (`REF_REPRISE_IMPORT`) : import idempotent par code membre, UUID fourni conservé (identifiant attribuable), transition de reprise, simulation par défaut ; `GET /api/v1/interne/institutions?codeParticipant=` ; catégories `FACTURIER` et `PARTENAIRE_REMITTANCE` ; ouverture d'un projet sur une institution active consignée au journal, sans transition |
 | 2026-10-22 | D-120 | US-EXI-20 : `versionStatutRegistre` dans `participant.status-changed.v1` (port `VersionsStatutRegistre`, table `institution_version_statut`), contrat `config/contrats/participant.status-changed.v1.schema.json`, règle JaCoCo à 98 % |
 | 2026-10-22 | D-120 | US-EXI-21 : `GET /api/v1/interne/institutions/code/{code}/fiche`, `GET /api/v1/interne/nomenclature/services` (port `RegistreLecture`), journal `participant.sandbox-write-denied` des refus des comptes sbx-* |
+| 2026-11-01 | — | Binding `kafkaProducer-out-0` configuré avec `ByteArraySerializer` pour les octets du gabarit Cloud Stream ; l'outbox conserve `StringSerializer`. Trois essais `ParticipantKafkaResourceIT` réussis. |
 <!-- GIMAC:FIN -->
 
 
