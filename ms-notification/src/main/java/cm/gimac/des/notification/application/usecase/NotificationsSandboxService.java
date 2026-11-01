@@ -79,7 +79,7 @@ public class NotificationsSandboxService implements RecevoirNotificationsSandbox
             rebuter(d, MODELE_SANS_REGLE);
             return 0;
         }
-        Modele m = modele.get();
+        Modele m = modele.orElseThrow();
         Instant instant = (d.le() == null ? horloge.instant() : d.le()).truncatedTo(ChronoUnit.MICROS);
         Reference reference = Reference.sandbox(m.code(), d.evenementId());
         int n = 0;
