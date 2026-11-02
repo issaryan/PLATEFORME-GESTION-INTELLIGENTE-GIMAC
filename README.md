@@ -206,3 +206,9 @@ Validations réellement exécutées et conservées dans les rapports du 27/10 :
 | 2026-10-28 | - | Processus d'unité `DEMANDE_CHANGEMENT`, références automatiques et export PDF dans MS-PILOTAGE ; cycle simulé, téléchargement et captures clair/sombre dans le frontend ; habilitation de rendu et règle OPA documentées |
 | 2026-10-29 | US-INS-07 | Matrice Sandbox globale et idempotente dans MS-IAM (`PUT /api/v1/interne/sandbox/matrice`) : recomposition auditée par profil, permissions hors SBX conservées, validation externe refusée et aucun second effet au rejeu |
 | 2026-10-30 | - | DEMO-SBX 13 : PDF Gotenberg réel de deux pages, référence et transitions du processus de changement ; persistance PostgreSQL de la tâche avant son historique et sérialiseurs binaires du binder Kafka de MS-PILOTAGE |
+
+### Mise a jour du 02/11/2026 : Releve Sandbox GIMAC et integration documentaire
+
+- MS-HOMOLOGATION : correction de DocumentRestAdapter pour transmettre service-account-homologation-service en cas de deposantId nul, securisation du scheduler de releve periodique par capture des exceptions, suppression du poller KafkaProducer parasite.
+- MS-DOCUMENT : desactivation de Docker Compose au demarrage Spring Boot en profil prod, alignement du conteneur avec l image supportant la consultation d empreinte PiecesSandboxResource (D-120).
+- Releve Sandbox de bout en bout : synchronisation effective des 197 liaisons, 5 973 executions retenues, 396 pieces probantes deposees et 5 821 scenarios non rapproches ; affichage complet et sans erreur de l onglet « Resultats de la sandbox » dans l interface de supervision du DES.

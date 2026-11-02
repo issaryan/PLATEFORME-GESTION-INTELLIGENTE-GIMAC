@@ -119,7 +119,7 @@ public class DocumentRestAdapter implements DocumentRegistryPort {
         );
         corps.add("finalite", finalite);
         corps.add("reference", reference);
-        corps.add("deposantId", deposantId == null ? null : deposantId.toString());
+        corps.add("deposantId", deposantId == null ? "service-account-homologation-service" : deposantId.toString());
         try {
             Depose d = client.post().uri("/api/v1/interne/documents").contentType(MediaType.MULTIPART_FORM_DATA).body(corps).retrieve().body(Depose.class);
             if (d == null || d.id() == null) {
