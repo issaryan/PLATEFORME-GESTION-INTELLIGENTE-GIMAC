@@ -1,6 +1,8 @@
 package cm.gimac.des.homologation.infrastructure.scheduling;
 
 import cm.gimac.des.homologation.application.usecase.sandbox.ReleveSandbox;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -11,6 +13,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class ReleveSandboxScheduler {
 
+    private static final Logger LOG = LoggerFactory.getLogger(ReleveSandboxScheduler.class);
+
     private final ReleveSandbox releve;
 
     public ReleveSandboxScheduler(ReleveSandbox releve) {
@@ -19,6 +23,11 @@ public class ReleveSandboxScheduler {
 
     @Scheduled(initialDelayString = "${gimac.sandbox.releve.delai-initial-ms:60000}", fixedDelayString = "${gimac.sandbox.releve.periode-ms:300000}")
     public void relever() {
-        releve.releverTout();
+        try {
+            int n = releve.releverTout();
+            LOG.info("Relève périodique de la sandbox terminée avec succès ({} liaison(s) synchronisée(s))", n);
+        } catch (Throwable t) {
+            LOG.error("Erreur inattendue lors de la relève périodique de la sandbox : {}", t.getMessage(), t);
+        }
     }
 }

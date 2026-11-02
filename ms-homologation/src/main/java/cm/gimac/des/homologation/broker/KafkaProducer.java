@@ -3,7 +3,7 @@ package cm.gimac.des.homologation.broker;
 import java.util.function.Supplier;
 import org.springframework.stereotype.Component;
 
-@Component
+// @Component
 public class KafkaProducer implements Supplier<String> {
 
     @Override

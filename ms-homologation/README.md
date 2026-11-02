@@ -132,6 +132,14 @@ Unitaires (`LiaisonOpeningPolicyTest`, `OpenLiaisonServiceTest`, `LiaisonQueries
 | 2026-10-22 | - | D-122, HOM-06 : gel et rétablissement des liaisons sur changement de statut de l'institution ; route interne de republication des états pour la sandbox |
 | 2026-10-23 | - | D-122, US-EXI-14, US-EXI-15, US-EXI-17 : client du contrat de SBX-LECTURE, relève périodique, consommateur `sbx-lecture.campaign-published.v1` (groupe `homologation-fin-campagne-sandbox`), résultats de la sandbox d'une liaison ; règle JaCoCo à 98 % étendue |
 | 2026-10-27 | D-125 | US-EXI-25 : empreinte du bilan dans `EvaluationBase`, propagation rétrocompatible par `homologation.campaign-result-imported.v1` ; `clean verify` : 536 tests unitaires et 421 d'intégration, seuils globaux et EXI 98 % |
+
+### Mise a jour du 02/11/2026 : Fiabilisation de la releve de la sandbox et depot documentaire
+
+- Depot des pieces de preuve dans MS-DOCUMENT : correction de DocumentRestAdapter en renseignant deposantId avec service-account-homologation-service lorsque deposantId est nul, levant le rejet DOC_DEPOSITOR_INVALID (HTTP 422).
+- Securisation du scheduler : encadrement de releve.releverTout() dans ReleveSandboxScheduler par try/catch avec trace detaillee pour eviter le blocage de l executeur de planification en cas d exception imprevue.
+- Suppression du composant KafkaProducer parasite pour assainir les journaux et eviter les erreurs KafkaSendFailureException en boucle.
+- Desactivation de Spring Docker Compose en profil prod (spring.docker.compose.enabled: false).
+
 <!-- GIMAC:FIN -->
 
 # homologation

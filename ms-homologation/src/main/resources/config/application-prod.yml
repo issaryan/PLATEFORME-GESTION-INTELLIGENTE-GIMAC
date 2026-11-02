@@ -32,6 +32,12 @@ management:
       probability: 1.0 # report 100% of traces
 
 spring:
+  docker:
+    compose:
+      enabled: false
+  cloud:
+    function:
+      definition: kafkaConsumer
   devtools:
     restart:
       enabled: false
