@@ -1,16 +1,17 @@
 // Identifiant aléatoire au format UUID v4 (RFC 9562). crypto.randomUUID n'existe que dans un contexte sécurisé
 // (HTTPS ou localhost) : servie en http par un nom interne (D-75), la plateforme tire les octets avec
-// crypto.getRandomValues, disponible partout, et Math.random seulement sans Web Crypto.
+// crypto.getRandomValues, disponible partout. Sans générateur cryptographique, aucune clé n'est tirée : une erreur
+// explicite l'emporte sur un aléa prévisible (Math.random).
 
 type CryptoPartiel = { randomUUID?: () => string; getRandomValues?: (t: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer> }
 
 const octets = (c: CryptoPartiel | undefined): Uint8Array<ArrayBuffer> => {
   const o = new Uint8Array(16)
-  if (typeof c?.getRandomValues === 'function') return c.getRandomValues(o)
-  return o.map(() => Math.floor(Math.random() * 256))
+  if (typeof c?.getRandomValues !== 'function') throw new Error('crypto.getRandomValues indisponible : aucun identifiant aléatoire sûr ne peut être tiré')
+  return c.getRandomValues(o)
 }
 
-/** UUID v4 tiré par randomUUID s'il existe, sinon à partir de seize octets aléatoires. */
+/** UUID v4 tiré par randomUUID s'il existe, sinon à partir de seize octets de getRandomValues ; sans l'un ni l'autre, erreur. */
 export function uuidV4(c: CryptoPartiel | undefined = globalThis.crypto): string {
   if (typeof c?.randomUUID === 'function') return c.randomUUID()
   const o = octets(c)

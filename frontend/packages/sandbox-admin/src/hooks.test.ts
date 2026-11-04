@@ -21,4 +21,14 @@ describe("nouvelleCle (clé d'idempotence)", () => {
       if (original) Object.defineProperty(globalThis, 'crypto', original)
     }
   })
+
+  it('sans générateur cryptographique : erreur explicite, aucune clé prévisible', () => {
+    const original = Object.getOwnPropertyDescriptor(globalThis, 'crypto')
+    Object.defineProperty(globalThis, 'crypto', { value: {}, configurable: true })
+    try {
+      expect(() => nouvelleCle()).toThrow(/getRandomValues indisponible/)
+    } finally {
+      if (original) Object.defineProperty(globalThis, 'crypto', original)
+    }
+  })
 })

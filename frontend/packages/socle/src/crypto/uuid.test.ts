@@ -17,16 +17,17 @@ describe('uuidV4', () => {
     expect(uuidV4({ getRandomValues: (t) => t.fill(0) })).toBe('00000000-0000-4000-8000-000000000000')
   })
 
-  it('sans Web Crypto : Math.random, toujours au format v4', () => {
-    vi.spyOn(Math, 'random').mockReturnValue(0.5)
-    expect(uuidV4({})).toBe('80808080-8080-4080-8080-808080808080')
+  it('sans générateur cryptographique : erreur explicite, jamais Math.random', () => {
+    const hasard = vi.spyOn(Math, 'random')
+    expect(() => uuidV4({})).toThrow(/getRandomValues indisponible/)
     const original = Object.getOwnPropertyDescriptor(globalThis, 'crypto')
     Object.defineProperty(globalThis, 'crypto', { value: undefined, configurable: true })
     try {
-      expect(uuidV4()).toBe('80808080-8080-4080-8080-808080808080')
+      expect(() => uuidV4()).toThrow(/getRandomValues indisponible/)
     } finally {
       if (original) Object.defineProperty(globalThis, 'crypto', original)
     }
+    expect(hasard).not.toHaveBeenCalled()
   })
 })
 
@@ -45,7 +46,7 @@ describe('installerRandomUUID', () => {
     expect(() => installerRandomUUID(undefined)).not.toThrow()
     const nu: { randomUUID?: () => string } = {}
     installerRandomUUID(nu)
-    expect(nu.randomUUID?.()).toMatch(V4)
+    expect(() => nu.randomUUID?.()).toThrow(/getRandomValues indisponible/)
   })
 
   it("module '@gimac/socle/polyfill' : installé sur crypto global au chargement", async () => {
