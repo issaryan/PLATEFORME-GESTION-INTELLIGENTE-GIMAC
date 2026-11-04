@@ -14,8 +14,8 @@ import cm.gimac.des.certification.domain.enumeration.EtatCircuit;
 import cm.gimac.des.certification.domain.enumeration.EtatQuitus;
 import cm.gimac.des.certification.domain.enumeration.NatureQuitus;
 import cm.gimac.des.certification.infrastructure.messaging.outbox.OutboxPublisher;
-import cm.gimac.des.certification.repository.CertificationCircuitRepository;
-import cm.gimac.des.certification.repository.QuitusRepository;
+import cm.gimac.des.certification.infrastructure.persistence.CircuitsLiaisonRepository;
+import cm.gimac.des.certification.infrastructure.persistence.QuitusCircuitRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -35,15 +35,15 @@ class SocleEvaluationSandboxTest {
     static final String A = "a".repeat(64);
     static final String B = "b".repeat(64);
 
-    CertificationCircuitRepository circuits;
-    QuitusRepository quitus;
+    CircuitsLiaisonRepository circuits;
+    QuitusCircuitRepository quitus;
     OutboxPublisher outbox;
     SocleEvaluationSandbox service;
 
     @BeforeEach
     void init() {
-        circuits = mock(CertificationCircuitRepository.class);
-        quitus = mock(QuitusRepository.class);
+        circuits = mock(CircuitsLiaisonRepository.class);
+        quitus = mock(QuitusCircuitRepository.class);
         outbox = mock(OutboxPublisher.class);
         service = new SocleEvaluationSandbox(circuits, quitus, outbox, Clock.fixed(T, ZoneOffset.UTC));
         when(circuits.save(any())).thenAnswer(i -> {
