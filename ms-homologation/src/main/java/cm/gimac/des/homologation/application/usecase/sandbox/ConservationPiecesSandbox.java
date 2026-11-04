@@ -71,7 +71,7 @@ public class ConservationPiecesSandbox {
                 statut = Statut.DEJA_CONSERVEE;
             } else {
                 String nom = p.nom() == null ? p.nature().toLowerCase(java.util.Locale.ROOT) + "-v" + p.version() : p.nom();
-                document = documents.deposer(octets, nom, "application/json", FINALITE, campagneId + "/" + p.nature() + "/" + p.version(), null).id();
+                document = documents.deposerParLeService(octets, nom, "application/json", FINALITE, campagneId + "/" + p.nature() + "/" + p.version()).id();
                 statut = Statut.DEPOSEE;
             }
         }

@@ -49,7 +49,7 @@ class AdaptateursEffetReelTest {
     void typeMime() {
         RestClient.Builder b = RestClient.builder();
         MockRestServiceServer serveur = MockRestServiceServer.bindTo(b).build();
-        DocumentRestAdapter a = new DocumentRestAdapter(b, AdaptateursCadrageTest.jeton(), "http://document");
+        DocumentRestAdapter a = new DocumentRestAdapter(b, AdaptateursCadrageTest.jeton(), "http://document", "homologation-service");
         String url = "http://document/api/v1/interne/documents/" + ID;
         serveur.expect(requestTo(url)).andRespond(withSuccess("{\"id\":\"" + ID + "\",\"nomFichier\":\"cr.pdf\",\"typeMime\":\"application/pdf\",\"sha256\":\"a\"}", MediaType.APPLICATION_JSON));
         serveur.expect(requestTo(url)).andRespond(withSuccess("null", MediaType.APPLICATION_JSON));
@@ -67,7 +67,7 @@ class AdaptateursEffetReelTest {
     void lire() {
         RestClient.Builder b = RestClient.builder();
         MockRestServiceServer serveur = MockRestServiceServer.bindTo(b).build();
-        DocumentRestAdapter a = new DocumentRestAdapter(b, AdaptateursCadrageTest.jeton(), "http://document");
+        DocumentRestAdapter a = new DocumentRestAdapter(b, AdaptateursCadrageTest.jeton(), "http://document", "homologation-service");
         String meta = "http://document/api/v1/interne/documents/" + ID;
         String contenu = meta + "/contenu";
         String json = "{\"id\":\"" + ID + "\",\"nomFichier\":\"ping.png\",\"typeMime\":\"image/png\",\"sha256\":\"a\"}";

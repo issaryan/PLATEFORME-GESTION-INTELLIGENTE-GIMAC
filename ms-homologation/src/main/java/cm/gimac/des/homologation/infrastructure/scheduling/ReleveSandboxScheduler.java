@@ -26,8 +26,10 @@ public class ReleveSandboxScheduler {
         try {
             int n = releve.releverTout();
             LOG.info("Relève périodique de la sandbox terminée avec succès ({} liaison(s) synchronisée(s))", n);
-        } catch (Throwable t) {
-            LOG.error("Erreur inattendue lors de la relève périodique de la sandbox : {}", t.getMessage(), t);
+        } catch (RuntimeException e) {
+            // Une relève en échec est consignée et reprise à la période suivante ; une Error (mémoire, liaison de
+            // classes) n'est jamais avalée.
+            LOG.error("Erreur inattendue lors de la relève périodique de la sandbox : {}", e.getMessage(), e);
         }
     }
 }

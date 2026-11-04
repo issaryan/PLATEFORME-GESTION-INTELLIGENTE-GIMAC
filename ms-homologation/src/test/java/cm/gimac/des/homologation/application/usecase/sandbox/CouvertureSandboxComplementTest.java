@@ -67,7 +67,7 @@ class CouvertureSandboxComplementTest {
         when(repo.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
         assertThat(new ConservationPiecesSandbox(lecture, documents, repo, ReleveSandboxTest.transactions(), Clock.fixed(T, ZoneOffset.UTC)).conserver("C")).isEqualTo(1);
         verify(lecture, never()).telecharger("C", "BILAN", 1);
-        verify(documents, never()).deposer(any(), anyString(), anyString(), anyString(), anyString(), any());
+        verify(documents, never()).deposerParLeService(any(), anyString(), anyString(), anyString(), anyString());
         assertThatThrownBy(() -> ConservationPiecesSandbox.condense(octets, "INCONNU")).isInstanceOf(IllegalStateException.class).hasMessageContaining("INCONNU");
     }
 

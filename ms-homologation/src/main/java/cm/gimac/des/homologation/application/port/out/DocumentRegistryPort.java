@@ -27,7 +27,19 @@ public interface DocumentRegistryPort {
         return null;
     }
 
+    /**
+     * Dépôt pour le compte de l'utilisateur {@code deposantId} : un identifiant absent n'est jamais remplacé, le registre
+     * le refuse (DOC_DEPOSITOR_INVALID, traçabilité du déposant réel).
+     */
     Depot deposer(byte[] contenu, String nomFichier, String typeMime, String finalite, String reference, UUID deposantId);
+
+    /**
+     * Dépôt par MS-HOMOLOGATION lui-même, sans utilisateur (relève de la sandbox, US-EXI-14) : le déposant est le compte
+     * de service du client Keycloak de MS-HOMOLOGATION.
+     */
+    default Depot deposerParLeService(byte[] contenu, String nomFichier, String typeMime, String finalite, String reference) {
+        return deposer(contenu, nomFichier, typeMime, finalite, reference, null);
+    }
 
     /** Contenu d'une pièce (D-109 : téléchargement depuis le dossier de la liaison, empreinte revérifiée par l'appelant). */
     record Contenu(byte[] octets, String nomFichier, String typeMime) {}

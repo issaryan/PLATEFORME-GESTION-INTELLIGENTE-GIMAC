@@ -47,7 +47,7 @@ class PiecesEtCouverturesSandboxTest {
         PieceSandboxRepository repo = mock(PieceSandboxRepository.class);
         when(repo.findFirstByEmpreinteAndDocumentIdIsNotNull(anyString())).thenReturn(Optional.empty());
         when(documents.parEmpreinte(anyString())).thenReturn(Optional.empty());
-        when(documents.deposer(any(), anyString(), anyString(), anyString(), anyString(), any())).thenReturn(new DocumentRegistryPort.Depot(UUID.randomUUID(), HEX, "n"));
+        when(documents.deposerParLeService(any(), anyString(), anyString(), anyString(), anyString())).thenReturn(new DocumentRegistryPort.Depot(UUID.randomUUID(), HEX, "n"));
         when(lecture.pieces("C")).thenReturn(List.of(new Piece("BILAN", 1, HEX, 5, null), new Piece("BILAN", 2, HEX, 5, null)));
         when(lecture.telecharger(eq("C"), anyString(), any(Integer.class))).thenReturn(OCTETS);
         when(lecture.empreinte("C", "BILAN", 1)).thenReturn("ff".repeat(32));
@@ -58,7 +58,7 @@ class PiecesEtCouverturesSandboxTest {
         assertThat(c.conserver("C")).isEqualTo(1);
 
         ArgumentCaptor<String> nom = ArgumentCaptor.forClass(String.class);
-        verify(documents).deposer(eq(OCTETS), nom.capture(), eq("application/json"), eq(ConservationPiecesSandbox.FINALITE), eq("C/BILAN/2"), eq(null));
+        verify(documents).deposerParLeService(eq(OCTETS), nom.capture(), eq("application/json"), eq(ConservationPiecesSandbox.FINALITE), eq("C/BILAN/2"));
         assertThat(nom.getValue()).isEqualTo("bilan-v2");
     }
 
