@@ -1339,6 +1339,7 @@
             "SBX_DON_ADMINISTRATION",
             "SBX_TRA_ADMINISTRATION",
             "SBX_LEC_ADMINISTRATION",
+            "SBX_LEC_VALIDATION",
             "SBX_HAB_CONSULTATION",
             "SBX_RAC_CONSULTATION",
             "SBX_REF_CONSULTATION",

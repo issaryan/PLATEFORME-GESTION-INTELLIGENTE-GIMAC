@@ -239,8 +239,9 @@ SANDBOX_GIMAC = {
     # Ingénieur certificateur : seul à valider les verdicts.
     "ROLE_SNA": _sbx(("CER", "EXECUTION VALIDATION CONSULTATION"), (INTERFACES_SBX, "SIMULATION CONSULTATION"),
                      ("RAC REF SCN DON TRA LEC", "CONSULTATION")),
-    # Certificats, clés et plages de BIN de test, périmètre du compte de service du DES, conservation.
-    "ROLE_RSSI": _sbx(("RAC DON TRA LEC", "ADMINISTRATION"), ("*", "CONSULTATION")),
+    # Certificats, clés et plages de BIN de test, périmètre du compte de service du DES, conservation ; approbation
+    # du périmètre de lecture et du rattachement du certificat client (CC-SBX-GIMAC-02 §D.8, UC-LEC-10).
+    "ROLE_RSSI": _sbx(("RAC DON TRA LEC", "ADMINISTRATION"), ("LEC", "VALIDATION"), ("*", "CONSULTATION")),
     # Plages de BIN, profils de cartes, clés de test et paramètres ISO 8583 ; exploitation (catalogue D-91).
     "ROLE_PRODUCTION_MONETIQUE": _sbx(("CAR DON TRA", "ADMINISTRATION"), ("CAR DON", "SIMULATION"), ("RAC REF TRA CAR DON SIM CER LEC", "CONSULTATION")),
     # Exploitant de la plateforme.
@@ -281,6 +282,8 @@ PROFILS_EXTERNES = PROFILS_EXTERNES | set(SANDBOX_INSTITUTIONS)
 # RG-05 : la validation des verdicts reste au GIMAC, à l'ingénieur certificateur (Normes et Agréments) seul.
 assert not [n for n in PROFILS_EXTERNES if any(p.startswith("SBX_") and p.endswith("_VALIDATION") for p in PROFILS[n])]
 assert [n for n, ps in PROFILS.items() if "SBX_CER_VALIDATION" in ps] == ["ROLE_SNA"]
+# Périmètre de lecture du compte de service du DES : proposé par l'administrateur GIMAC, approuvé par le RSSI seul.
+assert [n for n, ps in PROFILS.items() if "SBX_LEC_VALIDATION" in ps] == ["ROLE_RSSI"]
 # Exemples de US-EXI-02 : un testeur exécute, n'administre pas ; le lecteur n'a pas les traces.
 assert "SBX_MOB_EXECUTION" in PROFILS["ROLE_SBX_TESTEUR"] and "SBX_MOB_ADMINISTRATION" not in PROFILS["ROLE_SBX_TESTEUR"]
 assert "SBX_TRA_CONSULTATION" not in PROFILS["ROLE_SBX_LECTEUR"]

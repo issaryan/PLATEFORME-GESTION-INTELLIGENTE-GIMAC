@@ -50,3 +50,4 @@ Le rattachement des jetons de service au certificat client (RFC 8705) reste une 
 | 2026-10-23 | D-123 | US-EXI-05 : clients `sbx-*` et `sbx-mifos`, permissions `INTERNAL_SBX_*` du tableau des appels synchrones (`APPELS_SBX`), `INTERNAL_SBX_LECTURE_READ` pour `homologation-service`, client `exploitation-service` (`INTERNAL_HOMOLOGATION_REPUBLISH`) ; matrice vérifiée par le générateur |
 | 2026-10-27 | - | Introspection du cloisonnement et sagas US-EXI-23 documentées ; rattachement RFC 8705 toujours dépendant d'une AC mTLS locale non livrée |
 | 2026-10-28 | - | `INTERNAL_DOCUMENT_RENDER` ajoutée au client `pilotage-service` pour le PDF des instances de processus ; domaines régénérés |
+| 2026-11-04 | - | Sandbox, périmètre de lecture : `SBX_LEC_VALIDATION` portée par le seul `ROLE_RSSI` (CC-SBX-GIMAC-02 §D.8, UC-LEC-10), assertion du générateur et test ; domaines et catalogue régénérés, contrat §2.2 aligné ; la sandbox reçoit la même valeur (`MatriceRoles`) |
