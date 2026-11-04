@@ -32,6 +32,16 @@ class ProfilsCrV17(unittest.TestCase):
         self.assertIn(("test-agent-ssi", "Agent", "Sécurité des SI", "ROLE_AGENT_SSI", None), G.UTILISATEURS)
         self.assertEqual(G.PRESENTATIONS["ROLE_AGENT_SSI"][0], "Agent de la sécurité des SI")
 
+    def test_perimetre_de_lecture_approuve_par_le_rssi(self):
+        # CC-SBX-GIMAC-02 §D.8 et UC-LEC-10 : le périmètre du compte de service est approuvé par le RSSI
+        # (SBX_LEC_VALIDATION), profil interne ; aucun profil externe ne porte de validation (RG-05).
+        self.assertEqual([n for n, ps in G.PROFILS.items() if "SBX_LEC_VALIDATION" in ps], ["ROLE_RSSI"])
+        self.assertNotIn("ROLE_RSSI", G.PROFILS_EXTERNES)
+        for cible in (G.CIBLE, G.CIBLE_PRODUCTION):
+            realm = json.loads(cible.read_text(encoding="utf-8"))
+            rssi = next(r for r in realm["roles"]["realm"] if r["name"] == "ROLE_RSSI")
+            self.assertIn("SBX_LEC_VALIDATION", rssi["composites"]["realm"])
+
     def test_missions_selon_le_cr(self):
         m = {k: v[1] for k, v in G.PRESENTATIONS.items()}
         self.assertIn("Coordonnateur fonctionnel", m["ROLE_CHEF_DDRM"])

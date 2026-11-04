@@ -60,7 +60,7 @@ maintenance passe par un accès temporaire par délégation (US-EXI-24), pas par
 | Administrateur GIMAC | ROLE_SUPER_ADMIN | ADMINISTRATION et CONSULTATION de tous les modules |
 | Responsable de produit (chef du DES) | ROLE_CHEF_DES | CONSULTATION de tous les modules |
 | Ingénieur certificateur | ROLE_SNA | CER : EXECUTION, VALIDATION, CONSULTATION ; SIM, MOB, ISO, CAR : SIMULATION, CONSULTATION ; RAC, REF, SCN, DON, TRA, LEC : CONSULTATION |
-| RSSI | ROLE_RSSI | RAC, DON, TRA, LEC : ADMINISTRATION ; CONSULTATION de tous les modules |
+| RSSI | ROLE_RSSI | RAC, DON, TRA, LEC : ADMINISTRATION ; LEC : VALIDATION (approbation du périmètre de lecture, CC-SBX-GIMAC-02 §D.8) ; CONSULTATION de tous les modules |
 | Production monétique | ROLE_PRODUCTION_MONETIQUE | CAR, DON, TRA : ADMINISTRATION ; CAR, DON : SIMULATION ; RAC, REF, TRA, CAR, DON, SIM, CER, LEC : CONSULTATION |
 | Exploitant | ROLE_ADMIN_SYSTEME | TRA : ADMINISTRATION, CONSULTATION ; RAC, SIM, CER, LEC : CONSULTATION |
 | Administrateur de l'institution | ROLE_SBX_ADMIN_INSTITUTION (externe) | HAB : ADMINISTRATION, CONSULTATION ; RAC, CER, TRA : CONSULTATION |
