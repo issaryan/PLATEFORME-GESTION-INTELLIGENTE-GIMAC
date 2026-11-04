@@ -1,0 +1,6 @@
+{
+  "name": "@gimac/e2e-demonstration",
+  "private": true,
+  "type": "module",
+  "description": "Marqueur de modules ES des preuves de recette de la plateforme jouées sur les services réels (Playwright) ; hors espaces de travail npm, dépendances à la racine de frontend/"
+}

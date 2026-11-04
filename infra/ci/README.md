@@ -140,3 +140,9 @@ Secrets à définir dans GitHub : `COSIGN_PRIVATE_KEY`, `COSIGN_PASSWORD` (dép�
 | `livrer-serveur.sh` | livraison du serveur de démonstration depuis un poste, sans code source ni GitHub Actions : images construites sur le poste et envoyées par SSH avec le paquet de déploiement (`docs/exploitation/livraison-serveur.md`) |
 | `paquet-serveur.sh` | paquet de déploiement du serveur de démonstration, sans code d'application ; avec `deployer-serveur.sh --images`, lancé par `.github/workflows/deploiement-serveur-images.yml` après chaque CI réussie sur `main` quand la variable `GIMAC_DEPLOIEMENT_SERVEUR` vaut `images` (`docs/exploitation/deploiement-serveur-images.md`) |
 | `yamllint.yml`, `gitleaks.toml` | règles de yamllint et de gitleaks |
+
+## Journal des mises à jour
+
+| Date | Décision | Modification |
+|---|---|---|
+| 2026-10-23 | D-123 | `diagnostiquer-serveur.sh` contrôle aussi le jeton des comptes de service de la sandbox (`sbx-*`, `sbx-mifos`) et d'`exploitation-service`, code HTTP seulement, sans secret affiché (journal consigné le 04/11/2026) |

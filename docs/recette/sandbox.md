@@ -39,3 +39,4 @@ Les validations et leurs couvertures sont synthétisées dans le README racine. 
 | Date | Commit | Modification |
 |---|---|---|
 | 2026-10-27 | - | Consolidation DEMO-SBX-12 : 12 contrôles, 64 captures existantes et distinction explicite des compléments validés sans nouvelles captures |
+| 2026-11-04 | - | Les 213 tests OPA cités au 27/10 étaient le compte de cette date ; le 214e est arrivé le 29/10 (lectures des traces et espaces personnels) : `opa test --timeout 180s infra/docker-compose/opa/politiques` donne 214/214 au 04/11, copies Compose et Kubernetes identiques |

@@ -12,7 +12,9 @@ map $http_x_forwarded_proto $proto_origine {
 server {
     listen 8080;
     server_name _;
-    resolver ${GIMAC_RESOLVEUR} valid=10s;
+    # Résolution différée de la passerelle : la couche démarre même si MS-GATEWAY est absente. Cache de 10 s : une
+    # passerelle redémarrée sous une autre adresse est retrouvée vite ; IPv4 seul, comme le réseau des conteneurs.
+    resolver ${GIMAC_RESOLVEUR} valid=10s ipv6=off;
     set $passerelle ${GIMAC_PASSERELLE};
     root /usr/share/nginx/html;
     server_tokens off;

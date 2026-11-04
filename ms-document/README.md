@@ -129,12 +129,7 @@ Copié et adapté (paquet `cm.gimac.des.document`) ; chaque bean est inactif tan
 | 2026-10-20 | D-116 | Finalité de dépôt `RAPPORT_MONITORING` (MON_SUPERVISION_READ) pour les rapports de monitoring et d'astreinte |
 | 2026-10-22 | D-120 | US-EXI-08 : `POST /api/v1/interne/pieces-sandbox`, `GET /api/v1/interne/documents/empreintes/{sha256}`, `/api/v1/sandbox/types-pieces` et `/quarantaines`, tables `sbx_type_piece`, `sbx_piece`, outbox `sbx_evenement_sortant`, règle JaCoCo à 98 % |
 | 2026-10-29 | — | Supervision : registre `micrometer-registry-prometheus` aligné sur Spring Boot 4 ; `/actuator/prometheus` vérifié en 200 avec CA et certificat client mTLS ; autres endpoints Actuator toujours réservés à `ROLE_ADMIN` |
-
-### Mise a jour du 02/11/2026 : Stabilite conteneur et alignement image Docker
-
-- Desactivation de Docker Compose au demarrage Spring Boot (spring.docker.compose.enabled: false) en profil prod pour supprimer les tentatives d acces a postgresql.yml.
-- Alignement du conteneur Docker avec les endpoints internes D-120 (PiecesSandboxResource : GET /api/v1/interne/documents/empreintes/{sha256}) permettant la verification des pieces de la Sandbox lors de la releve.
-
+| 2026-11-02 | — | Profil `prod` : `spring.docker.compose.enabled: false`, aucune tentative de démarrer `postgresql.yml` dans le conteneur ; image reconstruite avec la consultation par empreinte de D-120 (`GET /api/v1/interne/documents/empreintes/{sha256}`) |
 <!-- GIMAC:FIN -->
 
 # document
