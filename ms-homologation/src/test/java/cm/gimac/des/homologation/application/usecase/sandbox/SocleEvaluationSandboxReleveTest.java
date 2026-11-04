@@ -20,8 +20,8 @@ import cm.gimac.des.homologation.domain.event.CampaignResultImportedPayload;
 import cm.gimac.des.homologation.domain.sandbox.CampagneSandbox;
 import cm.gimac.des.homologation.domain.sandbox.PieceSandbox;
 import cm.gimac.des.homologation.infrastructure.messaging.outbox.OutboxPublisher;
+import cm.gimac.des.homologation.infrastructure.persistence.EvaluationsLiaisonRepository;
 import cm.gimac.des.homologation.repository.CampagneSandboxRepository;
-import cm.gimac.des.homologation.repository.EvaluationBaseRepository;
 import cm.gimac.des.homologation.repository.ExecutionSandboxRepository;
 import cm.gimac.des.homologation.repository.LiaisonRepository;
 import cm.gimac.des.homologation.repository.PieceSandboxRepository;
@@ -44,7 +44,7 @@ class SocleEvaluationSandboxReleveTest {
     static final String EMPREINTE = "a".repeat(64);
 
     LectureSandboxPort lecture;
-    EvaluationBaseRepository evaluationBases;
+    EvaluationsLiaisonRepository evaluationBases;
     PieceSandboxRepository piecesSandbox;
     ConservationPiecesSandbox conservation;
     OutboxPublisher outbox;
@@ -55,7 +55,7 @@ class SocleEvaluationSandboxReleveTest {
     @BeforeEach
     void init() {
         lecture = mock(LectureSandboxPort.class);
-        evaluationBases = mock(EvaluationBaseRepository.class);
+        evaluationBases = mock(EvaluationsLiaisonRepository.class);
         piecesSandbox = mock(PieceSandboxRepository.class);
         conservation = mock(ConservationPiecesSandbox.class);
         outbox = mock(OutboxPublisher.class);

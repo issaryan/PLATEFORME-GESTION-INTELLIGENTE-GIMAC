@@ -11,6 +11,7 @@ export { ACCUSE_LECTURE, surAccuseLecture, diffuserAccuseLecture, accuseDe, type
 export { SIGNAL, DUREE_SAISIE_MS, initialiserPresence, appliquerSignal, viderSignaux, usePresence, useEnLigne, useSaisies, type EtatPresence } from './live/signaux'
 export { getReauthAssertion, ReauthCancelled, CleSecuriteIndisponible, cleSecuriteDisponible, refusReauth, estAnnulation, b64u, fromB64u, type SignPurpose, type RefusReauth } from './reauth/webauthn'
 export { sha256Hex, sha256Js } from './crypto/sha256'
+export { installerRandomUUID, uuidV4 } from './crypto/uuid'
 export { enrolerCleSecurite, optionsCreation, type OptionsEnrolement, type CleSecurite } from './reauth/enrolement'
 export * from './ressource/types'
 export { QueryBoundary, EtatsRequete, type QueryBoundaryProps } from './requete/QueryBoundary'

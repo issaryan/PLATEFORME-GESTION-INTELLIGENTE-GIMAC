@@ -81,6 +81,13 @@
       "fieldValidateRulesMaxlength": "64",
       "fieldValidateRulesMinlength": "64",
       "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "Institution concernée par un événement de la sandbox (extension institutionid ou codeParticipant, US-EXI-10) ; vide sinon.",
+      "fieldName": "institutionId",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "64"
     }
   ],
   "jpaMetamodelFiltering": true,

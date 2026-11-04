@@ -50,7 +50,7 @@ public class DemandesSandboxConsumer {
 
     @KafkaListener(
         id = GROUPE,
-        topics = "#{'${gimac.consommateurs.sandbox.sujets}'.split(',')}",
+        topics = "#{'${gimac.consommateurs.sandbox.sujets:sbx-espace.notification-requested.v1,sbx-raccordement.notification-requested.v1,sbx-referentiel.notification-requested.v1,sbx-donnees.notification-requested.v1,sbx-simulation.notification-requested.v1,sbx-mobile.notification-requested.v1,sbx-iso20022.notification-requested.v1,sbx-carte.notification-requested.v1,sbx-campagne.notification-requested.v1,sbx-trace.notification-requested.v1,sbx-lecture.notification-requested.v1}'.split(',')}",
         groupId = GROUPE,
         autoStartup = "${gimac.consommateurs.demarrage-automatique:true}"
     )

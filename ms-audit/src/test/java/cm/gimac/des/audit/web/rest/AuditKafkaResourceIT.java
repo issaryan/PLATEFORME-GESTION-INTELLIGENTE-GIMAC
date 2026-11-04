@@ -22,6 +22,7 @@ import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.util.MimeTypeUtils;
@@ -31,6 +32,9 @@ import org.springframework.util.MimeTypeUtils;
 @WithMockUser
 @ImportAutoConfiguration(TestChannelBinderConfiguration.class)
 @ActiveProfiles({ "kafka" })
+// Profil kafka : courtier localhost:9092, partagé avec la recette de la sandbox ; aucun consommateur @KafkaListener
+// (registre, sandbox) ne doit y lire ni écrire dans la base de test (US-EXI-10).
+@TestPropertySource(properties = "gimac.consommateurs.demarrage-automatique=false")
 class AuditKafkaResourceIT {
 
     @Autowired

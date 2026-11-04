@@ -6,8 +6,8 @@ import cm.gimac.des.certification.domain.enumeration.EtatCircuit;
 import cm.gimac.des.certification.domain.enumeration.EtatQuitus;
 import cm.gimac.des.certification.domain.enumeration.NatureQuitus;
 import cm.gimac.des.certification.infrastructure.messaging.outbox.OutboxPublisher;
-import cm.gimac.des.certification.repository.CertificationCircuitRepository;
-import cm.gimac.des.certification.repository.QuitusRepository;
+import cm.gimac.des.certification.infrastructure.persistence.CircuitsLiaisonRepository;
+import cm.gimac.des.certification.infrastructure.persistence.QuitusCircuitRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -42,12 +42,12 @@ public class SocleEvaluationSandbox {
         Instant caducLe
     ) {}
 
-    private final CertificationCircuitRepository circuits;
-    private final QuitusRepository quitus;
+    private final CircuitsLiaisonRepository circuits;
+    private final QuitusCircuitRepository quitus;
     private final OutboxPublisher outbox;
     private final Clock clock;
 
-    public SocleEvaluationSandbox(CertificationCircuitRepository circuits, QuitusRepository quitus, OutboxPublisher outbox, Clock clock) {
+    public SocleEvaluationSandbox(CircuitsLiaisonRepository circuits, QuitusCircuitRepository quitus, OutboxPublisher outbox, Clock clock) {
         this.circuits = circuits;
         this.quitus = quitus;
         this.outbox = outbox;

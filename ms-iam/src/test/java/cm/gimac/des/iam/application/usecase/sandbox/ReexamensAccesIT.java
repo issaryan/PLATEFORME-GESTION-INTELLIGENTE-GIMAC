@@ -9,9 +9,9 @@ import cm.gimac.des.iam.domain.compte.NouveauCompte;
 import cm.gimac.des.iam.domain.enumeration.ReviewDecision;
 import cm.gimac.des.iam.domain.enumeration.ReviewState;
 import cm.gimac.des.iam.domain.sandbox.ReexamenAcces;
-import cm.gimac.des.iam.repository.AccessReviewDecisionRepository;
-import cm.gimac.des.iam.repository.AccessReviewRepository;
-import cm.gimac.des.iam.repository.CollaboratorRepository;
+import cm.gimac.des.iam.infrastructure.persistence.sandbox.CollaborateursFederesRepository;
+import cm.gimac.des.iam.infrastructure.persistence.sandbox.DecisionsRevueRepository;
+import cm.gimac.des.iam.infrastructure.persistence.sandbox.RevuesAccesRepository;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -25,9 +25,9 @@ class ReexamensAccesIT extends AbstractIamIT {
 
     @Autowired Annuaire annuaire;
     @Autowired ReexamensAccesService service;
-    @Autowired AccessReviewRepository reviews;
-    @Autowired AccessReviewDecisionRepository decisions;
-    @Autowired CollaboratorRepository collaborateurs;
+    @Autowired RevuesAccesRepository reviews;
+    @Autowired DecisionsRevueRepository decisions;
+    @Autowired CollaborateursFederesRepository collaborateurs;
 
     private String compteId;
     private UUID campagneId;

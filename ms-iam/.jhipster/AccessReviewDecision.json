@@ -16,7 +16,7 @@
       "fieldName": "decision",
       "fieldType": "ReviewDecision",
       "fieldValidateRules": ["required"],
-      "fieldValues": "MAINTENU,REDUIT,REVOQUE"
+      "fieldValues": "EN_ATTENTE,MAINTENU,REDUIT,REVOQUE"
     },
     {
       "fieldName": "comment",
@@ -25,14 +25,24 @@
       "fieldValidateRulesMaxlength": "500"
     },
     {
+      "documentation": "Auteur et date de la décision ; vides tant qu'elle est EN_ATTENTE (US-EXI-23).",
       "fieldName": "decidedBy",
-      "fieldType": "UUID",
-      "fieldValidateRules": ["required"]
+      "fieldType": "UUID"
     },
     {
+      "documentation": "Auteur et date de la décision ; vides tant qu'elle est EN_ATTENTE (US-EXI-23).",
       "fieldName": "decidedAt",
-      "fieldType": "Instant",
-      "fieldValidateRules": ["required"]
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Profils du compte à l'ouverture de la campagne, ordonnés et séparés par un retour à la ligne.",
+      "fieldName": "profilesSnapshot",
+      "fieldType": "TextBlob"
+    },
+    {
+      "documentation": "Permissions effectives à l'ouverture, SBX_* incluses, dans le même format canonique.",
+      "fieldName": "permissionsSnapshot",
+      "fieldType": "TextBlob"
     }
   ],
   "microserviceName": "iam",

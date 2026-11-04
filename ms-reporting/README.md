@@ -47,6 +47,7 @@ Copié et adapté (paquet `cm.gimac.des.reporting`) ; chaque bean est inactif ta
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 1 classes reprises d'afriland : ServiceTokenProvider (D-53). |
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 100 tests unitaires et 427 tests d'intégration réussis, image Jib construite ; test généré `ImportedStatementResourceIT` corrigé (auto-référence) (D-54). |
 | 2026-09-29 | — | `.gitignore` : exception `!src/**/out/`, pour que les ports sortants `application/port/out` soient versionnés |
+| 2026-10-30 | D-128 | `SecurityConfiguration` accepte aussi `/actuator` avec les règles de `/management` : `health`, `info` et `prometheus` publics, tout autre point réservé à `ROLE_ADMIN` (supervision de la recette intégrée, journal consigné le 04/11/2026) |
 <!-- GIMAC:FIN -->
 
 # reporting

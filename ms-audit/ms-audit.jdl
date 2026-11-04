@@ -112,6 +112,8 @@ entity AuditEvent {
   payload TextBlob required
   /** SHA256(0x00 || forme canonique). */
   leafHash String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  /** Institution concernée par un événement de la sandbox (extension institutionid ou codeParticipant, US-EXI-10) ; vide sinon. */
+  institutionId String maxlength(64)
 }
 
 /** Entrée de déduplication : clé unique = identifiant CloudEvents (RG-15, RG-35). */

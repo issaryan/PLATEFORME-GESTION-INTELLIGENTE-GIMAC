@@ -271,6 +271,7 @@ Tests : `AppareilsDomaineTest`, `SuiviEtServiceAppareilsTest`, `FermetureAutresS
 | 2026-10-23 | D-124 | Route `console-audit-sandbox` (`/bff/console/audit/sandbox/**` vers `/api/v1/registre/sandbox` de MS-AUDIT, US-EXI-10) |
 | 2026-10-27 | D-121 | Route `des-sbx-trace` limitée aux quatre lectures `etat-sante/detail`, `elements-supervises`, `alertes`, `disponibilites`, OPA `SBX_SUP_CONSULTATION`, aucun autre chemin DES ; 592 tests unitaires réussis, seuils JaCoCo tenus ; 213 tests OPA réussis |
 | 2026-10-27 | - | Introspection MS-IAM sans cache dans le cloisonnement ; règles OPA des réexamens US-EXI-23 ; limites AC mTLS locale, Compose complet et serveurs réels documentées |
+| 2026-11-04 | - | `opa test --timeout 180s infra/docker-compose/opa/politiques` : 214/214 (213 au 27/10, un test ajouté le 29/10) ; `lot1_authz.rego` identique dans Compose et Kubernetes |
 <!-- GIMAC:FIN -->
 
 # gateway

@@ -9,8 +9,8 @@ import cm.gimac.des.certification.domain.Quitus;
 import cm.gimac.des.certification.domain.enumeration.EtatCircuit;
 import cm.gimac.des.certification.domain.enumeration.EtatQuitus;
 import cm.gimac.des.certification.domain.enumeration.NatureQuitus;
-import cm.gimac.des.certification.repository.CertificationCircuitRepository;
-import cm.gimac.des.certification.repository.QuitusRepository;
+import cm.gimac.des.certification.infrastructure.persistence.CircuitsLiaisonRepository;
+import cm.gimac.des.certification.infrastructure.persistence.QuitusCircuitRepository;
 import cm.gimac.des.certification.repository.SignedDecisionRepository;
 import cm.gimac.des.certification.service.SignedDecisionService;
 import cm.gimac.des.certification.service.dto.SignedDecisionDTO;
@@ -32,10 +32,10 @@ class BilanSandboxIT extends AbstractCertificationIT {
     BilanSandboxConsumer consumer;
 
     @Autowired
-    CertificationCircuitRepository circuits;
+    CircuitsLiaisonRepository circuits;
 
     @Autowired
-    QuitusRepository quitus;
+    QuitusCircuitRepository quitus;
 
     @Autowired
     SignedDecisionRepository decisions;

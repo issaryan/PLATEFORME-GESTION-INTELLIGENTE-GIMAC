@@ -10,6 +10,9 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+
 import cm.gimac.des.homologation.application.port.out.DocumentRegistryPort.Verification;
 import cm.gimac.des.homologation.domain.HomologationException;
 import java.nio.charset.StandardCharsets;
@@ -40,7 +43,7 @@ class AdaptateursParcoursTest {
     void documentReelVerification() {
         RestClient.Builder b = RestClient.builder();
         MockRestServiceServer serveur = MockRestServiceServer.bindTo(b).build();
-        DocumentRestAdapter a = new DocumentRestAdapter(b, AdaptateursCadrageTest.jeton(), "http://document");
+        DocumentRestAdapter a = new DocumentRestAdapter(b, AdaptateursCadrageTest.jeton(), "http://document", "homologation-service");
         String url = "http://document/api/v1/interne/documents/" + ID + "/empreinte";
         serveur.expect(requestTo(url)).andExpect(header("Authorization", "Bearer jeton")).andRespond(withSuccess("{\"sha256\":\"" + SHA.toUpperCase() + "\"}", MediaType.APPLICATION_JSON));
         serveur.expect(requestTo(url)).andRespond(withSuccess("{\"sha256\":\"" + "d".repeat(64) + "\"}", MediaType.APPLICATION_JSON));
@@ -62,7 +65,7 @@ class AdaptateursParcoursTest {
     void documentReelDepot() {
         RestClient.Builder b = RestClient.builder();
         MockRestServiceServer serveur = MockRestServiceServer.bindTo(b).build();
-        DocumentRestAdapter a = new DocumentRestAdapter(b, AdaptateursCadrageTest.jeton(), "http://document");
+        DocumentRestAdapter a = new DocumentRestAdapter(b, AdaptateursCadrageTest.jeton(), "http://document", "homologation-service");
         String url = "http://document/api/v1/interne/documents";
         serveur
             .expect(requestTo(url))
@@ -81,6 +84,25 @@ class AdaptateursParcoursTest {
         code(() -> a.deposer(contenu, "x.pdf", null, "LIVRABLE", "op", null), "HOM_DOCUMENT_UNAVAILABLE", 503);
         code(() -> a.deposer(contenu, "x.pdf", null, "LIVRABLE", "op", null), "HOM_DOCUMENT_REFUSED", 422);
         code(() -> a.deposer(contenu, "x.pdf", null, "LIVRABLE", "op", null), "HOM_DOCUMENT_UNAVAILABLE", 503);
+        serveur.verify();
+    }
+
+    @Test
+    @DisplayName("Registre documentaire réel : déposant réel transmis tel quel, compte de service pour la relève seule")
+    void documentReelDeposant() {
+        RestClient.Builder b = RestClient.builder();
+        MockRestServiceServer serveur = MockRestServiceServer.bindTo(b).build();
+        DocumentRestAdapter a = new DocumentRestAdapter(b, AdaptateursCadrageTest.jeton(), "http://document", "homologation-service");
+        String url = "http://document/api/v1/interne/documents";
+        String reponse = "{\"id\":\"" + ID + "\",\"sha256\":\"" + SHA + "\"}";
+        UUID correspondant = UUID.randomUUID();
+        serveur.expect(requestTo(url)).andExpect(content().string(containsString(correspondant.toString()))).andRespond(withSuccess(reponse, MediaType.APPLICATION_JSON));
+        serveur.expect(requestTo(url)).andExpect(content().string(not(containsString("service-account")))).andRespond(withStatus(HttpStatus.valueOf(422)));
+        serveur.expect(requestTo(url)).andExpect(content().string(containsString("service-account-homologation-service"))).andRespond(withSuccess(reponse, MediaType.APPLICATION_JSON));
+        byte[] contenu = "pdf".getBytes(StandardCharsets.UTF_8);
+        assertThat(a.deposer(contenu, "cr.pdf", "application/pdf", "LIVRABLE", "op", correspondant).id()).isEqualTo(ID);
+        code(() -> a.deposer(contenu, "cr.pdf", "application/pdf", "LIVRABLE", "op", null), "HOM_DOCUMENT_REFUSED", 422);
+        assertThat(a.deposerParLeService(contenu, "bilan.json", "application/json", "SANDBOX_CAMPAGNE", "C/BILAN/1").id()).isEqualTo(ID);
         serveur.verify();
     }
 
