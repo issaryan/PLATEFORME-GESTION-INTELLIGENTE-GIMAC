@@ -48,3 +48,4 @@ sans nouvelle capture et sans démarrage du Compose complet.
 | 2026-10-22 | - | Création (D-122) : registre des entrées, « Espaces des institutions » sur SBX-ESPACE (HTTP et simulé), fiche réutilisable |
 | 2026-10-27 | - | D-121 : écran « Supervision de la sandbox », HTTP/simulation, FR/EN/ES, trois paginations, 46 tests et couverture au-dessus de 98 % |
 | 2026-10-27 | - | DEMO-SBX-12 : 30 captures des espaces et résultats référencées ; absence de nouvelles captures D-121 et de preuve Compose/serveurs réels explicitée |
+| 2026-11-04 | - | Couverture rétablie à 100 % (repli de la clé d'idempotence, troisième page des éléments supervisés) : 49 tests |
