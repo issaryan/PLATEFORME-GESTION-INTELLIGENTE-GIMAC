@@ -114,4 +114,17 @@ class DemandesSandboxConsumerTest {
         verifyNoInteractions(sandbox);
         verify(traites, org.mockito.Mockito.never()).existsByEventIdAndConsumerGroup(anyString(), eq(DemandesSandboxConsumer.GROUPE));
     }
+
+    @Test
+    @DisplayName("Champ texte : absent, nul, objet, tableau ou blanc lus comme absents ; valeur rendue sinon")
+    void champTexte() throws Exception {
+        var n = new ObjectMapper().readTree("{\"nul\":null,\"objet\":{},\"tableau\":[\"a\"],\"blanc\":\"  \",\"nombre\":7,\"texte\":\"x\"}");
+        assertThat(DemandesSandboxConsumer.texte(n, "absent")).isNull();
+        assertThat(DemandesSandboxConsumer.texte(n, "nul")).isNull();
+        assertThat(DemandesSandboxConsumer.texte(n, "objet")).isNull();
+        assertThat(DemandesSandboxConsumer.texte(n, "tableau")).isNull();
+        assertThat(DemandesSandboxConsumer.texte(n, "blanc")).isNull();
+        assertThat(DemandesSandboxConsumer.texte(n, "nombre")).isEqualTo("7");
+        assertThat(DemandesSandboxConsumer.texte(n, "texte")).isEqualTo("x");
+    }
 }
