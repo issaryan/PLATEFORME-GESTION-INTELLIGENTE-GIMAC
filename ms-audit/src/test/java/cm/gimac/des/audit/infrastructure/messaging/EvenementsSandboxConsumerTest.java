@@ -73,4 +73,19 @@ class EvenementsSandboxConsumerTest {
         assertThat(c.getValue().institution()).isEqualTo("99003");
         assertThat(c.getValue().acteur()).isEqualTo("u-certificateur");
     }
+
+    @Test
+    @DisplayName("Champ composé, nul ou blanc lu comme absent : identifiant objet ou blanc au rebut ID_ABSENT")
+    void champsNonTextuels() {
+        String objet = VERDICT.replace("\"id\":\"v-1\"", "\"id\":{\"v\":1}");
+        consommateur.traiter("sbx-campagne.verdict", objet);
+        verify(registre).rebuter(isNull(), eq("sbx-campagne.verdict"), eq("ID_ABSENT"), eq(objet));
+        String blanc = VERDICT.replace("\"id\":\"v-1\"", "\"id\":\"  \"");
+        consommateur.traiter("sbx-campagne.verdict", blanc);
+        verify(registre).rebuter(isNull(), eq("sbx-campagne.verdict"), eq("ID_ABSENT"), eq(blanc));
+        String nul = VERDICT.replace("\"id\":\"v-1\"", "\"id\":null");
+        consommateur.traiter("sbx-campagne.verdict", nul);
+        verify(registre).rebuter(isNull(), eq("sbx-campagne.verdict"), eq("ID_ABSENT"), eq(nul));
+        verify(registre, never()).inscrire(any(), anyString());
+    }
 }

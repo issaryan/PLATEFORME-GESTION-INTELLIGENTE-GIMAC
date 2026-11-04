@@ -96,12 +96,13 @@ public class EvenementsSandboxConsumer {
         return null;
     }
 
+    /** Champ textuel de {@code n} (enveloppe, ou ses données lues par path, jamais null) ; absent, nul, composé ou blanc : null. */
     private static String texte(JsonNode n, String champ) {
-        JsonNode v = n == null ? null : n.get(champ);
+        JsonNode v = n.get(champ);
         if (v == null || v.isNull() || v.isContainer()) {
             return null;
         }
         String s = v.asString();
-        return s == null || s.isBlank() ? null : s;
+        return s.isBlank() ? null : s;
     }
 }
