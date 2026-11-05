@@ -211,7 +211,7 @@ Validations réellement exécutées et conservées dans les rapports du 27/10 :
 | 2026-11-04 | D-123 | Liaison certificat et jeton vers SBX-LECTURE : jeton de `homologation-service` lié au certificat en production, demande de jeton et lecture en mTLS par paquet SSL dans MS-HOMOLOGATION, complément de D-123 au REC |
 
 ### Mise a jour du 02/11/2026 : Releve Sandbox GIMAC et integration documentaire
-
 - MS-HOMOLOGATION : correction de DocumentRestAdapter pour transmettre service-account-homologation-service en cas de deposantId nul, securisation du scheduler de releve periodique par capture des exceptions, suppression du poller KafkaProducer parasite.
 - MS-DOCUMENT : desactivation de Docker Compose au demarrage Spring Boot en profil prod, alignement du conteneur avec l image supportant la consultation d empreinte PiecesSandboxResource (D-120).
 - Releve Sandbox de bout en bout : synchronisation effective des 197 liaisons, 5 973 executions retenues, 396 pieces probantes deposees et 5 821 scenarios non rapproches ; affichage complet et sans erreur de l onglet « Resultats de la sandbox » dans l interface de supervision du DES.
+| 2026-11-05 | (ce commit) | Purge quotidienne du serveur 214 : images inutilisées de plus de 24 h, étiquetées ou non (et plus seulement sans étiquette), cache de construction, et échec visible du workflow sous 15 % d'espace libre sur la partition de Docker. |
