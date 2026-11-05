@@ -86,6 +86,7 @@ public class AdministrationComptesService {
     private final LiensCourriel liens;
     private final Clock clock;
     private final CatalogueProfils catalogue;
+    private final cm.gimac.des.iam.application.usecase.sandbox.TraductionInstitution traduction;
 
     @Autowired
     public AdministrationComptesService(
@@ -95,8 +96,10 @@ public class AdministrationComptesService {
         IamProprietes proprietes,
         LiensCourriel liens,
         Clock clock,
-        CatalogueProfils catalogue
+        CatalogueProfils catalogue,
+        cm.gimac.des.iam.application.usecase.sandbox.TraductionInstitution traduction
     ) {
+        this.traduction = traduction;
         this.annuaire = annuaire;
         this.journal = journal;
         this.entrees = entrees;
@@ -104,6 +107,19 @@ public class AdministrationComptesService {
         this.liens = liens;
         this.clock = clock;
         this.catalogue = catalogue;
+    }
+
+    /** Service sur un catalogue donné, sans registre des participants (tests). */
+    public AdministrationComptesService(
+        Annuaire annuaire,
+        JournalActes journal,
+        JournalAdministrationRepository entrees,
+        IamProprietes proprietes,
+        LiensCourriel liens,
+        Clock clock,
+        CatalogueProfils catalogue
+    ) {
+        this(annuaire, journal, entrees, proprietes, liens, clock, catalogue, cm.gimac.des.iam.application.usecase.sandbox.TraductionInstitution.sansRegistre(clock));
     }
 
     /** Service limité aux profils de la configuration (sans profil créé). */
@@ -174,8 +190,8 @@ public class AdministrationComptesService {
         if (institutionId == null || institutionId.isBlank()) {
             return List.of();
         }
-        String id = institutionId.strip();
-        List<Compte> l = annuaire.parInstitution(id).stream().filter(c -> c.actif() && id.equals(c.institutionId())).toList();
+        // D-134 : institution désignée par son identifiant au registre ou par son code participant (MS-NOTIFICATION).
+        List<Compte> l = traduction.comptes(annuaire, institutionId.strip()).stream().filter(Compte::actif).toList();
         if (l.isEmpty()) {
             return l;
         }

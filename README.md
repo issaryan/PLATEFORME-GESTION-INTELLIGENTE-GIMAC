@@ -208,6 +208,7 @@ Validations réellement exécutées et conservées dans les rapports du 27/10 :
 | 2026-10-30 | - | DEMO-SBX 13 : PDF Gotenberg réel de deux pages, référence et transitions du processus de changement ; persistance PostgreSQL de la tâche avant son historique et sérialiseurs binaires du binder Kafka de MS-PILOTAGE |
 | 2026-11-04 | - | Sandbox, périmètre de lecture : `SBX_LEC_VALIDATION` portée par le seul `ROLE_RSSI` (CC-SBX-GIMAC-02 §D.8, UC-LEC-10), assertion du générateur et test ; domaines et catalogue régénérés, contrat §2.2 aligné ; la sandbox reçoit la même valeur (`MatriceRoles`) |
 | 2026-11-04 | D-123 | Liaison certificat et jeton vers SBX-LECTURE : jeton de `homologation-service` lié au certificat en production, demande de jeton et lecture en mTLS par paquet SSL dans MS-HOMOLOGATION, complément de D-123 au REC |
+| 2026-11-05 | D-134 | `institution_id` : identifiant au registre côté plateforme, code participant côté sandbox, traduit une seule fois par MS-IAM (correspondance lue dans MS-PARTICIPANT) ; la passerelle ne relaie plus le jeton original |
 
 ### Mise a jour du 02/11/2026 : Releve Sandbox GIMAC et integration documentaire
 

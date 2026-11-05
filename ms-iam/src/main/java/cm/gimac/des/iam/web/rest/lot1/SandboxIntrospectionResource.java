@@ -54,6 +54,8 @@ public class SandboxIntrospectionResource {
         }
         m.put("sub", i.sujet());
         m.put("institution_id", i.institutionId());
+        // D-134 : codes participants traduits par MS-IAM, recopiés tels quels par la passerelle dans le jeton réduit.
+        m.put("institution_propre", i.institutionPropre());
         m.put("permissions", new TreeSet<>(i.permissions()));
         m.put("type", i.type());
         m.put("delegation_id", i.delegationId());

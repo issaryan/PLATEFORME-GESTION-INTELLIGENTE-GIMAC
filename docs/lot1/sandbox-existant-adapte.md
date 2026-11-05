@@ -282,6 +282,8 @@ Interface interne de MS-PARTICIPANT (jamais relayée par la passerelle), jeton d
 | Méthode | Route | Réponse |
 |---|---|---|
 | GET | `/api/v1/interne/institutions/code/{code}/fiche` | `{ codeParticipant, raisonSociale, statut, versionStatut, correspondants: [{ id, compteId, nom, fonction }], servicesSouscrits: [code] }` ; 404 `PAR_INSTITUTION_NOT_FOUND` si le code est absent |
+| GET | `/api/v1/interne/institutions/{id}/correspondance` | `{ institutionId, codeParticipant }` (D-134, lu par MS-IAM) ; 404 `PAR_INSTITUTION_NOT_FOUND` |
+| GET | `/api/v1/interne/institutions/code/{code}/correspondance` | `{ institutionId, codeParticipant }` (D-134, sens inverse) ; 404 `PAR_INSTITUTION_NOT_FOUND` |
 | GET | `/api/v1/interne/nomenclature/services?page=0&taille=50` | `{ contenu: [{ code, institutions }], total, page, taille }`, codes des abonnements actifs triés ; taille de 1 à 100, sinon 422 `PAR_PAGINATION_INVALIDE` |
 
 - `versionStatut` : version de statut courante (§6.5), 0 tant qu'aucun changement n'a été publié.
@@ -537,7 +539,7 @@ privilège, règle placée avant celle de `/api/v1/interne/**`).
 | `suspendrePerimetre(code, suspendu, cle)` | `PUT /api/v1/interne/sandbox/perimetres/{code}/suspension` | `INTERNAL_IAM_SBX_SAGA` | `{ suspendu, motif? }` | `{ code, suspendu, depuis, sessionsRevoquees, rejouee }` |
 | (lecture) | `GET /api/v1/interne/sandbox/perimetres/{code}` | `INTERNAL_IAM_SBX_SAGA` | | même forme |
 | `attribuerRole(…, protege, cle)` (attribut seul) | `PUT /api/v1/interne/sandbox/comptes/{id}/protection-dernier-administrateur` | `INTERNAL_IAM_SBX_SAGA` | `{ protege }` | `{ compteId, institutionId, protege, rejouee }` |
-| (passerelle, services) | `POST /api/v1/interne/sandbox/introspection` | `INTERNAL_IAM_SBX_INTROSPECT` | `{ jeton, institution? }` | RFC 7662 : `{ active: false }`, ou `{ active, sub, institution_id, permissions, type, delegation_id, composants, exp }` |
+| (passerelle, services) | `POST /api/v1/interne/sandbox/introspection` | `INTERNAL_IAM_SBX_INTROSPECT` | `{ jeton, institution? }` | RFC 7662 : `{ active: false }`, ou `{ active, sub, institution_id, institution_propre, permissions, type, delegation_id, composants, exp }` ; `institution_id` et `institution_propre` sont des codes participants traduits par MS-IAM (D-134) |
 
 Clients du domaine Keycloak (générateur) : `sbx-espace` porte `INTERNAL_IAM_SBX_SAGA` (seul porteur, vérifié par le
 générateur) et `INTERNAL_PARTICIPANT_READ` ; `gateway-service` reçoit `INTERNAL_IAM_SBX_INTROSPECT`. Secret

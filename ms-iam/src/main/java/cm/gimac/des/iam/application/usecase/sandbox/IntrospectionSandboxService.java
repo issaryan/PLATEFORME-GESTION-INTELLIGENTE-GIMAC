@@ -36,9 +36,19 @@ public class IntrospectionSandboxService {
     private final PerimetresSuspendus perimetres;
     private final DelegationsSandbox delegations;
     private final JournalSandbox journal;
+    private final TraductionInstitution traduction;
     private final Clock clock;
 
-    public IntrospectionSandboxService(LecteurJeton lecteur, Annuaire annuaire, PerimetresSuspendus perimetres, DelegationsSandbox delegations, JournalSandbox journal, Clock clock) {
+    public IntrospectionSandboxService(
+        LecteurJeton lecteur,
+        Annuaire annuaire,
+        PerimetresSuspendus perimetres,
+        DelegationsSandbox delegations,
+        JournalSandbox journal,
+        TraductionInstitution traduction,
+        Clock clock
+    ) {
+        this.traduction = traduction;
         this.lecteur = lecteur;
         this.annuaire = annuaire;
         this.perimetres = perimetres;
@@ -72,17 +82,31 @@ public class IntrospectionSandboxService {
         if (!k.actif()) {
             return Introspection.refusee(sujet, "COMPTE_INACTIF");
         }
-        if (!k.interne() && perimetres.suspendu(k.institutionId())) {
-            return Introspection.refusee(sujet, "PERIMETRE_SUSPENDU");
+        // D-134 : institution_id du compte (identifiant au registre) traduit une seule fois en code participant, seule
+        // clé des périmètres, des mandats et du jeton réduit de la sandbox.
+        String code = null;
+        if (!k.interne()) {
+            try {
+                code = traduction.code(k.institutionId()).orElse(null);
+            } catch (cm.gimac.des.iam.application.port.out.sandbox.RegistreInstitutions.RegistreIndisponible e) {
+                return Introspection.refusee(sujet, "REGISTRE_INDISPONIBLE");
+            }
+            if (code == null) {
+                return Introspection.refusee(sujet, "INSTITUTION_NON_TRADUITE");
+            }
+            if (perimetres.suspendu(code)) {
+                return Introspection.refusee(sujet, "PERIMETRE_SUSPENDU");
+            }
         }
         String demandee = institutionDemandee == null || institutionDemandee.isBlank() ? null : institutionDemandee.strip();
         if (k.interne() && delegations.designe(sujet, TypeDelegation.PRESTATAIRE)) {
             return prestataire(k, demandee, composant, expiration(c));
         }
-        if (demandee != null && !demandee.equals(k.institutionId())) {
-            return mandat(sujet, demandee, expiration(c));
+        if (demandee != null && !demandee.equals(code)) {
+            Introspection m = mandat(sujet, demandee, expiration(c));
+            return m.active() ? new Introspection(true, sujet, m.institutionId(), m.permissions(), m.type(), m.delegationId(), m.expiration(), m.composants(), null, code) : m;
         }
-        return new Introspection(true, sujet, k.institutionId(), permissions(c), Introspection.COMPTE, null, expiration(c), Set.of(), null);
+        return new Introspection(true, sujet, code, permissions(c), Introspection.COMPTE, null, expiration(c), Set.of(), null, code);
     }
 
     /**

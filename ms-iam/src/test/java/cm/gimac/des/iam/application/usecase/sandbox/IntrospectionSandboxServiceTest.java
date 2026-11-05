@@ -34,6 +34,23 @@ class IntrospectionSandboxServiceTest {
     IntrospectionSandboxService service;
     JournalSandbox journal;
     String testeur;
+    static final java.util.UUID BANQUE_99002 = java.util.UUID.fromString("6f1c2a3e-4444-4a6b-9c1d-000000000042");
+    boolean registreInjoignable;
+    static final String UUID_INCONNU = "6f1c2a3e-5555-4a6b-9c1d-000000000099";
+    final cm.gimac.des.iam.application.port.out.sandbox.RegistreInstitutions registre = new cm.gimac.des.iam.application.port.out.sandbox.RegistreInstitutions() {
+        @Override
+        public Optional<String> codeParticipant(java.util.UUID id) {
+            if (registreInjoignable) {
+                throw new RegistreIndisponible("injoignable", null);
+            }
+            return BANQUE_99002.equals(id) ? Optional.of("99002") : Optional.empty();
+        }
+
+        @Override
+        public Optional<java.util.UUID> identifiant(String code) {
+            return "99002".equals(code) ? Optional.of(BANQUE_99002) : Optional.empty();
+        }
+    };
 
     @BeforeEach
     void init() {
@@ -43,12 +60,35 @@ class IntrospectionSandboxServiceTest {
         delegations = new Memoires.Delegations();
         horloge = new Memoires.Horloge(Instant.parse("2026-10-22T08:00:00Z"));
         journal = mock(JournalSandbox.class);
-        service = new IntrospectionSandboxService(j -> Optional.ofNullable(jetons.get(j)), annuaire, perimetres, delegations, journal, horloge);
+        service = new IntrospectionSandboxService(j -> Optional.ofNullable(jetons.get(j)), annuaire, perimetres, delegations, journal, new TraductionInstitution(registre, horloge, java.time.Duration.ofMinutes(5)), horloge);
         testeur = annuaire.creer(new NouveauCompte("testeur.99001", "Awa", "N", "awa@t.test", null, null, "99001", Set.of("ROLE_SBX_TESTEUR")), List.of());
         jetons.put("j-testeur", Map.of("sub", testeur, "roles", List.of("ROLE_SBX_TESTEUR", "SBX_CER_EXECUTION", "offline_access"), "exp", EXP, "institution_id", "99001"));
         jetons.put("j-rssi", Map.of("sub", "demo-rssi", "roles", List.of("ROLE_RSSI"), "exp", EXP));
         jetons.put("j-sans-sujet", Map.of("roles", List.of("ROLE_RSSI")));
         jetons.put("j-inconnu", Map.of("sub", "inconnu", "exp", "x"));
+    }
+
+    @Test
+    @DisplayName("D-134 : institution_id au registre (UUID) traduit en code participant ; suspension toujours vue ; échec de traduction refusé")
+    void traductionDeLInstitution() {
+        String dev = annuaire.creer(new NouveauCompte("dev.99002", "Ali", "B", "ali@t.test", null, null, BANQUE_99002.toString(), Set.of("ROLE_SBX_TESTEUR")), List.of());
+        jetons.put("j-uuid", Map.of("sub", dev, "roles", List.of("SBX_CER_EXECUTION"), "exp", EXP, "institution_id", BANQUE_99002.toString()));
+        Introspection i = service.introspecter("j-uuid", "99002");
+        assertThat(i.active()).isTrue();
+        assertThat(i.institutionId()).isEqualTo("99002");
+        assertThat(i.institutionPropre()).isEqualTo("99002");
+        // Non-régression : la suspension du périmètre 99002 reste vue avec un UUID au realm.
+        perimetres.poser("99002", "rssi", "essai", horloge.instant());
+        assertThat(service.introspecter("j-uuid", null).motifRefus()).isEqualTo("PERIMETRE_SUSPENDU");
+        perimetres.lever("99002");
+        // Correspondance absente (UUID inconnu du registre) ou registre injoignable : refus, jamais deviné.
+        String autre = annuaire.creer(new NouveauCompte("dev.autre", "Z", "W", "z@t.test", null, null, UUID_INCONNU, Set.of("ROLE_SBX_TESTEUR")), List.of());
+        jetons.put("j-autre", Map.of("sub", autre, "exp", EXP));
+        assertThat(service.introspecter("j-autre", null).motifRefus()).isEqualTo("INSTITUTION_NON_TRADUITE");
+        registreInjoignable = true;
+        assertThat(service.introspecter("j-autre", null).motifRefus()).isEqualTo("REGISTRE_INDISPONIBLE");
+        // La correspondance déjà lue reste servie : seule une correspondance, jamais un état, est gardée en cache.
+        assertThat(service.introspecter("j-uuid", null).active()).isTrue();
     }
 
     @Test

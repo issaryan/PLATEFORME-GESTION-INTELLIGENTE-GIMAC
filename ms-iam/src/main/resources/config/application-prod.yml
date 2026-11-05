@@ -118,6 +118,9 @@ gimac:
     courriel: smtp
     # Organigramme en PDF (D-102, docs/lot1/organigramme.md §4) : mise en page par MS-DOCUMENT (moteur Gotenberg).
     rendu-pdf: real
+    registre-institutions: real
   services:
     document:
       url: ${GIMAC_SERVICES_DOCUMENT_URL:http://document:8083}
+    participant:
+      url: ${GIMAC_SERVICES_PARTICIPANT_URL:http://participant:8085}

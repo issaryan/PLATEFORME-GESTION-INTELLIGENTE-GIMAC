@@ -27,6 +27,7 @@ public class ComptesSandboxSagaService {
         String nomAffiche,
         String email,
         String institutionId,
+        String codeParticipant,
         boolean actif,
         Instant creeLe,
         List<String> profils,
@@ -40,11 +41,19 @@ public class ComptesSandboxSagaService {
     private final AdministrationComptesService comptes;
     private final CatalogueProfils catalogue;
     private final EtapesIdempotentes etapes;
+    private final TraductionInstitution traduction;
 
-    public ComptesSandboxSagaService(AdministrationComptesService comptes, CatalogueProfils catalogue, EtapesIdempotentes etapes) {
+    @org.springframework.beans.factory.annotation.Autowired
+    public ComptesSandboxSagaService(AdministrationComptesService comptes, CatalogueProfils catalogue, EtapesIdempotentes etapes, TraductionInstitution traduction) {
         this.comptes = comptes;
         this.catalogue = catalogue;
         this.etapes = etapes;
+        this.traduction = traduction;
+    }
+
+    /** Sans registre des participants (tests). */
+    public ComptesSandboxSagaService(AdministrationComptesService comptes, CatalogueProfils catalogue, EtapesIdempotentes etapes) {
+        this(comptes, catalogue, etapes, TraductionInstitution.sansRegistre(java.time.Clock.systemUTC()));
     }
 
     /** Ouvre un compte d'institution avec invitation ; la clé rejouée retrouve le compte sans doublon. */
@@ -59,7 +68,8 @@ public class ComptesSandboxSagaService {
             nouveau.email(),
             nouveau.telephone(),
             nouveau.fonction(),
-            nouveau.institutionId(),
+            // D-134 : SBX-ESPACE désigne l'institution par son code ; le compte porte l'identifiant au registre.
+            traduction.aEnregistrer(nouveau.institutionId()),
             nouveau.profils()
         );
         boolean rejouee = reserve(cle, OUVERTURE, identifiant, acteur);
@@ -117,12 +127,21 @@ public class ComptesSandboxSagaService {
         }
     }
 
+    /** D-134 : code participant de l'institution du compte, lu par SBX-ESPACE ; nul s'il est inconnu ou le registre injoignable. */
+    private String codeParticipant(String institutionId) {
+        try {
+            return traduction.code(institutionId).orElse(null);
+        } catch (cm.gimac.des.iam.application.port.out.sandbox.RegistreInstitutions.RegistreIndisponible e) {
+            return null;
+        }
+    }
+
     private CompteSaga vue(Compte c, boolean rejouee) {
         Set<String> permissions = new TreeSet<>();
         Map<String, Set<String>> compositions = catalogue.compositions();
         c.profils().forEach(p -> compositions.getOrDefault(p, Set.of()).stream().filter(ReglesSandbox::sandbox).forEach(permissions::add));
         return new CompteSaga(
-            c.id(), c.identifiant(), c.nomAffiche(), c.email(), c.institutionId(), c.actif(), c.creeLe(),
+            c.id(), c.identifiant(), c.nomAffiche(), c.email(), c.institutionId(), codeParticipant(c.institutionId()), c.actif(), c.creeLe(),
             c.profils().stream().sorted().toList(), List.copyOf(permissions), rejouee
         );
     }
