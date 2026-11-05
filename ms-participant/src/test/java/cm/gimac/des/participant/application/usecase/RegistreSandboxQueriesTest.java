@@ -31,6 +31,11 @@ class RegistreSandboxQueriesTest {
         }
 
         @Override
+        public Optional<Identite> parId(UUID id) {
+            return ID.equals(id) ? Optional.of(new Identite(ID, "99001", "Banque fictive 99001", "EN_HOMOLOGATION")) : Optional.empty();
+        }
+
+        @Override
         public List<Correspondant> correspondantsActifs(UUID institutionId) {
             return ID.equals(institutionId) ? List.of(CORRESPONDANT) : List.of();
         }
@@ -61,6 +66,16 @@ class RegistreSandboxQueriesTest {
         Fiche f = queries.fiche(" 99001 ");
         assertThat(f).isEqualTo(new Fiche("99001", "Banque fictive 99001", "EN_HOMOLOGATION", 4, List.of(CORRESPONDANT), List.of("CARTE", "MOBILE")));
         assertThat(codesLus).containsExactly("99001");
+    }
+
+    @Test
+    @DisplayName("D-134 : correspondance entre l'identifiant au registre et le code participant, dans les deux sens ; 404 sinon")
+    void correspondance() {
+        assertThat(queries.correspondance(ID)).isEqualTo(new RegistreSandboxQueries.Correspondance(ID, "99001"));
+        assertThat(queries.correspondance(" 99001 ")).isEqualTo(new RegistreSandboxQueries.Correspondance(ID, "99001"));
+        assertThatThrownBy(() -> queries.correspondance(UUID.randomUUID())).isInstanceOf(ParticipantException.class);
+        assertThatThrownBy(() -> queries.correspondance("99999")).isInstanceOf(ParticipantException.class);
+        assertThatThrownBy(() -> queries.correspondance((String) null)).isInstanceOf(ParticipantException.class);
     }
 
     @Test

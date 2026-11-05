@@ -64,6 +64,12 @@ class ProfilsCrV17(unittest.TestCase):
         porteurs = sorted(n for n in G.SANDBOX_INSTITUTIONS if "SBX_REF_CONSULTATION" in G.PROFILS[n])
         self.assertEqual(porteurs, ["ROLE_SBX_CHEF_PROJET", "ROLE_SBX_DEVELOPPEUR", "ROLE_SBX_LECTEUR", "ROLE_SBX_PARTENAIRE", "ROLE_SBX_TESTEUR"])
 
+    def test_iam_lit_la_correspondance_du_registre(self):
+        # D-134 : MS-IAM lit la correspondance identifiant au registre / code participant dans MS-PARTICIPANT.
+        realm = json.loads(G.CIBLE.read_text(encoding="utf-8"))
+        iam = next(u for u in realm["users"] if u.get("serviceAccountClientId") == "iam-service")
+        self.assertIn("INTERNAL_PARTICIPANT_READ", iam["realmRoles"])
+
     def test_missions_selon_le_cr(self):
         m = {k: v[1] for k, v in G.PRESENTATIONS.items()}
         self.assertIn("Coordonnateur fonctionnel", m["ROLE_CHEF_DDRM"])

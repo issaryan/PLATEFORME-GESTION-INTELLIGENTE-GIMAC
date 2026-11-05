@@ -21,6 +21,15 @@ public class RegistreLectureJdbc implements RegistreLecture {
     }
 
     @Override
+    public Optional<Identite> parId(UUID id) {
+        return jdbc
+            .sql("select id, participant_code, name, status from institution where id = :id")
+            .param("id", id)
+            .query((rs, n) -> new Identite(rs.getObject("id", UUID.class), rs.getString("participant_code"), rs.getString("name"), rs.getString("status")))
+            .optional();
+    }
+
+    @Override
     public Optional<Identite> parCode(String codeParticipant) {
         return jdbc
             .sql("select id, participant_code, name, status from institution where participant_code = :code")
