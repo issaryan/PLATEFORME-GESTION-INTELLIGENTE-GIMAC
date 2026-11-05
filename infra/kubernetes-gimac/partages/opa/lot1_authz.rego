@@ -658,6 +658,22 @@ allow if {
 	"SBX_SUP_CONSULTATION" in input.permissions
 }
 
+# D-121 : statistiques des tests des participants dans le DES, cinq lectures exactes de SBX-LECTURE (routes console
+# StatistiquesConsoleController), même permission SUP ; aucune autre route DES vers SBX-LECTURE.
+sbx_statistiques_des if {
+	input.method == "GET"
+	regex.match(`^/bff/des/sbx-lecture/statistiques/(synthese|activite|participants|campagnes|cas)$`, input.path)
+}
+
+allow if {
+	not restreinte
+	not interne
+	sbx_statistiques_des
+	not compte_externe
+	double_facteur
+	"SBX_SUP_CONSULTATION" in input.permissions
+}
+
 allow if {
 	not restreinte
 	not interne

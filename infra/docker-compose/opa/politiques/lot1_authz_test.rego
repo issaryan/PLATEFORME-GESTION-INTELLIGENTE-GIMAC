@@ -1661,6 +1661,24 @@ test_sbx_supervision_departement_d121 if {
 	not authz.allow with input as {"method": "HEAD", "path": "/bff/des/sbx-trace/alertes", "permissions": ["SBX_SUP_CONSULTATION"], "authentifie": true, "acr": "2"}
 }
 
+test_sbx_statistiques_departement_d121 if {
+	# Cinq lectures exactes de SBX-LECTURE sous la permission SUP et deux facteurs, pour un compte du GIMAC.
+	every route in ["synthese", "activite", "participants", "campagnes", "cas"] {
+		chemin := concat("", ["/bff/des/sbx-lecture/statistiques/", route])
+		authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_SUP_CONSULTATION"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_LEC_CONSULTATION"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["SBX_SUP_CONSULTATION"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_SUP_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_SUP_CONSULTATION"], "authentifie": true, "acr": "1"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_SUP_CONSULTATION"], "authentifie": true, "acr": "2", "restreinte": true}
+	}
+
+	# Ni le contrat L04, ni la console de gouvernance, ni un chemin voisin n'héritent de l'ouverture.
+	every chemin in ["/bff/des/sbx-lecture/v1/contrat", "/bff/des/sbx-lecture/contrats", "/bff/des/sbx-lecture/statistiques", "/bff/des/sbx-lecture/statistiques/cas/1", "/bff/des/sbx-lecture/perimetres"] {
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_SUP_CONSULTATION", "SBX_LEC_CONSULTATION"], "authentifie": true, "acr": "2"}
+	}
+}
+
 test_sbx_aucune_conduite_dans_le_departement if {
 	# Critère 3 : aucun autre service de la sandbox dans le département, même avec la permission du module.
 	not authz.allow with input as {"method": "GET", "path": "/bff/des/sbx-simulation/essais", "permissions": ["SBX_SIM_CONSULTATION"], "authentifie": true, "acr": "2"}
