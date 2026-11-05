@@ -99,6 +99,9 @@ class RegistreSandboxIT extends AbstractParticipantIT {
         UUID compte = UUID.randomUUID();
         Correspondent actif = correspondant(i, "Awa Ndiaye", true, compte);
         correspondant(i, "Ancien Correspondant", false, null);
+        service(i, "MOBILE", SubscriptionState.ACTIF);
+        service(i, "CARTE", SubscriptionState.ACTIF);
+        service(i, "ANCIEN", SubscriptionState.RESILIE);
         new TransactionTemplate(tm).executeWithoutResult(s -> jdbc.update("insert into institution_version_statut (institution_id, version) values (?, 3)", i.getId()));
         mvc
             .perform(get("/api/v1/interne/institutions/code/99001/fiche").with(compteDeService("sbx-espace")))
@@ -111,7 +114,8 @@ class RegistreSandboxIT extends AbstractParticipantIT {
             .andExpect(jsonPath("$.correspondants[0].id").value(actif.getId().toString()))
             .andExpect(jsonPath("$.correspondants[0].compteId").value(compte.toString()))
             .andExpect(jsonPath("$.correspondants[0].fonction").value("MONETIQUE"))
-            .andExpect(jsonPath("$.correspondants[0].email").doesNotExist());
+            .andExpect(jsonPath("$.correspondants[0].email").doesNotExist())
+            .andExpect(jsonPath("$.servicesSouscrits").value(org.hamcrest.Matchers.contains("CARTE", "MOBILE")));
         mvc.perform(get("/api/v1/interne/institutions/code/99999/fiche").with(compteDeService("sbx-espace"))).andExpect(status().isNotFound());
     }
 
