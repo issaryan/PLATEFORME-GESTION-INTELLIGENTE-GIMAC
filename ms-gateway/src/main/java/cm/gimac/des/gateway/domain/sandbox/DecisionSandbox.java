@@ -25,6 +25,8 @@ public record DecisionSandbox(boolean admise, String institutionEffective, Motif
         MANDAT_ECHU(false),
         /** Mandat actif, mais aucun jeton interne réduit ne peut porter l'institution mandante (refus par défaut). */
         JETON_REDUIT_INDISPONIBLE(false),
+        /** Contexte d'action inconnu demandé par l'en-tête X-Contexte-Sandbox (D-133). */
+        CONTEXTE_INVALIDE(false),
         /** Quota de débit de la couche, de l'institution et de la route dépassé. */
         QUOTA_DEPASSE(false);
 

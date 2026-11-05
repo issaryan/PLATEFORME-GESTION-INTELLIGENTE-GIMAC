@@ -7,8 +7,13 @@ import java.util.List;
  * effective (propre ou mandante), institution propre, permissions de la sandbox seulement, niveau d'assurance et
  * audience restreinte au service visé.
  */
-public record JetonReduit(String sujet, String institution, String institutionPropre, List<String> permissions, String acr, String audience) {
+public record JetonReduit(String sujet, String institution, String institutionPropre, List<String> permissions, String acr, String audience, String contexte) {
     public JetonReduit {
         permissions = List.copyOf(permissions);
+    }
+
+    /** Jeton sans contexte d'action (compte sans double rôle, D-133). */
+    public JetonReduit(String sujet, String institution, String institutionPropre, List<String> permissions, String acr, String audience) {
+        this(sujet, institution, institutionPropre, permissions, acr, audience, null);
     }
 }

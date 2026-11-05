@@ -163,6 +163,50 @@ class CloisonnementSandboxTest {
         assertThat(propre.jeton()).isEmpty();
     }
 
+    static final List<String> DOUBLE_ROLE = List.of("SBX_HAB_ADMINISTRATION", "SBX_HAB_CONSULTATION", "SBX_RAC_ADMINISTRATION", "SBX_RAC_CONSULTATION", "SBX_SIM_SIMULATION", "SBX_CER_CONSULTATION");
+
+    static Demande demande(String contexte) {
+        return new Demande("u-1", "99001", null, SIMULATION, "GET", "/bff/portail/sbx-simulation/essais", DOUBLE_ROLE, "2", "10.0.0.1", "jeton-original-secret", contexte);
+    }
+
+    @Test
+    @DisplayName("D-133 : double rôle, contexte INTEGRATION par défaut, sans le droit d'administrer l'institution")
+    void doubleRoleIntegrationParDefaut() {
+        reponse.set(new Portee(true, "u-1", "99001", DOUBLE_ROLE, "COMPTE"));
+        Resultat r = service().evaluer(demande((String) null)).block();
+        assertThat(r.statut()).isEqualTo(200);
+        assertThat(emis).singleElement().satisfies(j -> {
+            assertThat(j.contexte()).isEqualTo("INTEGRATION");
+            assertThat(j.permissions()).doesNotContain("SBX_HAB_ADMINISTRATION").contains("SBX_RAC_ADMINISTRATION", "SBX_SIM_SIMULATION", "SBX_HAB_CONSULTATION");
+        });
+        assertThat(demande("INTEGRATION").toString()).contains("contexte=INTEGRATION");
+    }
+
+    @Test
+    @DisplayName("D-133 : contexte ADMINISTRATION, administration de l'institution et consultations seulement")
+    void doubleRoleAdministration() {
+        reponse.set(new Portee(true, "u-1", "99001", DOUBLE_ROLE, "COMPTE"));
+        assertThat(service().evaluer(demande("administration")).block().statut()).isEqualTo(200);
+        assertThat(emis.get(0).contexte()).isEqualTo("ADMINISTRATION");
+        assertThat(emis.get(0).permissions()).containsExactly("SBX_CER_CONSULTATION", "SBX_HAB_ADMINISTRATION", "SBX_HAB_CONSULTATION", "SBX_RAC_CONSULTATION");
+    }
+
+    @Test
+    @DisplayName("D-133 : contexte inconnu refusé ; double rôle sans jeton réduit refusé ; compte simple non réduit")
+    void doubleRoleRefus() {
+        reponse.set(new Portee(true, "u-1", "99001", DOUBLE_ROLE, "COMPTE"));
+        Resultat inconnu = service().evaluer(demande("SUPERUTILISATEUR")).block();
+        assertThat(inconnu.statut()).isEqualTo(404);
+        assertThat(inconnu.decision().motif()).isEqualTo(Motif.CONTEXTE_INVALIDE);
+        Resultat sansEmetteur = service(null, Map.of()).evaluer(demande("INTEGRATION")).block();
+        assertThat(sansEmetteur.statut()).isEqualTo(404);
+        assertThat(sansEmetteur.decision().motif()).isEqualTo(Motif.JETON_REDUIT_INDISPONIBLE);
+        reponse.set(new Portee(true, "u-1", "99001", List.of("SBX_HAB_ADMINISTRATION", "SBX_HAB_CONSULTATION", "SBX_RAC_CONSULTATION"), "COMPTE"));
+        assertThat(service().evaluer(demande("ADMINISTRATION")).block().statut()).isEqualTo(200);
+        assertThat(emis.get(emis.size() - 1).contexte()).isNull();
+        assertThat(emis.get(emis.size() - 1).permissions()).contains("SBX_HAB_ADMINISTRATION");
+    }
+
     @Test
     @DisplayName("Quota dépassé après introspection admise : 429 et décision journalisée")
     void quota() {

@@ -1,6 +1,7 @@
 package cm.gimac.des.gateway.service.sandbox;
 
 import cm.gimac.des.gateway.domain.connexion.port.LimiteurTentatives;
+import cm.gimac.des.gateway.domain.sandbox.ContexteAction;
 import cm.gimac.des.gateway.domain.sandbox.DecisionSandbox;
 import cm.gimac.des.gateway.domain.sandbox.DecisionSandbox.Motif;
 import cm.gimac.des.gateway.domain.sandbox.JetonReduit;
@@ -56,13 +57,30 @@ public class CloisonnementSandbox {
         List<String> permissions,
         String acr,
         String ip,
-        String jetonOriginal
+        String jetonOriginal,
+        String contexte
     ) {
+        /** Demande sans contexte d'action choisi (D-133) : INTEGRATION pour un compte à double rôle. */
+        public Demande(
+            String compte,
+            String institutionJeton,
+            String demandee,
+            RouteSandbox route,
+            String methode,
+            String chemin,
+            List<String> permissions,
+            String acr,
+            String ip,
+            String jetonOriginal
+        ) {
+            this(compte, institutionJeton, demandee, route, methode, chemin, permissions, acr, ip, jetonOriginal, null);
+        }
+
         @Override
         public String toString() {
             return "Demande[compte=" + compte + ", institutionJeton=" + institutionJeton + ", demandee=" + demandee +
                 ", route=" + route + ", methode=" + methode + ", chemin=" + chemin + ", permissions=" + permissions +
-                ", acr=" + acr + ", ip=" + ip + ", jetonOriginal=****]";
+                ", acr=" + acr + ", ip=" + ip + ", contexte=" + contexte + ", jetonOriginal=****]";
         }
     }
 
@@ -103,8 +121,13 @@ public class CloisonnementSandbox {
     }
 
     private Mono<Resultat> admettre(Demande d, Portee portee, DecisionSandbox decision) {
+        if (ContexteAction.lire(d.contexte()).isEmpty()) {
+            return Mono.just(new Resultat(DecisionSandbox.de(Motif.CONTEXTE_INVALIDE, d.institutionJeton()), 404, Optional.empty()));
+        }
         Optional<String> jeton = emetteur == null ? Optional.empty() : emetteur.emettre(jetonReduit(d, portee, decision));
-        if ((decision.motif() == Motif.MANDAT_ACTIF || decision.motif() == Motif.PRESTATAIRE_AUTORISE) && jeton.isEmpty()) {
+        // D-133 : sans jeton réduit, le contexte d'action d'un compte à double rôle ne serait qu'un masquage : refus.
+        boolean doubleRole = !vide(portee.institution()) && ContexteAction.doubleRole(sandbox(portee.permissions()));
+        if ((decision.motif() == Motif.MANDAT_ACTIF || decision.motif() == Motif.PRESTATAIRE_AUTORISE || doubleRole) && jeton.isEmpty()) {
             return Mono.just(new Resultat(DecisionSandbox.de(Motif.JETON_REDUIT_INDISPONIBLE, d.institutionJeton()), 404, Optional.empty()));
         }
         LimiteurTentatives limiteur = quotas.get(d.route().couche());
@@ -123,9 +146,17 @@ public class CloisonnementSandbox {
     }
 
     static JetonReduit jetonReduit(Demande d, Portee portee, DecisionSandbox decision) {
-        List<String> permissions = portee.permissions().stream().filter(p -> p.startsWith(PREFIXE_PERMISSION)).sorted().toList();
+        List<String> permissions = sandbox(portee.permissions());
         String propre = vide(d.institutionJeton()) ? "" : d.institutionJeton();
+        if (!vide(portee.institution()) && ContexteAction.doubleRole(permissions)) {
+            ContexteAction contexte = ContexteAction.lire(d.contexte()).orElseThrow();
+            return new JetonReduit(portee.sujet(), decision.institutionEffective(), propre, contexte.reduire(permissions), d.acr(), d.route().nomService(), contexte.name());
+        }
         return new JetonReduit(portee.sujet(), decision.institutionEffective(), propre, permissions, d.acr(), d.route().nomService());
+    }
+
+    private static List<String> sandbox(List<String> permissions) {
+        return permissions.stream().filter(p -> p.startsWith(PREFIXE_PERMISSION)).sorted().toList();
     }
 
     private void consigner(Demande d, Resultat r) {

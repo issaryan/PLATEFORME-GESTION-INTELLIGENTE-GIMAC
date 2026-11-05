@@ -1,5 +1,6 @@
 package cm.gimac.des.gateway.web.filter;
 
+import cm.gimac.des.gateway.domain.sandbox.ContexteAction;
 import cm.gimac.des.gateway.domain.sandbox.RouteSandbox;
 import cm.gimac.des.gateway.service.sandbox.CloisonnementSandbox;
 import cm.gimac.des.gateway.service.sandbox.CloisonnementSandbox.Demande;
@@ -89,7 +90,8 @@ public class CloisonnementSandboxGatewayFilterFactory extends AbstractGatewayFil
             permissions,
             OpaAuthorizeGatewayFilterFactory.claim(auth, OpaAuthorizeGatewayFilterFactory.ACR_CLAIM),
             distante == null ? "" : distante.getHostString(),
-            jetonOriginal(exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION))
+            jetonOriginal(exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION)),
+            exchange.getRequest().getHeaders().getFirst(ContexteAction.ENTETE)
         );
     }
 
@@ -107,6 +109,7 @@ public class CloisonnementSandboxGatewayFilterFactory extends AbstractGatewayFil
             .request(req ->
                 req.headers(h -> {
                     h.remove(ENTETE_MANDANTE);
+                    h.remove(ContexteAction.ENTETE);
                     r.jeton().ifPresent(h::setBearerAuth);
                 })
             )
