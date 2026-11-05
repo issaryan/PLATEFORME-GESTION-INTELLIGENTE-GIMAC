@@ -611,8 +611,10 @@ sbx_permissions contains "SBX_HAB_ADMINISTRATION" if {
 	sbx_route.service == "espace"
 }
 
+# SBX-LECTURE n'a pas de portail (CC-SBX-GIMAC-02 §6, console seule ; audit de cohérence m1).
 sbx_couche_admise if {
 	sbx_route.couche == "portail"
+	sbx_route.service != "lecture"
 	compte_externe
 }
 
