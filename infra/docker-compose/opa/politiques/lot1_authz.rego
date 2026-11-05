@@ -226,7 +226,7 @@ regles := [
 	{"m": "POST", "re": `^/bff/(des|console)/document/apercus$`, "p": "PIL_ACTIVITY_OWN"},
 	# Reprise de l'existant (D-107, docs/exploitation/reprise-des-donnees.md) : super administrateur, depuis la console
 	# (route dédiée) ou le département (route générale du service) ; les services revérifient REF_REPRISE_IMPORT.
-	{"m": "POST", "re": `^/bff/(des|console)/participant/reprise/institutions$`, "p": "REF_REPRISE_IMPORT"},
+	{"m": "POST", "re": `^/bff/(des|console)/participant/reprise/(institutions|correspondants)$`, "p": "REF_REPRISE_IMPORT"},
 	{"m": "POST", "re": `^/bff/(des|console)/homologation/reprise/liaisons$`, "p": "REF_REPRISE_IMPORT"},
 	# Supervision des liaisons, astreintes et relève de quart (D-114, docs/lot1/astreintes-monitoring.md §8) : lecture par
 	# MON_SUPERVISION_READ ; acquittement, main courante, signatures, visa, grille et échanges par leur permission ; la

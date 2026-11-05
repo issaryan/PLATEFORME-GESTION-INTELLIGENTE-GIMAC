@@ -60,3 +60,4 @@ en 200, `/actuator/env` refusé en 401 sans jeton et test ciblé `AdaptateursSup
 | 2026-10-22 | D-119 | Keycloak : client `sbx-espace` (`INTERNAL_IAM_SBX_SAGA`, `INTERNAL_PARTICIPANT_READ`), `INTERNAL_IAM_SBX_INTROSPECT` à `gateway-service`, secret `GIMAC_SECRET_SBX_ESPACE` (Compose, gimac-dev.sh, Kubernetes) ; OPA : lectures `/bff/console/iam/sandbox/**` (IAM_ACCOUNT_READ) |
 | 2026-10-22 | D-120 | OPA : catalogue des types de pièces de la sandbox depuis la console (SBX_TRA_CONSULTATION, SBX_TRA_ADMINISTRATION, comptes du GIMAC) |
 | 2026-10-27 | D-121 | OPA : quatre lectures SBX-TRACE et écritures de réexamen US-EXI-23, politiques Compose/Kubernetes identiques, 213 tests réussis ; limites AC mTLS locale, assemblages de recette, Compose complet et serveurs réels documentées |
+| 2026-11-05 | D-132 | `reprise/importer-reprise.py correspondants` (reprise des correspondants, D-132), exemple fictif et tests ; OPA : route de console de reprise des correspondants. |

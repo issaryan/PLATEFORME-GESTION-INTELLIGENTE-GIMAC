@@ -1393,6 +1393,13 @@ test_reprise_departement_exige_la_permission if {
 	authz.allow with input as {"method": "POST", "path": "/bff/des/homologation/reprise/liaisons", "permissions": ["REF_REPRISE_IMPORT"], "authentifie": true, "acr": "2"}
 }
 
+# Reprise des correspondants (D-132) : même règle que les institutions.
+test_reprise_correspondants if {
+	authz.allow with input as {"method": "POST", "path": "/bff/console/participant/reprise/correspondants", "permissions": ["REF_REPRISE_IMPORT"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/console/participant/reprise/correspondants", "permissions": ["PAR_INSTITUTION_EDIT"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/console/participant/reprise/correspondants", "permissions": ["REF_REPRISE_IMPORT"], "authentifie": true, "acr": "1"}
+}
+
 test_reprise_sans_permission_refusee if not authz.allow with input as {"method": "POST", "path": "/bff/console/participant/reprise/institutions", "permissions": ["IAM_ACCOUNT_CREATE"], "authentifie": true, "acr": "2"}
 
 test_reprise_sans_second_facteur_refusee if not authz.allow with input as {"method": "POST", "path": "/bff/console/homologation/reprise/liaisons", "permissions": ["REF_REPRISE_IMPORT"], "authentifie": true, "acr": "1"}

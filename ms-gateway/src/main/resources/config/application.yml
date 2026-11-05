@@ -206,7 +206,7 @@ spring:
             - id: console-reprise-participant
               uri: ${gimac.services.participant}
               predicates:
-                - Path=/bff/console/participant/reprise/institutions
+                - Path=/bff/console/participant/reprise/institutions,/bff/console/participant/reprise/correspondants
               filters:
                 - OpaAuthorize
                 - name: RequestSize

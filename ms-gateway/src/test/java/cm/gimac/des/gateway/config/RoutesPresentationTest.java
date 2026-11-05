@@ -90,6 +90,7 @@ class RoutesPresentationTest {
             Arguments.of("/bff/console/iam/comptes", "${gimac.services.iam}", "/api/v1/comptes"),
             // Reprise de l'existant (D-107) : console du super administrateur, routes /api/v1/reprise des services.
             Arguments.of("/bff/console/participant/reprise/institutions", "${gimac.services.participant}", "/api/v1/reprise/institutions"),
+            Arguments.of("/bff/console/participant/reprise/correspondants", "${gimac.services.participant}", "/api/v1/reprise/correspondants"),
             Arguments.of("/bff/console/homologation/reprise/liaisons", "${gimac.services.homologation}", "/api/v1/reprise/liaisons"),
             Arguments.of("/bff/console/iam/comptes/c1/profils", "${gimac.services.iam}", "/api/v1/comptes/c1/profils"),
             // IAM-18 : réexamen des accès consommé par @gimac/administration, sur la route console-iam existante.

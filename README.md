@@ -206,6 +206,7 @@ Validations réellement exécutées et conservées dans les rapports du 27/10 :
 | 2026-10-28 | - | Processus d'unité `DEMANDE_CHANGEMENT`, références automatiques et export PDF dans MS-PILOTAGE ; cycle simulé, téléchargement et captures clair/sombre dans le frontend ; habilitation de rendu et règle OPA documentées |
 | 2026-10-29 | US-INS-07 | Matrice Sandbox globale et idempotente dans MS-IAM (`PUT /api/v1/interne/sandbox/matrice`) : recomposition auditée par profil, permissions hors SBX conservées, validation externe refusée et aucun second effet au rejeu |
 | 2026-10-30 | - | DEMO-SBX 13 : PDF Gotenberg réel de deux pages, référence et transitions du processus de changement ; persistance PostgreSQL de la tâche avant son historique et sérialiseurs binaires du binder Kafka de MS-PILOTAGE |
+| 2026-11-05 | D-132 | Reprise des correspondants des institutions (MS-PARTICIPANT, `/api/v1/interne/reprise/correspondants` et route de console), passerelle, OPA, `infra/reprise/importer-reprise.py correspondants`, contrat `docs/exploitation/reprise-des-donnees.md` §3 bis ; préalable à la migration de l'ancienne sandbox. |
 
 ### Mise a jour du 02/11/2026 : Releve Sandbox GIMAC et integration documentaire
 

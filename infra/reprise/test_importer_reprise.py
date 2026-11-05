@@ -52,7 +52,7 @@ class Ouvreur:
             raise reponse
         if callable(reponse):
             return Reponse(json.dumps(reponse(corps)).encode())
-        cle = "institutions" if "institutions" in corps else "liaisons"
+        cle = next(k for k in ("institutions", "liaisons", "correspondants") if k in corps)
         simulation = corps["simulation"] if self.simulation is None else self.simulation
         lignes = [{"rang": i, "resultat": "CREEE", "statut": "ACTIF", "id": f"id-{i}"} for i in range(len(corps[cle]))]
         return Reponse(json.dumps({"simulation": simulation, "lignes": lignes}).encode())
@@ -173,6 +173,29 @@ class RapportTest(unittest.TestCase):
         self.assertEqual(0, refusees)
         self.assertIn("IMPORT RÉEL", texte)
         self.assertIn("reference=LIA-2026-001 statut=EN_PRODUCTION etapeCourante=SUIVI opérations=40 id=l1", texte)
+
+    def test_rapport_des_correspondants(self):
+        rapport = [
+            {"rang": 1, "codeMembre": "BQ-1", "compteId": "c1", "resultat": "CREE", "id": "r1"},
+            {"rang": 2, "codeMembre": "BQ-1", "compteId": "c2", "resultat": "MIS_A_JOUR", "changements": ["actif"], "id": "r2"},
+            {"rang": 3, "codeMembre": "BQ-1", "compteId": "c3", "resultat": "INCHANGE", "id": "r3"},
+            {"rang": 4, "codeMembre": "BQ-9", "compteId": "c4", "resultat": "REFUSE", "code": "PAR_REPRISE_INSTITUTION_INCONNUE", "motif": "Inconnue"},
+        ]
+        texte, refusees = R.formater("correspondants", rapport, True)
+        self.assertEqual(1, refusees)
+        self.assertIn("compte=c1 id=r1", texte)
+        self.assertIn("compte=c2 champs=actif id=r2", texte)
+        self.assertIn("PAR_REPRISE_INSTITUTION_INCONNUE : Inconnue", texte)
+        self.assertIn("Totaux : créée 1, mise à jour 1, inchangée 1, REFUSÉE 1", texte)
+
+    def test_exemple_et_route_des_correspondants(self):
+        lignes, motif = R.lire_fichier(ICI / "exemples/correspondants.json", "correspondants")
+        self.assertEqual(1, len(lignes))
+        o = Ouvreur()
+        R.importer("correspondants", lignes, motif, True, "http://p", "j", 10, o)
+        requete = o.requetes[-1]
+        self.assertTrue(requete.full_url.endswith("/api/v1/interne/reprise/correspondants"))
+        self.assertEqual(motif, json.loads(requete.data)["motif"])
 
 
 class PrincipalTest(unittest.TestCase):
