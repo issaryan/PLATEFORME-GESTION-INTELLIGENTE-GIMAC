@@ -79,9 +79,9 @@ class RoutesSandboxTest {
     }
 
     @Test
-    @DisplayName("D-121 : quatre lectures exactes de SBX-TRACE, réécrites vers la console, aucun chemin voisin")
+    @DisplayName("D-121 et son complément : six lectures exactes de SBX-TRACE, réécrites vers la console, aucun chemin voisin")
     void supervisionDansLeDepartement() {
-        for (String chemin : new String[] { "etat-sante/detail", "elements-supervises", "alertes", "disponibilites" }) {
+        for (String chemin : new String[] { "etat-sante/detail", "elements-supervises", "alertes", "disponibilites", "services", "statistiques/codes-retour" }) {
             String origine = "/bff/des/sbx-trace/" + chemin;
             List<Route> routes = RoutesPresentationTest.correspondantes(origine);
             assertThat(routes).extracting(Route::id).containsExactly("des-sbx-trace");
@@ -89,7 +89,7 @@ class RoutesSandboxTest {
             assertThat(routes.get(0).filtres().subList(0, 2)).containsExactly("OpaAuthorize", "CloisonnementSandbox");
             assertThat(RoutesPresentationTest.reecrire(routes.get(0), origine)).isEqualTo("/api/v1/console/" + chemin);
         }
-        for (String chemin : new String[] { "/bff/des/sbx-trace/traces", "/bff/des/sbx-trace/etat-sante", "/bff/des/sbx-trace/alertes/a1", "/bff/des/sbx-trace/disponibilites/2026-10" }) {
+        for (String chemin : new String[] { "/bff/des/sbx-trace/traces", "/bff/des/sbx-trace/etat-sante", "/bff/des/sbx-trace/alertes/a1", "/bff/des/sbx-trace/disponibilites/2026-10", "/bff/des/sbx-trace/services/sbx-mobile", "/bff/des/sbx-trace/statistiques" }) {
             assertThat(RoutesPresentationTest.correspondantes(chemin)).as(chemin).isEmpty();
         }
     }
