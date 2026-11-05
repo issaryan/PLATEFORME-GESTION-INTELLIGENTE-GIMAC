@@ -4,12 +4,13 @@ import { Skeleton } from '@gimac/design-system'
 import { GardePermission } from '@gimac/lot1'
 import { entreeEspaces } from './espaces'
 import { entreeSupervision } from './supervision'
+import { entreeActivite } from './activite'
 import type { EntreeSandbox } from './types'
 
 // Registre des entrées de l'espace sandbox du DES (D-121, D-122). Chaque entrée vit dans son fichier ; en ajouter une
 // ne touche à aucune autre. L'application monte <RoutesSandbox /> sous /des/sandbox/* et ECRANS_DES (lot 1) porte le
 // chemin de chaque fonctionnalité pour la barre latérale.
-export const ENTREES_SANDBOX: readonly EntreeSandbox[] = [entreeEspaces, entreeSupervision]
+export const ENTREES_SANDBOX: readonly EntreeSandbox[] = [entreeEspaces, entreeSupervision, entreeActivite]
 
 /** Base de l'espace sandbox dans l'application du département. */
 export const BASE = '/des/sandbox'

@@ -64,10 +64,10 @@ class RoutesSandboxTest {
     }
 
     @Test
-    @DisplayName("Critère 3 : seules l'administration des espaces et la supervision D-121 sont ouvertes dans le département")
+    @DisplayName("Critère 3 : seules l'administration des espaces, la supervision et les statistiques D-121 sont ouvertes dans le département")
     void routeDeConduiteDansLeDepartement() {
         List<Route> des = sandbox().stream().filter(r -> r.chemins().stream().anyMatch(p -> p.getPatternString().startsWith("/bff/des/"))).toList();
-        assertThat(des).extracting(Route::id).containsExactly("des-sbx-espace", "des-sbx-trace");
+        assertThat(des).extracting(Route::id).containsExactly("des-sbx-espace", "des-sbx-trace", "des-sbx-lecture");
         Route espace = des.get(0);
         assertThat(espace.uri()).isEqualTo("${gimac.services.sbx-espace}");
         assertThat(RoutesPresentationTest.reecrire(espace, "/bff/des/sbx-espace/espaces/99001/suspension")).isEqualTo("/api/v1/console/espaces/99001/suspension");
@@ -95,11 +95,27 @@ class RoutesSandboxTest {
     }
 
     @Test
+    @DisplayName("D-121 : cinq lectures exactes des statistiques de SBX-LECTURE, ni le contrat L04 ni la gouvernance")
+    void statistiquesDansLeDepartement() {
+        for (String chemin : new String[] { "synthese", "activite", "participants", "campagnes", "cas" }) {
+            String origine = "/bff/des/sbx-lecture/statistiques/" + chemin;
+            List<Route> routes = RoutesPresentationTest.correspondantes(origine);
+            assertThat(routes).extracting(Route::id).containsExactly("des-sbx-lecture");
+            assertThat(routes.get(0).uri()).isEqualTo("${gimac.services.sbx-lecture}");
+            assertThat(routes.get(0).filtres().subList(0, 2)).containsExactly("OpaAuthorize", "CloisonnementSandbox");
+            assertThat(RoutesPresentationTest.reecrire(routes.get(0), origine)).isEqualTo("/api/v1/console/statistiques/" + chemin);
+        }
+        for (String chemin : new String[] { "/bff/des/sbx-lecture/v1/contrat", "/bff/des/sbx-lecture/contrats", "/bff/des/sbx-lecture/statistiques", "/bff/des/sbx-lecture/statistiques/cas/1" }) {
+            assertThat(RoutesPresentationTest.correspondantes(chemin)).as(chemin).isEmpty();
+        }
+    }
+
+    @Test
     @DisplayName("GW-21 : toute route de la sandbox vise un service de la sandbox, adresses sbx-* locales ou internes, jamais une adresse IP")
     @SuppressWarnings("unchecked")
     void aucuneRouteVersLaProduction() throws Exception {
-        // Onze services en console et portail, espaces et supervision dans le département, administration déléguée.
-        assertThat(sandbox()).hasSize(11 * 2 + 2 + 1);
+        // Onze services en console et portail, espaces, supervision et statistiques dans le département, administration déléguée.
+        assertThat(sandbox()).hasSize(11 * 2 + 3 + 1);
         for (Route r : sandbox()) {
             if (r.id().equals("portail-sbx-habilitations")) {
                 assertThat(r.uri()).isEqualTo("${gimac.services.iam}");

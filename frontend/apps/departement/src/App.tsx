@@ -136,6 +136,7 @@ function Pages({ session, etatCanal, correlationId, notifications }: { session: 
         // Cloche, fenêtres surgissantes et page des notifications (D-80) : NOT_INBOX_READ, hors premier accès.
         <NotificationsProvider service={notifications.service} couche="des" actif={!assistant && aPermission(p, PERM.notificationsLire)} apercu={notifications.apercu}>
         <Enveloppe
+          navigationRepliable
           avatar={moi?.src}
           fonction={moi?.fonction}
           couche="des"

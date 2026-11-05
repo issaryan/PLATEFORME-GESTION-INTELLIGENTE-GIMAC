@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        D-133 : périmètre du projet de certification modifiable par son gestionnaire (créateur de la liaison), un
+        super administrateur ou un chargé de l'implémentation des projets de la SNA. Gestionnaire porté par la liaison
+        (nul pour une liaison reprise ou antérieure) ; journal des modifications : version, auteur, permission
+        utilisée, avant et après, motif et horodatage. Aucune ligne existante n'est modifiée.
+    -->
+    <changeSet id="d133-liaison-gestionnaire" author="gimac">
+        <addColumn tableName="liaison">
+            <column name="gestionnaire_id" type="${uuidType}"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="d133-perimetre-modification" author="gimac">
+        <createTable tableName="perimetre_modification">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_perimetre_modification"/>
+            </column>
+            <column name="liaison_id" type="${uuidType}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version_perimetre" type="integer">
+                <constraints nullable="false"/>
+            </column>
+            <column name="auteur_id" type="${uuidType}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="auteur_nom" type="varchar(200)"/>
+            <column name="permission_utilisee" type="varchar(60)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="avant" type="varchar(4000)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="apres" type="varchar(4000)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="motif" type="varchar(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modifie_le" type="${datetimeType}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="perimetre_modification" baseColumnNames="liaison_id" constraintName="fk_perimetre_modification_liaison"
+                                 referencedTableName="liaison" referencedColumnNames="id"/>
+        <addUniqueConstraint tableName="perimetre_modification" columnNames="liaison_id, version_perimetre" constraintName="uk_perimetre_modification_version"/>
+        <sql>ALTER TABLE perimetre_modification ADD CONSTRAINT ck_perimetre_modification_version CHECK (version_perimetre &gt;= 2)</sql>
+    </changeSet>
+</databaseChangeLog>

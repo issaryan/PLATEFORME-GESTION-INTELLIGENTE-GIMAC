@@ -10,7 +10,7 @@ import type {
   Telechargement, TypeDemande,
 } from '../modele/certification'
 import type { PortailCertification, PortailLiaison, PortailOperation } from '../modele/portail'
-import type { PageExecutionsSandbox, ResultatsSandbox } from '../modele/sandbox'
+import type { PageExecutionsSandbox, RepartitionSandbox, ResultatsSandbox } from '../modele/sandbox'
 import type { EtatPresence, OptionsTeleversement, Televersement } from '@gimac/socle'
 import type { Conversation, Correspondant, Envoi, FilMessages, LecteurMessage, Message, NouvelleConversation, PageMessagerie } from '../modele/messagerie'
 import type {
@@ -213,6 +213,8 @@ export interface ServiceParcours {
   resultatsSandbox(liaisonId: string): Promise<ResultatsSandbox>
   /** US-EXI-17 : exécutions retenues d'une campagne reprise, paginées (page à partir de 0, 1 à 100 par page). */
   executionsSandbox(liaisonId: string, campagneId: string, page: number, taille: number): Promise<PageExecutionsSandbox>
+  /** D-121 : répartition d'une campagne reprise (par cas, par jour du fuseau du GIMAC), comptée par MS-HOMOLOGATION. */
+  repartitionSandbox(liaisonId: string, campagneId: string): Promise<RepartitionSandbox>
   validerOperation(operationId: string, assertion?: Assertion): Promise<void>
   /** D-93 : renvoi motivé par le validateur (l'opération revient à faire, tâche rouverte à R). */
   renvoyer(operationId: string, motif: string): Promise<void>

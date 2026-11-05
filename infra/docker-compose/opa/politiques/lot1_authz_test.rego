@@ -160,6 +160,43 @@ test_designation_conducteur if authz.allow with input as {
 	"authentifie": true, "acr": "2",
 }
 
+# D-133 : périmètre du projet de certification, modifié par le gestionnaire, un super administrateur ou un chargé de
+# l'implémentation des projets de la SNA ; le service vérifie en plus que HOM_PERIMETRE_EDIT est tenu par le gestionnaire.
+test_perimetre_gestionnaire if authz.allow with input as {
+	"method": "PUT", "path": "/bff/des/homologation/liaisons/l1/perimetre", "permissions": ["HOM_PERIMETRE_EDIT"],
+	"authentifie": true, "acr": "2",
+}
+
+test_perimetre_edition_tous if authz.allow with input as {
+	"method": "PUT", "path": "/bff/des/homologation/liaisons/l1/perimetre", "permissions": ["HOM_PERIMETRE_EDIT_TOUS"],
+	"authentifie": true, "acr": "2",
+}
+
+test_perimetre_refuse_sans_permission if not authz.allow with input as {
+	"method": "PUT", "path": "/bff/des/homologation/liaisons/l1/perimetre", "permissions": ["HOM_LIAISON_READ", "HOM_OPERATION_VALIDATE", "HOM_LIAISON_OPEN"],
+	"authentifie": true, "acr": "2",
+}
+
+test_perimetre_refuse_sans_double_facteur if not authz.allow with input as {
+	"method": "PUT", "path": "/bff/des/homologation/liaisons/l1/perimetre", "permissions": ["HOM_PERIMETRE_EDIT_TOUS"],
+	"authentifie": true, "acr": "1",
+}
+
+test_perimetre_refuse_au_portail if not authz.allow with input as {
+	"method": "PUT", "path": "/bff/portail/homologation/liaisons/l1/perimetre", "permissions": ["HOM_PERIMETRE_EDIT_TOUS", "HOM_PORTAL_SUBMIT"],
+	"authentifie": true, "acr": "2", "institution_id": "i1",
+}
+
+test_perimetre_lecture if authz.allow with input as {
+	"method": "GET", "path": "/bff/des/homologation/liaisons/l1/perimetre/historique", "permissions": ["HOM_LIAISON_READ"],
+	"authentifie": true, "acr": "2",
+}
+
+test_perimetre_lecture_exige_sa_permission if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/homologation/liaisons/l1/perimetre", "permissions": ["HOM_PERIMETRE_EDIT"],
+	"authentifie": true, "acr": "2",
+}
+
 # D-64 : messagerie instantanée de travail (docs/lot1/messagerie.md §1), tout membre interne (DES et console).
 routes_messagerie := [
 	["GET", "/bff/des/collaboration/messagerie/annuaire", "COL_MESSAGE_READ"],
@@ -1673,6 +1710,24 @@ test_sbx_supervision_departement_d121 if {
 		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_SUP_CONSULTATION"], "authentifie": true, "acr": "2"}
 	}
 	not authz.allow with input as {"method": "HEAD", "path": "/bff/des/sbx-trace/alertes", "permissions": ["SBX_SUP_CONSULTATION"], "authentifie": true, "acr": "2"}
+}
+
+test_sbx_statistiques_departement_d121 if {
+	# Cinq lectures exactes de SBX-LECTURE sous la permission SUP et deux facteurs, pour un compte du GIMAC.
+	every route in ["synthese", "activite", "participants", "campagnes", "cas"] {
+		chemin := concat("", ["/bff/des/sbx-lecture/statistiques/", route])
+		authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_SUP_CONSULTATION"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_LEC_CONSULTATION"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["SBX_SUP_CONSULTATION"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_SUP_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_SUP_CONSULTATION"], "authentifie": true, "acr": "1"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_SUP_CONSULTATION"], "authentifie": true, "acr": "2", "restreinte": true}
+	}
+
+	# Ni le contrat L04, ni la console de gouvernance, ni un chemin voisin n'héritent de l'ouverture.
+	every chemin in ["/bff/des/sbx-lecture/v1/contrat", "/bff/des/sbx-lecture/contrats", "/bff/des/sbx-lecture/statistiques", "/bff/des/sbx-lecture/statistiques/cas/1", "/bff/des/sbx-lecture/perimetres"] {
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_SUP_CONSULTATION", "SBX_LEC_CONSULTATION"], "authentifie": true, "acr": "2"}
+	}
 }
 
 test_sbx_aucune_conduite_dans_le_departement if {

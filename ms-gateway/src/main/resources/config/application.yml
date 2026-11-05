@@ -661,6 +661,20 @@ spring:
                   args:
                     maxSize: 64KB
                 - RewritePath=/bff/des/sbx-trace/(?<p>.*), /api/v1/console/${p}
+            # D-121 : statistiques des tests des participants, cinq lectures exactes de SBX-LECTURE (routes console) ;
+            # ni le contrat L04 (/v1, compte de service de MS-HOMOLOGATION) ni la gouvernance ne sont relayés au DES.
+            - id: des-sbx-lecture
+              uri: ${gimac.services.sbx-lecture}
+              predicates:
+                - Path=/bff/des/sbx-lecture/statistiques/synthese,/bff/des/sbx-lecture/statistiques/activite,/bff/des/sbx-lecture/statistiques/participants,/bff/des/sbx-lecture/statistiques/campagnes,/bff/des/sbx-lecture/statistiques/cas
+                - Method=GET
+              filters:
+                - OpaAuthorize
+                - CloisonnementSandbox
+                - name: RequestSize
+                  args:
+                    maxSize: 64KB
+                - RewritePath=/bff/des/sbx-lecture/(?<p>.*), /api/v1/console/${p}
             # D-120 (US-EXI-08) : types de pièces de la sandbox et quarantaines de MS-DOCUMENT, depuis la console ;
             # comptes du GIMAC seulement (OPA, SBX_TRA_CONSULTATION en lecture, SBX_TRA_ADMINISTRATION en écriture).
             - id: console-document-sandbox

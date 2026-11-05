@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import SupervisionPage, { modules } from './SupervisionPage'
 import { rendre, simules } from '../test/rendu'
 import { ALERTES_DEMO, DISPONIBILITES_DEMO, SANTE_DEMO, SERVICES_DEMO } from '../services/supervisionSimulee'
@@ -28,10 +28,12 @@ describe('SupervisionPage', () => {
     const suivantes = screen.getAllByRole('button', { name: 'Page suivante' })
     suivantes.forEach((b) => fireEvent.click(b))
     expect(await screen.findByText('Page 2 sur 3 · 23 éléments')).toBeTruthy()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Page suivante' })[0])
+    // Troisième page des éléments supervisés : élément en maintenance (boutons de la seule section des éléments).
+    const elements = () => within(screen.getByText('Page 2 sur 3 · 23 éléments').closest('section') as HTMLElement)
+    fireEvent.click(elements().getByRole('button', { name: 'Page suivante' }))
     expect(await screen.findByText('Page 3 sur 3 · 23 éléments')).toBeTruthy()
     expect(screen.getAllByText('Oui').length).toBeGreaterThan(1)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Page précédente' })[0])
+    fireEvent.click(within(screen.getByText('Page 3 sur 3 · 23 éléments').closest('section') as HTMLElement).getByRole('button', { name: 'Page précédente' }))
     expect(await screen.findByText('Page 2 sur 3 · 23 éléments')).toBeTruthy()
     expect(await screen.findAllByText('Page 2 sur 2 · 12 éléments')).toHaveLength(2)
     const precedentes = screen.getAllByRole('button', { name: 'Page précédente' })

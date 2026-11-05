@@ -65,6 +65,7 @@
     <include file="config/liquibase/changelog/20261022000100_exi16_etat_liaison_sandbox.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261022000200_hom06_statut_institution.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261022000300_exi14_releve_sandbox.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261104000100_d133_perimetre_projet.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

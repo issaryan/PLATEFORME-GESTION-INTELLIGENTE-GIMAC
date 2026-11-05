@@ -938,6 +938,7 @@
                                     <include>cm/gimac/des/homologation/infrastructure/messaging/consumer/FinCampagneSandboxConsumer*</include>
                                     <include>cm/gimac/des/homologation/infrastructure/scheduling/ReleveSandboxScheduler*</include>
                                     <include>cm/gimac/des/homologation/web/rest/lot1/ResultatsSandboxResource*</include>
+                                    <include>cm/gimac/des/homologation/web/rest/lot1/RepartitionSandboxResource*</include>
                                     <include>cm/gimac/des/homologation/domain/event/CampaignResultImportedPayload*</include>
                                     <!-- Classes de la sandbox des récits suivants ajoutées ici. -->
                                 </includes>

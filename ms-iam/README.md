@@ -221,6 +221,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | 2026-10-29 | US-INS-07 | `MatriceSandboxSagaService` et `PUT /api/v1/interne/sandbox/matrice` : publication globale idempotente par `ConfigurationAuthentificationService` et `ReglesSandbox`, permissions hors SBX et profils non concernés conservés, validation des verdicts réservée au GIMAC, audit de chaque recomposition et aucun second effet au rejeu ; route réservée à `INTERNAL_IAM_SBX_SAGA`, sans exposition dans l'administration publique |
 | 2026-11-01 | D-129 | Lecture de l'annuaire délégué (`GET /api/v1/administration-deleguee/comptes` et `/comptes/{id}`) ouverte à `ROLE_SBX_CHEF_PROJET` pour l'affectation des cas, bornée à l'institution du jeton et au second facteur ; écritures réservées à `SBX_HAB_ADMINISTRATION` (section « Annuaire délégué au chef de projet ») |
 | 2026-11-04 | D-48 | Réexamen des accès (US-EXI-23) : requêtes déplacées dans `infrastructure/persistence/sandbox` (`RevuesAccesRepository`, `DecisionsRevueRepository`, `CollaborateursFederesRepository`), dépôts générés rétablis ; JDL et `.jhipster/AccessReviewDecision.json` reportent `EN_ATTENTE`, `decidedBy` et `decidedAt` facultatifs, `profilesSnapshot` et `permissionsSnapshot` |
+| 2026-11-05 | - | Changeset 20261105120000 : processus, lancerDemande et mesDemandes dans le groupe « processus », institutions dans « homologation », seulement si le groupe vaut encore l'ancienne valeur (NavigationSectionsIT) |
 <!-- GIMAC:FIN -->
 
 # iam

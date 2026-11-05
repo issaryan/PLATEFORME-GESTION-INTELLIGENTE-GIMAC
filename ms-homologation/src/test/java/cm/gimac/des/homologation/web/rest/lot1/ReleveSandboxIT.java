@@ -207,6 +207,35 @@ class ReleveSandboxIT extends AbstractHomologationIT {
     }
 
     @Test
+    @DisplayName("D-121 : répartition par cas et par jour du fuseau du GIMAC, calculée par la base, lecture seule sous HOM_LIAISON_READ")
+    void repartitionParCasEtParJour() throws Exception {
+        // 23 h 30 en temps universel : 0 h 30 le lendemain à Douala.
+        campagne().executer("EXE-000046", "SCN-MOB-001", "PASSED", "favorable", "2026-10-13T23:30:00Z");
+        releve.releverLiaison(liaison);
+        mvc
+            .perform(get("/api/v1/liaisons/{id}/sandbox/campagnes/{c}/repartition", liaison, C).with(utilisateur(UUID.randomUUID(), "HOM_LIAISON_READ")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.fuseau").value("Africa/Douala"))
+            .andExpect(jsonPath("$.parJour.length()").value(2))
+            .andExpect(jsonPath("$.parJour[0].jour").value("2026-10-13"))
+            .andExpect(jsonPath("$.parJour[0].executions").value(45))
+            .andExpect(jsonPath("$.parJour[0].defavorables").value(6))
+            .andExpect(jsonPath("$.parJour[1].jour").value("2026-10-14"))
+            .andExpect(jsonPath("$.parJour[1].favorables").value(1))
+            .andExpect(jsonPath("$.parCas.length()").value(4))
+            .andExpect(jsonPath("$.parCas[0].identifiantCas").value("CAS-SCN-MOB-001"))
+            .andExpect(jsonPath("$.parCas[0].defavorables").value(3))
+            .andExpect(jsonPath("$.parCas[0].executions").value(22))
+            .andExpect(jsonPath("$.parCas[3].enAttente").value(0));
+        mvc
+            .perform(get("/api/v1/liaisons/{id}/sandbox/campagnes/{c}/repartition", liaison, "inconnue").with(utilisateur(UUID.randomUUID(), "HOM_LIAISON_READ")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.parCas.length()").value(0));
+        mvc.perform(get("/api/v1/liaisons/{id}/sandbox/campagnes/{c}/repartition", liaison, C).with(utilisateur(UUID.randomUUID(), "HOM_LIAISON_LIST"))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/liaisons/{id}/sandbox/campagnes/{c}/repartition", UUID.randomUUID(), C).with(utilisateur(UUID.randomUUID(), "HOM_LIAISON_READ"))).andExpect(status().isNotFound());
+    }
+
+    @Test
     @DisplayName("Aptitude : taux de réussite par service d'une campagne terminée repris comme mesure de certification")
     void aptitudeDeduite() {
         campagne()

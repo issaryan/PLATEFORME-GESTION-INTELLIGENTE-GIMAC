@@ -29,6 +29,8 @@ PERMISSIONS = {
     "HOM": ["PROJECT_DESIGNATE", "REFERENTIEL_READ", "REFERENTIEL_EDIT", "REFERENTIEL_PUBLISH", "REFERENTIEL_MIGRATE", "LIAISON_READ", "LIAISON_LIST",
             # Lecture de tout le référentiel des opérations, hors éditeurs (D-89, docs/lot1/referentiel-droits-etapes.md §1).
             "REFERENTIEL_READ_ALL",
+            # Périmètre du projet de certification (D-133) : par son gestionnaire seul, ou sur tout projet.
+            "PERIMETRE_EDIT", "PERIMETRE_EDIT_TOUS",
             "LIAISON_OPEN", "LIAISON_UNFREEZE", "OPERATION_ASSIGN", "EVIDENCE_SUBMIT", "OPERATION_VALIDATE", "OPERATION_REOPEN",
             "GRID_EDIT", "REPLAY_ADMIN", "SCENARIO_QUALIFY", "DASHBOARD_READ", "DEADLINE_CONFIG", "EVIDENCE_FILE_EXPORT",
             "PORTAL_READ", "PORTAL_SUBMIT",
@@ -137,10 +139,14 @@ PROFILS = {
     # DDRM : le chargé instruit et propose, le chef prononce (maker-checker, algorithme 6.25).
     "ROLE_CHARGE_DDRM": LECTURE_DES + ["PAR_INSTITUTION_CREATE", "PAR_INSTITUTION_EDIT", "PAR_ADHESION_INSTRUCT",
         "PAR_TRANSITION_REQUEST", "HOM_STEP_MANAGE", "HOM_FUNCTION_DDRM"],
-    "ROLE_CHEF_DDRM": LECTURE_DES + ["HOM_LIAISON_OPEN", "HOM_PROJECT_DESIGNATE", "PAR_INSTITUTION_CREATE", "PAR_INSTITUTION_EDIT", "PAR_ADHESION_INSTRUCT",
+    # D-133 : le chef de la DDRM, qui ouvre les liaisons, en est le gestionnaire et modifie le périmètre des siennes.
+    "ROLE_CHEF_DDRM": LECTURE_DES + ["HOM_LIAISON_OPEN", "HOM_PROJECT_DESIGNATE", "HOM_PERIMETRE_EDIT", "PAR_INSTITUTION_CREATE", "PAR_INSTITUTION_EDIT", "PAR_ADHESION_INSTRUCT",
         "PAR_TRANSITION_REQUEST", "PAR_TRANSITION_APPROVE", "HOM_STEP_MANAGE"],
     # Service Normes et Agréments, production monétique, pôles réseau et système (CR-CERT §3.6).
     "ROLE_SNA": LECTURE_DES + ["HOM_EVIDENCE_SUBMIT", "HOM_OPERATION_VALIDATE", "CER_DOSSIER_VERIFY"],
+    # D-133 : chargé de l'implémentation des projets à la SNA ; modifie le périmètre de tout projet de certification,
+    # sans valider d'opération ni de verdict (séparation des devoirs avec l'ingénieur certificateur).
+    "ROLE_CHARGE_IMPLEMENTATION_SNA": LECTURE_DES + ["HOM_PERIMETRE_EDIT_TOUS"],
     # Exploitation et supervision (catalogue D-91) : tenue par la production monétique, sans profil propre (D-58).
     "ROLE_PRODUCTION_MONETIQUE": LECTURE_DES + ["HOM_EVIDENCE_SUBMIT", "CER_CHANGE_RECORD_LINK", "CER_GOLIVE_REPORT_SUBMIT",
         "HOM_FUNCTION_PRODUCTION", "HOM_FUNCTION_OPERATIONS"],
@@ -180,6 +186,8 @@ PRESENTATIONS = {
         "Instruit les dossiers des institutions membres (adhésion, transitions) et propose les décisions au chef de la DDRM."),
     "ROLE_CHEF_DDRM": ("Chef de la DDRM",
         "Coordonnateur fonctionnel : dirige la DDRM, porte d'entrée des projets ; prononce les décisions sur les institutions membres, ouvre les liaisons, pilote le cadrage, le périmètre et la coordination fonctionnelle, et désigne les conducteurs de projet."),
+    "ROLE_CHARGE_IMPLEMENTATION_SNA": ("Chargé de l'implémentation des projets (SNA)",
+        "Service Normes et Agréments : définit et met à jour le périmètre des projets de certification, sans valider d'opération ni de verdict."),
     "ROLE_SNA": ("Normes et Agréments",
         "Service Normes et Agréments : conduit les essais service par service, constate leur aboutissement et porte la certification (intégration, tests et certification)."),
     "ROLE_PRODUCTION_MONETIQUE": ("Production monétique",
@@ -246,6 +254,8 @@ SANDBOX_GIMAC = {
     "ROLE_PRODUCTION_MONETIQUE": _sbx(("CAR DON TRA", "ADMINISTRATION"), ("CAR DON", "SIMULATION"), ("RAC REF TRA CAR DON SIM CER LEC", "CONSULTATION")),
     # Exploitant de la plateforme.
     "ROLE_ADMIN_SYSTEME": _sbx(("TRA", "ADMINISTRATION CONSULTATION"), ("RAC SIM CER LEC", "CONSULTATION")),
+    # Chargé de l'implémentation des projets (SNA, D-133) : lecture des campagnes dont il fixe le périmètre.
+    "ROLE_CHARGE_IMPLEMENTATION_SNA": _sbx(("CER", "CONSULTATION")),
 }
 SANDBOX_INSTITUTIONS = {
     "ROLE_SBX_ADMIN_INSTITUTION": _sbx(("HAB", "ADMINISTRATION CONSULTATION"), ("RAC CER TRA", "CONSULTATION")),
@@ -291,17 +301,22 @@ assert sorted(n for n in SANDBOX_INSTITUTIONS if "SBX_REF_CONSULTATION" in PROFI
 # Exemples de US-EXI-02 : un testeur exécute, n'administre pas ; le lecteur n'a pas les traces.
 assert "SBX_MOB_EXECUTION" in PROFILS["ROLE_SBX_TESTEUR"] and "SBX_MOB_ADMINISTRATION" not in PROFILS["ROLE_SBX_TESTEUR"]
 assert "SBX_TRA_CONSULTATION" not in PROFILS["ROLE_SBX_LECTEUR"]
+# D-133 : le périmètre de tout projet, au super administrateur et au chargé de l'implémentation SNA seulement ; celui de
+# ses projets, au profil qui les ouvre ; celui qui fixe le périmètre ne valide ni opération ni verdict.
+assert [n for n, ps in PROFILS.items() if "HOM_PERIMETRE_EDIT" in ps] == ["ROLE_CHEF_DDRM"]
+assert not [p for p in PROFILS["ROLE_CHARGE_IMPLEMENTATION_SNA"] if p.endswith("_VALIDATION") or p in ("HOM_OPERATION_VALIDATE", "CER_DOSSIER_VERIFY")]
 # Administration des référentiels métier (D-92) : super administrateur et ingénieur d'homologation seulement ; le
 # super administrateur porte aussi tous les droits du référentiel des opérations (lecture complète, migration).
 REFERENTIELS_METIER_ADMIN = {"ROLE_SUPER_ADMIN", "ROLE_INGENIEUR_HOMOLOGATION"}
 for _profil, _ajouts in (
     *((p, ["HOM_REFERENTIEL_READ", "HOM_REFERENTIEL_EDIT"]) for p in sorted(REFERENTIEL_EDITEURS)),
     *((p, ["REF_METIER_ADMIN"]) for p in sorted(REFERENTIELS_METIER_ADMIN)),
-    ("ROLE_SUPER_ADMIN", ["HOM_REFERENTIEL_READ_ALL", "HOM_REFERENTIEL_MIGRATE", "REF_REPRISE_IMPORT"]),
+    ("ROLE_SUPER_ADMIN", ["HOM_REFERENTIEL_READ_ALL", "HOM_REFERENTIEL_MIGRATE", "REF_REPRISE_IMPORT", "HOM_PERIMETRE_EDIT_TOUS"]),
     *((p, ["HOM_REFERENTIEL_PUBLISH"]) for p in sorted(REFERENTIEL_PUBLIEURS)),
     *((p, ["HOM_REFERENTIEL_READ_ALL"]) for p in sorted(REFERENTIEL_LECTURE_COMPLETE)),
 ):
     PROFILS[_profil] = PROFILS[_profil] + [x for x in _ajouts if x not in PROFILS[_profil]]
+assert sorted(n for n, ps in PROFILS.items() if "HOM_PERIMETRE_EDIT_TOUS" in ps) == ["ROLE_CHARGE_IMPLEMENTATION_SNA", "ROLE_SUPER_ADMIN"]
 for _profil in PROFILS:
     if _profil not in PROFILS_EXTERNES:
         PROFILS[_profil] = PROFILS[_profil] + MESSAGERIE + MON_ACTIVITE
@@ -360,7 +375,16 @@ _FONCTIONS_SBX = {"ADMINISTRATION": "administration", "SIMULATION": "simulation"
                   "VALIDATION": "validation de verdict", "CONSULTATION": "consultation"}
 LIBELLES_PERMISSIONS.update({f"SBX_{m}_{f}": f"Sandbox, {_MODULES_SBX[m]} : {_FONCTIONS_SBX[f]}" for m in SBX_MODULES for f in SBX_FONCTIONS})
 LIBELLES_PERMISSIONS["SBX_SUP_CONSULTATION"] = "Sandbox, supervision depuis la plateforme : consultation"
-assert len(PERMISSIONS["SBX"]) == 61 and not [n for n, ps in PROFILS.items() if "SBX_SUP_CONSULTATION" in ps], "SBX_SUP_CONSULTATION"
+# D-135 (décision de l'utilisateur, 05/11/2026) : la supervision de la sandbox depuis le DES (D-121, espace sandbox,
+# SBX-TRACE et statistiques de SBX-LECTURE) va au chef du DES, à l'administrateur système et au super administrateur ;
+# jamais à un profil externe ni à un rôle d'institution de la sandbox.
+SUPERVISION_SANDBOX_DES = ("ROLE_CHEF_DES", "ROLE_ADMIN_SYSTEME", "ROLE_SUPER_ADMIN")
+for _role in SUPERVISION_SANDBOX_DES:
+    if "SBX_SUP_CONSULTATION" not in PROFILS[_role]:
+        PROFILS[_role].append("SBX_SUP_CONSULTATION")
+assert len(PERMISSIONS["SBX"]) == 61, "SBX"
+assert sorted(n for n, ps in PROFILS.items() if "SBX_SUP_CONSULTATION" in ps) == sorted(SUPERVISION_SANDBOX_DES), "SBX_SUP_CONSULTATION"
+assert not set(SUPERVISION_SANDBOX_DES) & (PROFILS_EXTERNES | set(SANDBOX_INSTITUTIONS)), "SBX_SUP_CONSULTATION externe"
 
 # D-94 §3 : le conducteur de projet est le porteur de HOM_PROJECT_CONDUCT, donnée par défaut au profil conducteur seul.
 assert [n for n, ps in PROFILS.items() if "HOM_PROJECT_CONDUCT" in ps] == ["ROLE_CONDUCTEUR_PROJET"]
@@ -392,6 +416,7 @@ UTILISATEURS = [
     ("test-charge-ddrm", "Chargé", "DDRM", "ROLE_CHARGE_DDRM", None),
     ("test-chef-ddrm", "Chef", "DDRM", "ROLE_CHEF_DDRM", None),
     ("test-sna", "Agent", "Normes et Agréments", "ROLE_SNA", None),
+    ("test-charge-implementation-sna", "Chargé", "Implémentation des projets", "ROLE_CHARGE_IMPLEMENTATION_SNA", None),
     ("test-production-monetique", "Agent", "Production monétique", "ROLE_PRODUCTION_MONETIQUE", None),
     ("test-pole-reseau", "Agent", "Pôle réseau", "ROLE_POLE_RESEAU", None),
     ("test-pole-systeme", "Agent", "Pôle système", "ROLE_POLE_SYSTEME", None),

@@ -113,6 +113,26 @@ public class Liaison implements Serializable {
     @Column(name = "reprise_le")
     private java.time.Instant repriseLe;
 
+    /**
+     * Gestionnaire du projet (D-133) : agent du GIMAC qui a créé la liaison, seul à en modifier le périmètre avec
+     * HOM_PERIMETRE_EDIT ; nul pour une liaison reprise ou ouverte avant D-133.
+     */
+    @Column(name = "gestionnaire_id")
+    private UUID gestionnaireId;
+
+    public UUID getGestionnaireId() {
+        return this.gestionnaireId;
+    }
+
+    public void setGestionnaireId(UUID gestionnaireId) {
+        this.gestionnaireId = gestionnaireId;
+    }
+
+    public Liaison gestionnaireId(UUID gestionnaireId) {
+        this.setGestionnaireId(gestionnaireId);
+        return this;
+    }
+
     public String getOrigineEtat() {
         return this.origineEtat;
     }

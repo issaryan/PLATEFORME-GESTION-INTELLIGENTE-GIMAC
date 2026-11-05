@@ -5,6 +5,7 @@ import type { Catalogue } from '@gimac/socle'
 export const catalogue: Catalogue = {
   fr: {
     'nav.groupe.monActivite': 'Mon activité',
+    'nav.groupe.processus': 'Processus et demandes',
     'nav.maJournee': 'Ma journée',
     'nav.agenda': 'Agenda',
     'nav.taches': 'Tâches',
@@ -370,6 +371,7 @@ export const catalogue: Catalogue = {
   },
   en: {
     'nav.groupe.monActivite': 'My activity',
+    'nav.groupe.processus': 'Processes and requests',
     'nav.maJournee': 'My day',
     'nav.agenda': 'Calendar',
     'nav.taches': 'Tasks',
@@ -735,6 +737,7 @@ export const catalogue: Catalogue = {
   },
   es: {
     'nav.groupe.monActivite': 'Mi actividad',
+    'nav.groupe.processus': 'Procesos y solicitudes',
     'nav.maJournee': 'Mi jornada',
     'nav.agenda': 'Agenda',
     'nav.taches': 'Tareas',

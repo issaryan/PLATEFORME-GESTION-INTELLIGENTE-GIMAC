@@ -30,8 +30,19 @@ describe('Résultats de la sandbox (US-EXI-17)', () => {
     const taux = screen.getByText('Taux par service').closest('section, .gm-card, div') as HTMLElement
     expect(within(taux).getByText('Version de formule')).toBeTruthy()
     expect(screen.getByText('Version de la table des verdicts')).toBeTruthy()
-    expect(screen.getAllByText('Campagne entière').length).toBe(1)
+    expect(screen.getAllByText('Campagne entière').length).toBe(2)
     expect(screen.getAllByText('100.00 %').length).toBeGreaterThan(0)
+    // Vue graphique : jauges d'avancement et de réussite (numérateur sur dénominateur), verdicts, réussite par service.
+    const graphes = screen.getByLabelText('Vue graphique de la campagne')
+    expect(within(graphes).getByRole('img', { name: 'Avancement de la campagne : 100%' })).toBeTruthy()
+    expect(within(graphes).getByText('45 sur 45')).toBeTruthy()
+    expect(within(graphes).getByRole('img', { name: /Réussite de la campagne : 97\.7%/ })).toBeTruthy()
+    expect(within(graphes).getByText('Non encore jugés')).toBeTruthy()
+    expect(within(graphes).getByText('Réussite par service')).toBeTruthy()
+    // Répartition comptée par MS-HOMOLOGATION : verdicts par cas, chronologie par jour du fuseau du GIMAC.
+    expect(await screen.findByText('Verdicts par cas')).toBeTruthy()
+    expect(screen.getByText('6 cas les plus défavorables sur 6')).toBeTruthy()
+    expect(screen.getByText('Exécutions par jour (Africa/Douala)')).toBeTruthy()
     // Exécutions paginées par le service : 45 au total, 25 par page.
     expect(await screen.findByText('EXE-000003')).toBeTruthy()
     expect(screen.getAllByText('Favorable').length).toBeGreaterThan(0)
@@ -40,10 +51,11 @@ describe('Résultats de la sandbox (US-EXI-17)', () => {
     // Pièces et empreinte copiable.
     expect(screen.getByText('Bilan de certification')).toBeTruthy()
     expect(screen.getByText('Déjà conservée')).toBeTruthy()
-    // Lecture seule : aucun bouton d'action dans l'onglet hors pagination, copie d'empreinte et onglets.
+    // Lecture seule : aucun bouton d'action dans l'onglet hors pagination, copie d'empreinte, onglets et bascule
+    // graphique ou tableau des cartes de graphe ; l'export contrôlé de ChartCard (design-system) n'agit pas sur la sandbox.
     const section = container.querySelector('section[aria-label="Résultats de la sandbox"]') as HTMLElement
     const boutons = within(section).queryAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent ?? '')
-    expect(boutons.filter((b) => !/Précédente|Suivante|Copier|copier/.test(b))).toEqual([])
+    expect(boutons.filter((b) => !/Précédente|Suivante|Copier|copier|^Graphique$|^Tableau$|^Exporter \(contrôlé\)$/.test(b))).toEqual([])
     await axeSansViolation(container)
   })
 
@@ -85,10 +97,12 @@ describe('Résultats de la sandbox (US-EXI-17)', () => {
       campagnes: [{ campagneId: 'C-9', code: null, etat: 'SIGNALEE', interfaceTest: null, services: [], versionBilan: null, versionTable: null, signalement: 'COLLISION_CODE_PARTICIPANT', taux: [], executions: 0, nonRapprochees: 0, pieces: [], releveLe: null }],
       scenariosNonRapproches: [],
     }
-    page('LIA-2026-022', { services: avec({ resultatsSandbox: async () => vide, executionsSandbox: async () => ({ contenu: [], total: 0, page: 0, taille: 25 }) }) })
+    page('LIA-2026-022', { services: avec({ resultatsSandbox: async () => vide, executionsSandbox: async () => ({ contenu: [], total: 0, page: 0, taille: 25 }), repartitionSandbox: async () => ({ fuseau: 'Africa/Douala', parCas: [{ identifiantCas: null, executions: 1, favorables: 0, defavorables: 0, nonExecutes: 0, enAttente: 1 }], parJour: [] }) }) })
     expect(await screen.findByText(/motif non communiqué/)).toBeTruthy()
     expect(screen.getByText('Campagne remplacée par un signalement')).toBeTruthy()
     expect(screen.getByText('Aucun taux restitué')).toBeTruthy()
+    expect(screen.getByText('Aucun taux par service à représenter')).toBeTruthy()
+    expect((await screen.findAllByText('Sans cas')).length).toBeGreaterThan(0)
     expect(screen.getByText('Aucune pièce reprise')).toBeTruthy()
     expect(await screen.findByText('Aucune exécution reprise')).toBeTruthy()
     expect(screen.getByText('Tous les scénarios sont rapprochés du référentiel d’opérations')).toBeTruthy()

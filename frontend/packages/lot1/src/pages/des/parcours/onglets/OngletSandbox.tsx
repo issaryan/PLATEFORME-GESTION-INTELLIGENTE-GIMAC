@@ -5,13 +5,15 @@ import { useExecutionsSandbox, useResultatsSandbox } from '../../../../hooks/par
 import type { DossierLiaison } from '../../../../modele/parcours'
 import type { CampagneSandbox, ExecutionSandbox, PieceSandbox, ResultatsSandbox, ScenarioNonRapproche, TauxSandbox } from '../../../../modele/sandbox'
 import { Donnees, etatListe } from '../../liaisons/communs'
+import { GraphesCampagne, RepartitionCampagne } from './GraphesSandbox'
 import { Valeur } from '../communs'
 
 // Onglet « Résultats de la sandbox » du dossier de liaison (DES-09, US-EXI-17, D-118 point 1) : campagnes reprises par
 // MS-HOMOLOGATION depuis SBX-LECTURE (US-EXI-14), verdicts natif et normalisé avec la version de la table, taux par
 // service avec numérateur, dénominateur et version de formule, pièces et leur empreinte copiable, scénarios non
 // rapprochés. Lecture seule : aucune action vers la sandbox, mention permanente « repris de la sandbox, jamais recalculé » ;
-// une relève en échec laisse les résultats déjà repris affichés avec la date de la dernière relève réussie.
+// une relève en échec laisse les résultats déjà repris affichés avec la date de la dernière relève réussie. Chaque
+// campagne porte sa vue graphique (jauges, verdicts, réussite par service), les tableaux restant en appoint.
 
 const TAILLE_DEFAUT = 25
 const tonCampagne: Record<string, Status> = { TERMINEE: 'ok', EN_COURS: 'info', SUSPENDUE: 'warn', ANNULEE: 'neutral', SIGNALEE: 'crit' }
@@ -132,6 +134,8 @@ function Campagne({ campagne: c, liaisonId }: { campagne: CampagneSandbox; liais
           ]}
         />
       </Card>
+      <GraphesCampagne campagne={c} />
+      <RepartitionCampagne liaisonId={liaisonId} campagneId={c.campagneId} />
       <Card title={t('sandboxResultats.taux.titre')}>
         <DataTable columns={taux} rows={c.taux} rowKey={(x) => `${x.service ?? '-'}:${x.nature}`} state={c.taux.length ? 'ok' : 'empty'} emptyText={t('sandboxResultats.taux.vide')} />
       </Card>

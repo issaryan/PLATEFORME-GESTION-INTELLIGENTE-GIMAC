@@ -223,7 +223,7 @@
    "application": "des",
    "module": "processus",
    "libelle": "nav.processus",
-   "groupe": "monActivite",
+   "groupe": "processus",
    "ordre": 90,
    "icone": "workflow",
    "visible": true,
@@ -248,7 +248,7 @@
    "application": "des",
    "module": "processus",
    "libelle": "nav.lancerDemande",
-   "groupe": "monActivite",
+   "groupe": "processus",
    "ordre": 92,
    "icone": "send",
    "visible": true,
@@ -273,7 +273,7 @@
    "application": "des",
    "module": "processus",
    "libelle": "nav.mesDemandes",
-   "groupe": "monActivite",
+   "groupe": "processus",
    "ordre": 94,
    "icone": "inbox",
    "visible": true,
@@ -298,7 +298,7 @@
    "application": "des",
    "module": "participants",
    "libelle": "nav.institutions",
-   "groupe": "registre",
+   "groupe": "homologation",
    "ordre": 100,
    "icone": "landmark",
    "visible": true,
@@ -508,6 +508,18 @@
      "nature": "MODIFIER",
      "permission": "HOM_PROJECT_DESIGNATE",
      "libelle": "droits.permission.HOM_PROJECT_DESIGNATE"
+    },
+    {
+     "cle": "HOM_PERIMETRE_EDIT",
+     "nature": "MODIFIER",
+     "permission": "HOM_PERIMETRE_EDIT",
+     "libelle": "droits.permission.HOM_PERIMETRE_EDIT"
+    },
+    {
+     "cle": "HOM_PERIMETRE_EDIT_TOUS",
+     "nature": "MODIFIER",
+     "permission": "HOM_PERIMETRE_EDIT_TOUS",
+     "libelle": "droits.permission.HOM_PERIMETRE_EDIT_TOUS"
     },
     {
      "cle": "HOM_OPERATION_ASSIGN",
@@ -1392,6 +1404,46 @@
     ],
     "unDe": [
      "SBX_HAB_CONSULTATION"
+    ]
+   },
+   "widgets": [],
+   "droits": []
+  },
+  {
+   "cle": "sandboxSupervision",
+   "application": "des",
+   "module": "sandbox",
+   "libelle": "nav.sandboxSupervision",
+   "groupe": "sandbox",
+   "ordre": 276,
+   "icone": "gauge",
+   "visible": true,
+   "permissions": {
+    "tous": [
+     "PIL_ACTIVITY_OWN"
+    ],
+    "unDe": [
+     "SBX_SUP_CONSULTATION"
+    ]
+   },
+   "widgets": [],
+   "droits": []
+  },
+  {
+   "cle": "sandboxActivite",
+   "application": "des",
+   "module": "sandbox",
+   "libelle": "nav.sandboxActivite",
+   "groupe": "sandbox",
+   "ordre": 277,
+   "icone": "square-check",
+   "visible": true,
+   "permissions": {
+    "tous": [
+     "PIL_ACTIVITY_OWN"
+    ],
+    "unDe": [
+     "SBX_SUP_CONSULTATION"
     ]
    },
    "widgets": [],
