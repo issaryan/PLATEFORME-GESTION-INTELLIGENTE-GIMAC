@@ -16,13 +16,19 @@ async function capturer(page: Page, nom: string) {
 }
 const suffixe = (theme: 'light' | 'dark') => (theme === 'light' ? 'clair' : 'sombre')
 const nav = (page: Page) => page.getByRole('navigation', { name: 'Navigation principale' })
+/** Catalogue servi et écran chargé : barre complète et indicateurs affichés. */
+async function pret(page: Page) {
+  await expect(nav(page).getByRole('link', { name: 'Tableau de bord' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Activité des tests' })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Indicateurs de la période' })).toBeVisible()
+}
 
 for (const theme of ['light', 'dark'] as const) {
   for (const [profil, nom] of [['ROLE_SUPER_ADMIN', 'super-admin'], ['ROLE_CHEF_DES', 'chef-des']] as [ProfilDemo, string][]) {
     test(`Barre latérale du DES : ${nom}, sections repliables (thème ${theme})`, async ({ page }) => {
       await demo(page, { profil, theme })
       await page.goto(`${ADRESSES.departement}/des/sandbox/activite`)
-      await expect(nav(page)).toBeVisible()
+      await pret(page)
       await capturer(page, `01-barre-${nom}-${suffixe(theme)}`)
       if (ETAT !== 'apres') return
       // La section de l'écran courant est ouverte ; une autre se replie et se déplie au clavier, état mémorisé.
@@ -35,6 +41,7 @@ for (const theme of ['light', 'dark'] as const) {
       await page.keyboard.press('Enter')
       await expect(activite).toHaveAttribute('aria-expanded', 'true')
       await page.reload()
+      await pret(page)
       await expect(nav(page).getByRole('button', { name: /Mon activité/ })).toHaveAttribute('aria-expanded', 'true')
       await capturer(page, `02-barre-${nom}-section-ouverte-${suffixe(theme)}`)
     })
@@ -44,8 +51,9 @@ for (const theme of ['light', 'dark'] as const) {
     await page.setViewportSize({ width: 360, height: 800 })
     await demo(page, { profil: 'ROLE_SUPER_ADMIN', theme })
     await page.goto(`${ADRESSES.departement}/des/sandbox/activite`)
+    await expect(page.getByRole('heading', { level: 1, name: 'Activité des tests' })).toBeVisible()
     await page.getByRole('button', { name: 'Ouvrir la navigation' }).click()
-    await expect(nav(page)).toBeVisible()
+    await expect(nav(page).getByRole('link', { name: 'Tableau de bord' })).toBeVisible()
     await capturer(page, `03-barre-360px-${suffixe(theme)}`)
   })
 }
