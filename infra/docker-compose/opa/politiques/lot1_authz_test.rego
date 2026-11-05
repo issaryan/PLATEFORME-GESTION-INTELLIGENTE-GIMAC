@@ -1393,6 +1393,13 @@ test_reprise_departement_exige_la_permission if {
 	authz.allow with input as {"method": "POST", "path": "/bff/des/homologation/reprise/liaisons", "permissions": ["REF_REPRISE_IMPORT"], "authentifie": true, "acr": "2"}
 }
 
+# Clôture sans suite des liaisons reprises (D-137) : même droit que la reprise, second facteur.
+test_reprise_clotures if {
+	authz.allow with input as {"method": "POST", "path": "/bff/console/homologation/reprise/liaisons/clotures", "permissions": ["REF_REPRISE_IMPORT"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/console/homologation/reprise/liaisons/clotures", "permissions": ["HOM_LIAISON_OPEN"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/console/homologation/reprise/liaisons/clotures", "permissions": ["REF_REPRISE_IMPORT"], "authentifie": true, "acr": "1"}
+}
+
 # Reprise des correspondants (D-132) : même règle que les institutions.
 test_reprise_correspondants if {
 	authz.allow with input as {"method": "POST", "path": "/bff/console/participant/reprise/correspondants", "permissions": ["REF_REPRISE_IMPORT"], "authentifie": true, "acr": "2"}

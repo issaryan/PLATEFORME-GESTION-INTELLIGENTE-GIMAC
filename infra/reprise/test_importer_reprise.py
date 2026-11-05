@@ -188,6 +188,16 @@ class RapportTest(unittest.TestCase):
         self.assertIn("PAR_REPRISE_INSTITUTION_INCONNUE : Inconnue", texte)
         self.assertIn("Totaux : créée 1, mise à jour 1, inchangée 1, REFUSÉE 1", texte)
 
+    def test_route_des_clotures(self):
+        o = Ouvreur()
+        R.importer("clotures", [{"referenceOrigine": "REPRISE-1"}], "Liaison par défaut", True, "http://h", "j", 10, o)
+        corps = json.loads(o.requetes[-1].data)
+        self.assertTrue(o.requetes[-1].full_url.endswith("/api/v1/interne/reprise/liaisons/clotures"))
+        self.assertEqual((corps["motif"], corps["liaisons"]), ("Liaison par défaut", [{"referenceOrigine": "REPRISE-1"}]))
+        texte, refusees = R.formater("clotures", [{"rang": 1, "referenceOrigine": "REPRISE-1", "resultat": "CLOSE", "id": "l1"}], True)
+        self.assertEqual(0, refusees)
+        self.assertIn("mise à jour 1", texte)
+
     def test_exemple_et_route_des_correspondants(self):
         lignes, motif = R.lire_fichier(ICI / "exemples/correspondants.json", "correspondants")
         self.assertEqual(1, len(lignes))

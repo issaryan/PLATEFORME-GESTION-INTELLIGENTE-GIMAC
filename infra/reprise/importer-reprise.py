@@ -8,7 +8,10 @@ reprise-service (permission REF_REPRISE_IMPORT) :
 - institutions : POST <participant>/api/v1/interne/reprise/institutions (MS-PARTICIPANT) ;
 - liaisons     : POST <homologation>/api/v1/interne/reprise/liaisons (MS-HOMOLOGATION) ;
 - correspondants : POST <participant>/api/v1/interne/reprise/correspondants (MS-PARTICIPANT, D-132), une fois les
-  institutions et les comptes repris.
+  institutions et les comptes repris ;
+- clotures     : POST <homologation>/api/v1/interne/reprise/liaisons/clotures (MS-HOMOLOGATION, D-137), clôture sans
+  suite de liaisons reprises sans projet réel ; motif du fichier obligatoire ; une liaison close est rapportée « mise
+  à jour ».
 
 Par défaut, tout est joué en SIMULATION : les services contrôlent chaque ligne jusqu'à l'écriture en base puis
 annulent ; rien n'est écrit. L'option --reel écrit. Rapport ligne à ligne (créée, mise à jour, inchangée, refusée
@@ -38,17 +41,20 @@ ROUTES = {
     "institutions": ("participant", "/api/v1/interne/reprise/institutions", "codeMembre"),
     "liaisons": ("homologation", "/api/v1/interne/reprise/liaisons", "referenceOrigine"),
     "correspondants": ("participant", "/api/v1/interne/reprise/correspondants", "codeMembre"),
+    "clotures": ("homologation", "/api/v1/interne/reprise/liaisons/clotures", "referenceOrigine"),
 }
+# Clé du tableau des lignes dans le corps de la requête, quand elle diffère de la nature (D-137).
+CLES_LOT = {"clotures": "liaisons"}
 ADRESSES = {
     "participant": ("GIMAC_REPRISE_PARTICIPANT_URL", "http://localhost:8085"),
     "homologation": ("GIMAC_REPRISE_HOMOLOGATION_URL", "http://localhost:8086"),
     "jeton": ("GIMAC_REPRISE_JETON_URL", "http://localhost:9080/realms/gimac/protocol/openid-connect/token"),
 }
 # Bornes des services (RepriseInstitutionsUseCase.LIGNES_MAX, RepriseLiaisonsUseCase.LIGNES_MAX).
-LOT_MAX = {"institutions": 2000, "liaisons": 500, "correspondants": 2000}
+LOT_MAX = {"institutions": 2000, "liaisons": 500, "correspondants": 2000, "clotures": 500}
 LIBELLES = {"CREEE": "créée", "MISE_A_JOUR": "mise à jour", "INCHANGEE": "inchangée", "REFUSEE": "REFUSÉE"}
 # Résultats au masculin de la reprise des correspondants (RepriseCorrespondantsUseCase.Resultat), rapportés aux mêmes libellés.
-MASCULINS = {"CREE": "CREEE", "MIS_A_JOUR": "MISE_A_JOUR", "INCHANGE": "INCHANGEE", "REFUSE": "REFUSEE"}
+MASCULINS = {"CREE": "CREEE", "MIS_A_JOUR": "MISE_A_JOUR", "INCHANGE": "INCHANGEE", "REFUSE": "REFUSEE", "CLOSE": "MISE_A_JOUR"}
 DELAI = 300
 
 
@@ -125,8 +131,8 @@ def importer(nature, lignes, motif, simulation, url_service, jeton_acces, taille
     _, chemin, _ = ROUTES[nature]
     rapport = []
     for debut, lot in lots(lignes, taille):
-        corps = {"simulation": simulation, nature: lot}
-        if motif and nature in ("institutions", "correspondants"):
+        corps = {"simulation": simulation, CLES_LOT.get(nature, nature): lot}
+        if motif and nature in ("institutions", "correspondants", "clotures"):
             corps["motif"] = motif
         reponse = appeler(
             url_service + chemin,
@@ -181,7 +187,7 @@ def formater(nature, rapport, simulation):
 
 def analyser(arguments):
     p = argparse.ArgumentParser(description="Reprise de l'existant (D-107, D-132) : institutions, correspondants et projets de certification.")
-    p.add_argument("nature", choices=sorted(ROUTES), help="institutions ou correspondants (MS-PARTICIPANT), liaisons (MS-HOMOLOGATION)")
+    p.add_argument("nature", choices=sorted(ROUTES), help="institutions ou correspondants (MS-PARTICIPANT), liaisons ou clotures (MS-HOMOLOGATION)")
     p.add_argument("fichier", help="fichier JSON de reprise")
     p.add_argument("--reel", action="store_true", help="écrire réellement (sans cette option : simulation)")
     p.add_argument("--participant", help="adresse de MS-PARTICIPANT")

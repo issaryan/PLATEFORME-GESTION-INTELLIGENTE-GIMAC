@@ -216,7 +216,7 @@ spring:
             - id: console-reprise-homologation
               uri: ${gimac.services.homologation}
               predicates:
-                - Path=/bff/console/homologation/reprise/liaisons
+                - Path=/bff/console/homologation/reprise/liaisons,/bff/console/homologation/reprise/liaisons/clotures
               filters:
                 - OpaAuthorize
                 - name: RequestSize
