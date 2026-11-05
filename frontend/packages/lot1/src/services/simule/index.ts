@@ -14,6 +14,7 @@ import { notificationsProcessusDemo, processusSimule } from './processus'
 import { magasinPouvoirs, pouvoirsSimules, type MagasinPouvoirs } from './pouvoirs'
 import { apercuSimule } from './apercu'
 import { referentielsSimules } from './referentiels'
+import { magasinPerimetres, servicesPerimetre } from './perimetre'
 
 // Implémentation simulée des ports, pour développer les écrans sans la passerelle : un serveur fictif en
 // mémoire, avec latence, identifiants de corrélation et refus normalisés comme ceux des services réels.
@@ -216,6 +217,7 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
       return { ...g, noeuds: g.noeuds.map((n) => ({ ...n, etat: etats.get(n.id) ?? n.etat })) }
     }),
     couverturesLiaison: (id) => attendre(() => D.couverturesDe(trouverLiaison(id))),
+    ...servicesPerimetre(magasinPerimetres(o.utilisateur), trouverLiaison, attendre),
 
     listerOperations: (liaisonId, f) => attendre(() => (operations.get(liaisonId) ?? []).filter((x) => !f?.enRetard || x.joursDepassement > 0)),
     lireOperation: (id) => attendre(() => trouverOperation(id)),

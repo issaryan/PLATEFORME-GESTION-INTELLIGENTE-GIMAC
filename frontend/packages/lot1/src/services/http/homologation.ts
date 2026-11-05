@@ -101,6 +101,9 @@ export const homologationHttp: ServiceHomologation = {
   dernierExportPreuves: (id) => siAbsente(http.get(`${L}/${id}/dossier-de-preuves`), null),
   grapheLiaison: (id) => http.get(`${L}/${id}/graphe`),
   couverturesLiaison: (id) => http.get(`${L}/${id}/couvertures`),
+  perimetreLiaison: (id) => http.get(`${L}/${id}/perimetre`),
+  modifierPerimetre: (id, services, motif) => http.put(`${L}/${id}/perimetre`, { body: { services, motif } }),
+  historiquePerimetre: (id, page, taille) => http.get(`${L}/${id}/perimetre/historique`, { query: { page, taille } }),
 
   listerOperations: (liaisonId, filtres) => http.get(`${L}/${liaisonId}/operations`, { query: filtres }),
   lireOperation: (id) => http.get(`${O}/${id}`),

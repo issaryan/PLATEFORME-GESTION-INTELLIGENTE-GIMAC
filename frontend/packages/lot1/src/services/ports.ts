@@ -4,6 +4,8 @@ import type {
   Attribution, CampaignResult, ClotureOperation, Conducteur, ControleResultat, DepotResultat, EtatReprise, ExportPreuves, Graphe, ImpactMigration,
   CatalogueModelisateur, CreationFonction, CreationTypeProjet, FonctionCatalogue, ModificationFonction, ModificationTypeProjet, TypeProjetVue, EtapeReferentiel, GrapheReferentiel, Liaison, OperationsReferentiel, SaisieEtape, LiaisonPilotage, OperationInstance, OuvertureLiaison, PointGrille, PreuveVersion, ReferenceOperation, ReferentielVersion, SaisieOperation,
   ScenarioInconnu, ServiceCouvert,
+  PerimetreProjet,
+  ModificationPerimetre,
 } from '../modele/homologation'
 import type {
   Attestation, Circuit, Condition, DecisionQuitus, Dossier, EntreeRegistre, FicheLue, Horodatage, NatureQuitus, ProcesVerbal,
@@ -103,6 +105,10 @@ export interface ServiceHomologation {
   dernierExportPreuves(id: string): Promise<ExportPreuves | null>
   grapheLiaison(id: string): Promise<Graphe>
   couverturesLiaison(id: string): Promise<ServiceCouvert[]>
+  /** D-133 : périmètre du projet de certification, modifiable par son gestionnaire, un super administrateur ou un chargé SNA. */
+  perimetreLiaison(id: string): Promise<PerimetreProjet>
+  modifierPerimetre(id: string, services: string[], motif: string): Promise<PerimetreProjet>
+  historiquePerimetre(id: string, page: number, taille: number): Promise<Page<ModificationPerimetre>>
 
   // Opérations (HOM-07 à HOM-12)
   listerOperations(liaisonId: string, filtres?: Record<string, string | boolean | undefined>): Promise<OperationInstance[]>

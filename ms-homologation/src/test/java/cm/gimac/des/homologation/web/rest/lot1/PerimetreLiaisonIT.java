@@ -219,6 +219,28 @@ class PerimetreLiaisonIT extends AbstractHomologationIT {
     }
 
     @Test
+    @DisplayName("D-133 : la référence d'origine de la liaison est publiée pour la sandbox avec son état")
+    void referenceOriginePubliee() throws Exception {
+        UUID institution = UUID.randomUUID();
+        registre.enregistrer(new InstitutionView(institution, "Institution 99002", "ADHERENT", "ETABLISSEMENT_PAIEMENT", List.of(new InstitutionView.ServiceSouscrit("PAIEMENT_MOBILE", "2026-09-01"))), "99002");
+        String r = mvc
+            .perform(
+                post("/api/v1/liaisons")
+                    .with(utilisateur(GESTIONNAIRE, OUVREUR))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"institutionId\":\"%s\",\"typeProjet\":\"PAIEMENT_MOBILE\",\"chefDeProjetId\":\"%s\",\"referenceOrigine\":\"BGFI-GB-2510-01\"}".formatted(institution, CollaboratorStubAdapter.CONDUCTEUR_1))
+            )
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        String id = JsonPath.read(r, "$.id");
+        String charge = jdbc.queryForObject("select payload::text from outbox_event where aggregate_id = ? and event_type = 'homologation.liaison-status-changed.v1'", String.class, id);
+        assertThat(JsonPath.<String>read(charge, "$.referenceOrigine")).isEqualTo("BGFI-GB-2510-01");
+        assertThat(SchemaContrat.charger("sandbox/homologation.liaison-status-changed.v1.schema.json").ecarts(JSON.readTree(charge))).isEmpty();
+    }
+
+    @Test
     @DisplayName("Liaison inconnue : 404")
     void inconnue() throws Exception {
         mvc.perform(get("/api/v1/liaisons/" + UUID.randomUUID() + "/perimetre").with(utilisateur(GESTIONNAIRE, OUVREUR))).andExpect(status().isNotFound());

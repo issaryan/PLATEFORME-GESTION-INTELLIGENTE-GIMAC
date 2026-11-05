@@ -207,6 +207,7 @@ Validations réellement exécutées et conservées dans les rapports du 27/10 :
 | 2026-10-29 | US-INS-07 | Matrice Sandbox globale et idempotente dans MS-IAM (`PUT /api/v1/interne/sandbox/matrice`) : recomposition auditée par profil, permissions hors SBX conservées, validation externe refusée et aucun second effet au rejeu |
 | 2026-10-30 | - | DEMO-SBX 13 : PDF Gotenberg réel de deux pages, référence et transitions du processus de changement ; persistance PostgreSQL de la tâche avant son historique et sérialiseurs binaires du binder Kafka de MS-PILOTAGE |
 | 2026-11-05 | D-133 | Périmètre du projet de certification fixé au GIMAC (gestionnaire, super administrateur, chargé de l'implémentation SNA) : MS-HOMOLOGATION, profil `ROLE_CHARGE_IMPLEMENTATION_SNA` et permissions `HOM_PERIMETRE_EDIT`, `HOM_PERIMETRE_EDIT_TOUS` au domaine Keycloak, OPA (deux copies), catalogue des fonctionnalités ; services des campagnes de la sandbox dérivés du périmètre. |
+| 2026-11-05 | D-133 | Compléments : écran du périmètre groupé par interface et par famille (table versionnée `services-perimetre.json`), référence d'origine publiée pour rattacher les campagnes reprises, contexte d'action du double rôle administrateur et intégrateur dans MS-GATEWAY. |
 
 ### Mise a jour du 02/11/2026 : Releve Sandbox GIMAC et integration documentaire
 

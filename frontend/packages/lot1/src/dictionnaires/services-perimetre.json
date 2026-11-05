@@ -1,0 +1,370 @@
+{
+  "description": "Rattachement des services du périmètre d'un projet de certification (D-133) : code, interface, famille et nom usuel en français, anglais et espagnol. Aucune famille n'est inventée : les familles sont celles du tableau « Famille de services » du TDR ; un service qu'il ne range pas va dans « Autres services ». Chaque ligne cite sa source.",
+  "sources": {
+    "TDR-FAMILLES": "TDR-SBX-GIMAC-02 v1.3, tableau « Famille de services » des transitions d'état (p. 95)",
+    "SBX-REF": "SBX-REFERENTIEL, catalogue amorcé (sbx-referentiel/src/main/resources/referentiel/amorce, ServiceCatalogue.libelle et TypeReferentiel)",
+    "CR-ANNEXE-A": "MS-HOMOLOGATION, CatalogueServices (libellés des services du périmètre d'après l'annexe A du CR-CERT-GIMAC-01) et ModeleTypeProjet.catalogueServices"
+  },
+  "interfaces": [
+    {
+      "code": "MOBILE_PROPRIETAIRE",
+      "source": "SBX-REF",
+      "libelle": {
+        "fr": "Mobile, protocole propriétaire",
+        "en": "Mobile, proprietary protocol",
+        "es": "Móvil, protocolo propietario"
+      }
+    },
+    {
+      "code": "MOBILE_ISO20022",
+      "source": "SBX-REF",
+      "libelle": {
+        "fr": "Mobile ISO 20022",
+        "en": "Mobile ISO 20022",
+        "es": "Móvil ISO 20022"
+      }
+    },
+    {
+      "code": "CARTE_ISO8583",
+      "source": "SBX-REF",
+      "libelle": {
+        "fr": "Carte ISO 8583",
+        "en": "Card ISO 8583",
+        "es": "Tarjeta ISO 8583"
+      }
+    }
+  ],
+  "familles": [
+    {
+      "code": "TRANSFERTS_PAIEMENT_MARCHAND",
+      "source": "TDR-FAMILLES",
+      "libelle": {
+        "fr": "Transferts et paiement marchand",
+        "en": "Transfers and merchant payment",
+        "es": "Transferencias y pago comercial"
+      }
+    },
+    {
+      "code": "COUPONS",
+      "source": "TDR-FAMILLES",
+      "libelle": {
+        "fr": "Coupons (retrait sans carte, retrait d'espèces, achat de bon, remises en espèces)",
+        "en": "Vouchers (cardless withdrawal, cash withdrawal, voucher purchase, cash remittances)",
+        "es": "Cupones (retiro sin tarjeta, retiro de efectivo, compra de bono, remesas en efectivo)"
+      }
+    },
+    {
+      "code": "DEPOT_ESPECES_GAB",
+      "source": "TDR-FAMILLES",
+      "libelle": {
+        "fr": "Dépôt d'espèces au GAB",
+        "en": "Cash deposit at an ATM",
+        "es": "Depósito de efectivo en cajero"
+      }
+    },
+    {
+      "code": "DEMANDE_PAIEMENT",
+      "source": "TDR-FAMILLES",
+      "libelle": {
+        "fr": "Demande de paiement",
+        "en": "Payment request",
+        "es": "Solicitud de pago"
+      }
+    },
+    {
+      "code": "REMISES",
+      "source": "TDR-FAMILLES",
+      "libelle": {
+        "fr": "Remises entrantes et sortantes",
+        "en": "Incoming and outgoing remittances",
+        "es": "Remesas entrantes y salientes"
+      }
+    },
+    {
+      "code": "AUTRES",
+      "source": "TDR-FAMILLES",
+      "libelle": {
+        "fr": "Autres services",
+        "en": "Other services",
+        "es": "Otros servicios"
+      }
+    }
+  ],
+  "services": [
+    {
+      "code": "TRANSVERSE",
+      "interface": null,
+      "famille": "AUTRES",
+      "source": "CR-ANNEXE-A",
+      "libelle": {
+        "fr": "Transverse (toujours inclus)",
+        "en": "Cross-cutting (always included)",
+        "es": "Transversal (siempre incluido)"
+      }
+    },
+    {
+      "code": "RETRAIT",
+      "interface": "CARTE_ISO8583",
+      "famille": "AUTRES",
+      "source": "CR-ANNEXE-A",
+      "libelle": {
+        "fr": "Retrait",
+        "en": "Withdrawal",
+        "es": "Retiro"
+      }
+    },
+    {
+      "code": "PAIEMENT",
+      "interface": "CARTE_ISO8583",
+      "famille": "AUTRES",
+      "source": "CR-ANNEXE-A",
+      "libelle": {
+        "fr": "Paiement marchand",
+        "en": "Merchant payment",
+        "es": "Pago comercial"
+      }
+    },
+    {
+      "code": "TRANSFERT",
+      "interface": "CARTE_ISO8583",
+      "famille": "AUTRES",
+      "source": "CR-ANNEXE-A",
+      "libelle": {
+        "fr": "Transfert",
+        "en": "Transfer",
+        "es": "Transferencia"
+      }
+    },
+    {
+      "code": "COMMERCE_ELECTRONIQUE",
+      "interface": "CARTE_ISO8583",
+      "famille": "AUTRES",
+      "source": "CR-ANNEXE-A",
+      "libelle": {
+        "fr": "Commerce électronique",
+        "en": "E-commerce",
+        "es": "Comercio electrónico"
+      }
+    },
+    {
+      "code": "CRT.POS",
+      "interface": "CARTE_ISO8583",
+      "famille": "AUTRES",
+      "source": "SBX-REF",
+      "libelle": {
+        "fr": "Paiement au terminal (carte)",
+        "en": "Payment at the terminal (card)",
+        "es": "Pago en terminal (tarjeta)"
+      }
+    },
+    {
+      "code": "CRT.ATM",
+      "interface": "CARTE_ISO8583",
+      "famille": "AUTRES",
+      "source": "SBX-REF",
+      "libelle": {
+        "fr": "Retrait au GAB (carte)",
+        "en": "ATM withdrawal (card)",
+        "es": "Retiro en cajero (tarjeta)"
+      }
+    },
+    {
+      "code": "TRANSFERT",
+      "interface": "MOBILE_PROPRIETAIRE",
+      "famille": "TRANSFERTS_PAIEMENT_MARCHAND",
+      "source": "CR-ANNEXE-A",
+      "libelle": {
+        "fr": "Transfert",
+        "en": "Transfer",
+        "es": "Transferencia"
+      }
+    },
+    {
+      "code": "PAIEMENT",
+      "interface": "MOBILE_PROPRIETAIRE",
+      "famille": "TRANSFERTS_PAIEMENT_MARCHAND",
+      "source": "CR-ANNEXE-A",
+      "libelle": {
+        "fr": "Paiement marchand",
+        "en": "Merchant payment",
+        "es": "Pago comercial"
+      }
+    },
+    {
+      "code": "PAIEMENT_MARCHAND",
+      "interface": "MOBILE_PROPRIETAIRE",
+      "famille": "TRANSFERTS_PAIEMENT_MARCHAND",
+      "source": "CR-ANNEXE-A",
+      "libelle": {
+        "fr": "Paiement marchand mobile",
+        "en": "Mobile merchant payment",
+        "es": "Pago comercial móvil"
+      }
+    },
+    {
+      "code": "REMITTANCE",
+      "interface": "MOBILE_PROPRIETAIRE",
+      "famille": "REMISES",
+      "source": "CR-ANNEXE-A",
+      "libelle": {
+        "fr": "Rémittence entrante",
+        "en": "Incoming remittance",
+        "es": "Remesa entrante"
+      }
+    },
+    {
+      "code": "FACTURE",
+      "interface": "MOBILE_PROPRIETAIRE",
+      "famille": "AUTRES",
+      "source": "CR-ANNEXE-A",
+      "libelle": {
+        "fr": "Paiement de facture",
+        "en": "Bill payment",
+        "es": "Pago de factura"
+      }
+    },
+    {
+      "code": "CASH_IN",
+      "interface": "MOBILE_PROPRIETAIRE",
+      "famille": "AUTRES",
+      "source": "CR-ANNEXE-A",
+      "libelle": {
+        "fr": "Cash-in agent",
+        "en": "Agent cash-in",
+        "es": "Depósito en agente (cash-in)"
+      }
+    },
+    {
+      "code": "W2W",
+      "interface": "MOBILE_PROPRIETAIRE",
+      "famille": "TRANSFERTS_PAIEMENT_MARCHAND",
+      "source": "SBX-REF",
+      "libelle": {
+        "fr": "Transfert de portefeuille à portefeuille",
+        "en": "Wallet-to-wallet transfer",
+        "es": "Transferencia de monedero a monedero"
+      }
+    },
+    {
+      "code": "W2A",
+      "interface": "MOBILE_PROPRIETAIRE",
+      "famille": "TRANSFERTS_PAIEMENT_MARCHAND",
+      "source": "SBX-REF",
+      "libelle": {
+        "fr": "Transfert de portefeuille à compte",
+        "en": "Wallet-to-account transfer",
+        "es": "Transferencia de monedero a cuenta"
+      }
+    },
+    {
+      "code": "MP",
+      "interface": "MOBILE_PROPRIETAIRE",
+      "famille": "TRANSFERTS_PAIEMENT_MARCHAND",
+      "source": "SBX-REF",
+      "libelle": {
+        "fr": "Paiement marchand",
+        "en": "Merchant payment",
+        "es": "Pago comercial"
+      }
+    },
+    {
+      "code": "CWD",
+      "interface": "MOBILE_PROPRIETAIRE",
+      "famille": "COUPONS",
+      "source": "SBX-REF",
+      "libelle": {
+        "fr": "Retrait sans carte",
+        "en": "Cardless withdrawal",
+        "es": "Retiro sin tarjeta"
+      }
+    },
+    {
+      "code": "COUT",
+      "interface": "MOBILE_PROPRIETAIRE",
+      "famille": "COUPONS",
+      "source": "SBX-REF",
+      "libelle": {
+        "fr": "Retrait d'espèces chez un agent (Cash Out)",
+        "en": "Cash withdrawal at an agent (Cash Out)",
+        "es": "Retiro de efectivo en agente (Cash Out)"
+      }
+    },
+    {
+      "code": "CIN",
+      "interface": "MOBILE_PROPRIETAIRE",
+      "famille": "AUTRES",
+      "source": "SBX-REF",
+      "libelle": {
+        "fr": "Versement d'espèces chez un agent (Cash In)",
+        "en": "Cash deposit at an agent (Cash In)",
+        "es": "Depósito de efectivo en agente (Cash In)"
+      }
+    },
+    {
+      "code": "BILL",
+      "interface": "MOBILE_PROPRIETAIRE",
+      "famille": "AUTRES",
+      "source": "SBX-REF",
+      "libelle": {
+        "fr": "Paiement de facture",
+        "en": "Bill payment",
+        "es": "Pago de factura"
+      }
+    },
+    {
+      "code": "R2P",
+      "interface": "MOBILE_PROPRIETAIRE",
+      "famille": "DEMANDE_PAIEMENT",
+      "source": "SBX-REF",
+      "libelle": {
+        "fr": "Demande de paiement (Request2Pay)",
+        "en": "Payment request (Request2Pay)",
+        "es": "Solicitud de pago (Request2Pay)"
+      }
+    },
+    {
+      "code": "BULK",
+      "interface": "MOBILE_PROPRIETAIRE",
+      "famille": "AUTRES",
+      "source": "SBX-REF",
+      "libelle": {
+        "fr": "Virement de masse vers portefeuilles, comptes et IBAN",
+        "en": "Bulk transfer to wallets, accounts and IBANs",
+        "es": "Transferencia masiva a monederos, cuentas e IBAN"
+      }
+    },
+    {
+      "code": "AUTH",
+      "interface": "MOBILE_PROPRIETAIRE",
+      "famille": "AUTRES",
+      "source": "SBX-REF",
+      "libelle": {
+        "fr": "Authentification",
+        "en": "Authentication",
+        "es": "Autenticación"
+      }
+    },
+    {
+      "code": "ISO.W2W",
+      "interface": "MOBILE_ISO20022",
+      "famille": "TRANSFERTS_PAIEMENT_MARCHAND",
+      "source": "SBX-REF",
+      "libelle": {
+        "fr": "Transfert ISO 20022 (pacs.008)",
+        "en": "ISO 20022 transfer (pacs.008)",
+        "es": "Transferencia ISO 20022 (pacs.008)"
+      }
+    },
+    {
+      "code": "ISO.R2P",
+      "interface": "MOBILE_ISO20022",
+      "famille": "DEMANDE_PAIEMENT",
+      "source": "SBX-REF",
+      "libelle": {
+        "fr": "Demande de paiement ISO 20022 (pain.013, pain.014)",
+        "en": "ISO 20022 payment request (pain.013, pain.014)",
+        "es": "Solicitud de pago ISO 20022 (pain.013, pain.014)"
+      }
+    }
+  ]
+}
