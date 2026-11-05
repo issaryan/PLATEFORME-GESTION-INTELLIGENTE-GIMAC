@@ -172,6 +172,15 @@ const SCENARIOS: Scenario[] = [
   { id: 'LIA-2026-040', institutionId: 'INST-0144', institutionNom: 'Banque H', typeProjet: 'CARTE_INTERBANCAIRE', banque: null, personnalisateur: null, fintech: false, avancement: '12', statut: 'EN_INTEGRATION', conducteur: 1, debut: -50, cible: 45, services: perimetre(SERVICES_CARTE, []) },
 ]
 
+/**
+ * Projet de certification d'un dossier simulé, pour le périmètre (D-133) : type, services du périmètre inclus et état
+ * ouvert ; absent si le dossier n'existe pas.
+ */
+export function projetDuDossier(id: string): { id: string; typeProjet: TypeProjet; etat: 'OUVERTE'; perimetre: string[] } | undefined {
+  const s = SCENARIOS.find((x) => x.id === id)
+  return s ? { id: s.id, typeProjet: s.typeProjet, etat: 'OUVERTE', perimetre: ['TRANSVERSE', ...s.services.filter((x) => x.inclus).map((x) => x.code)] } : undefined
+}
+
 /** Opération ouverte ou renvoyée pendant la démonstration (homologation.operation-activated.v1, DDR-08). */
 export type EvenementOperationDemo = { type: 'OUVERTE' | 'RENVOYEE' | 'VALIDATION'; operationId: string; motif?: string; le: string }
 type Etat = {

@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { AUTRES, decrire, grouper, interfacesDuType, TABLE } from './services-perimetre'
 import { PERIMETRES } from '../services/simule/donnees'
@@ -8,7 +6,10 @@ import { SOUSCRITS } from '../services/simule/perimetre'
 // D-133 : table de rattachement code → interface → famille → nom usuel. Le test échoue si un service du périmètre
 // (catalogue de MS-HOMOLOGATION d'après l'annexe A du CR, services simulés) n'y a pas de libellé, si une ligne ne cite
 // pas sa source, ou si une famille n'est pas celle du TDR.
-const CATALOGUE_HOMOLOGATION = resolve(__dirname, '../../../../../ms-homologation/src/main/java/cm/gimac/des/homologation/domain/parcours/CatalogueServices.java')
+// Catalogue de MS-HOMOLOGATION lu tel quel (Vite, ?raw) : la table suit le code du service, jamais une recopie.
+const CATALOGUE_HOMOLOGATION = Object.values(
+  import.meta.glob<string>('../../../../../ms-homologation/src/main/java/cm/gimac/des/homologation/domain/parcours/CatalogueServices.java', { query: '?raw', import: 'default', eager: true }),
+)[0]
 
 describe('table des services du périmètre', () => {
   it('chaque ligne cite une source connue et porte ses libellés en fr, en et es', () => {
@@ -26,7 +27,7 @@ describe('table des services du périmètre', () => {
     expect(TABLE.familles.filter((f) => f.code !== AUTRES).every((f) => f.source === 'TDR-FAMILLES')).toBe(true)
   })
   it('tout service du périmètre a un libellé', () => {
-    const java = readFileSync(CATALOGUE_HOMOLOGATION, 'utf8')
+    const java = CATALOGUE_HOMOLOGATION ?? ''
     const codes = [...java.matchAll(/Map\.entry\("([A-Z_]+)"/g)].map((m) => m[1]).filter((c) => !['CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE'].includes(c))
     expect(codes.length).toBeGreaterThan(5)
     const perimetres = Object.entries({ ...PERIMETRES }).flatMap(([type, cs]) => cs.map((c) => [type, c]))

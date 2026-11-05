@@ -23,7 +23,7 @@ describe('D-133 : périmètre du projet de certification', () => {
     const d = await screen.findByRole('dialog')
     // Groupes par interface et par famille, nom usuel en clair, code en infobulle seulement.
     expect(within(d).getByText('Mobile, protocole propriétaire')).toBeTruthy()
-    expect(within(d).getByText('Transferts et paiement marchand (2 sur 2)')).toBeTruthy()
+    expect(within(d).getByText('Transferts et paiement marchand (2 sur 3)')).toBeTruthy()
     expect(within(d).getByText('Paiement de facture').closest('label')?.getAttribute('title')).toBe('Code technique : FACTURE')
     expect(within(d).queryByText('FACTURE')).toBeNull()
     expect(within(d).getByText('Aucun changement pour le moment.')).toBeTruthy()
@@ -33,7 +33,7 @@ describe('D-133 : périmètre du projet de certification', () => {
     expect(within(d).queryByText('Transfert')).toBeNull()
     fireEvent.change(within(d).getByRole('searchbox'), { target: { value: '' } })
     fireEvent.click(within(d).getByLabelText('Tout le groupe « Autres services »'))
-    expect(within(d).getByText('4 service(s) choisi(s) sur 4')).toBeTruthy()
+    expect(within(d).getByText('4 service(s) choisi(s) sur 6')).toBeTruthy()
     fireEvent.click(within(d).getByLabelText('Tout le groupe « Autres services »'))
     fireEvent.click(within(d).getByLabelText('Transfert'))
     expect(within(d).getByText('Retirés : Transfert')).toBeTruthy()

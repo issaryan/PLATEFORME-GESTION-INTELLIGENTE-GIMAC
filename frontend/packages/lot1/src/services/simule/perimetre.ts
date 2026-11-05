@@ -14,7 +14,7 @@ export const GESTIONNAIRE_DEMO = { id: ANNUAIRE.find((p) => p.profils?.includes(
 /** Services souscrits simulés : ceux du type, plus un service non encore inclus pour démontrer l'ajout. */
 export const SOUSCRITS: Record<Liaison['typeProjet'], string[]> = {
   CARTE_INTERBANCAIRE: ['TRANSVERSE', 'RETRAIT', 'PAIEMENT', 'TRANSFERT', 'COMMERCE_ELECTRONIQUE'],
-  PAIEMENT_MOBILE: ['TRANSVERSE', 'TRANSFERT', 'PAIEMENT', 'FACTURE', 'CASH_IN'],
+  PAIEMENT_MOBILE: ['TRANSVERSE', 'TRANSFERT', 'PAIEMENT', 'PAIEMENT_MARCHAND', 'REMITTANCE', 'FACTURE', 'CASH_IN'],
   DELEGATAIRE: ['TRANSVERSE'],
 }
 const FERMES = new Set(['CLOSE', 'CERTIFIEE'])

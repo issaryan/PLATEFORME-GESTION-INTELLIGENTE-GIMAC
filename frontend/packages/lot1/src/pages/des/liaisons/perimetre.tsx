@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, DataTable, Dialog, InlineAlert, KeyValueList, Tag, TextArea } from '@gimac/design-system'
-import type { Liaison, ModificationPerimetre, PerimetreProjet } from '../../../modele/homologation'
+import type { ModificationPerimetre, PerimetreProjet } from '../../../modele/homologation'
+
+/** Projet décrit par la liaison ou par son dossier numérique : identifiant, type, institution et intitulé. */
+export type ProjetPerimetre = { id: string; typeProjet: string; institutionNom: string; intituleProjet?: string | null }
 import { useHistoriquePerimetre, useModifierPerimetre, usePerimetreLiaison } from '../../../hooks/liaisons'
 import { Donnees, useErreurService } from './communs'
-import { decrire, grouper } from '../../../dictionnaires/services-perimetre'
+import { decrire, grouper, TRANSVERSE } from '../../../dictionnaires/services-perimetre'
 import { ResumeChangements, SelecteurServices } from './selecteur-services'
 
 // Périmètre du projet de certification (D-133) dans l'onglet « Périmètre » de la liaison : services inclus et hors
@@ -14,7 +17,7 @@ import { ResumeChangements, SelecteurServices } from './selecteur-services'
 
 const TAILLE = 10
 
-function FormulairePerimetre({ liaison, perimetre, onFermer }: { liaison: Liaison; perimetre: PerimetreProjet; onFermer: () => void }) {
+function FormulairePerimetre({ liaison, perimetre, onFermer }: { liaison: ProjetPerimetre; perimetre: PerimetreProjet; onFermer: () => void }) {
   const { t } = useTranslation()
   const modifier = useModifierPerimetre()
   const erreur = useErreurService()
@@ -53,7 +56,7 @@ function FormulairePerimetre({ liaison, perimetre, onFermer }: { liaison: Liaiso
   )
 }
 
-function Historique({ liaison }: { liaison: Liaison }) {
+function Historique({ liaison }: { liaison: ProjetPerimetre }) {
   const { t } = useTranslation()
   const [page, setPage] = useState(0)
   const historique = useHistoriquePerimetre(liaison.id, page, TAILLE)
@@ -91,10 +94,10 @@ function ServicesGroupes({ perimetre, typeProjet }: { perimetre: PerimetreProjet
   const inclus = new Set(perimetre.services.filter((s) => s.inclus).map((s) => s.code))
   return (
     <div className="gm-col">
-      {grouper(perimetre.services.map((s) => s.code), typeProjet, i18n.language).flatMap((g) =>
+      {grouper(perimetre.services.map((s) => s.code).filter((c) => c !== TRANSVERSE), typeProjet, i18n.language).flatMap((g) =>
         g.familles.map((f) => (
           <div key={`${g.code}-${f.code}`} className="gm-col" style={{ gap: 'var(--gm-space-1)' }}>
-            <span className="gm-field-label">{`${g.libelle} · ${f.libelle}`}</span>
+            <span className="gm-field-label">{f.code === 'AUTRES' && g.code === null ? f.libelle : `${g.libelle} · ${f.libelle}`}</span>
             <span className="gm-row">
               {f.services.map((s) => (
                 <span key={s.code} title={t('perimetreProjet.code', { code: s.code })}>
@@ -105,11 +108,12 @@ function ServicesGroupes({ perimetre, typeProjet }: { perimetre: PerimetreProjet
           </div>
         )),
       )}
+      <span className="gm-field-help">{t('perimetreProjet.transverse')}</span>
     </div>
   )
 }
 
-export function GestionPerimetre({ liaison }: { liaison: Liaison }) {
+export function GestionPerimetre({ liaison }: { liaison: ProjetPerimetre }) {
   const { t } = useTranslation()
   const perimetre = usePerimetreLiaison(liaison.id)
   const [ouvert, setOuvert] = useState(false)

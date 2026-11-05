@@ -15,6 +15,8 @@ export type ProfilInterneDemo = { identifiant: string; nom: string; sujet: strin
 export const IDENTITES_HORS_ANNUAIRE: Record<string, Omit<ProfilInterneDemo, 'permissions'>> = {
   ROLE_SUPER_ADMIN: { identifiant: 'super.admin', nom: 'Serge Mouelle Kombi', sujet: 'u-super-admin' },
   ROLE_ADMIN_SYSTEME: { identifiant: 'admin.systeme', nom: 'Thierry Abessolo Nkoulou', sujet: 'u-admin-systeme' },
+  // D-133 : désigné par son rôle, sans personne de l'annuaire.
+  ROLE_CHARGE_IMPLEMENTATION_SNA: { identifiant: 'charge.implementation.sna', nom: 'Chargé de l’implémentation des projets (SNA)', sujet: 'u-charge-implementation-sna' },
 }
 
 /** Identifiant de démonstration d'une personne : initiale du prénom, point, premier nom (sans accent). */

@@ -8,7 +8,7 @@ import * as D from './donnees'
 import { participantSimule, type TransitionObservee } from './participant'
 import { PERM, PROFILS } from '../../permissions'
 import { messagerieSimulee, type MessagerieSimulee } from './messagerie'
-import { parcoursSimule, type EvenementsParcoursDemo } from './parcours'
+import { parcoursSimule, projetDuDossier, type EvenementsParcoursDemo } from './parcours'
 import { ORGANISATION_DEMO, pilotageSimule, type PontTachesProcessus } from './pilotage'
 import { notificationsProcessusDemo, processusSimule } from './processus'
 import { magasinPouvoirs, pouvoirsSimules, type MagasinPouvoirs } from './pouvoirs'
@@ -217,7 +217,7 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
       return { ...g, noeuds: g.noeuds.map((n) => ({ ...n, etat: etats.get(n.id) ?? n.etat })) }
     }),
     couverturesLiaison: (id) => attendre(() => D.couverturesDe(trouverLiaison(id))),
-    ...servicesPerimetre(magasinPerimetres(o.utilisateur), trouverLiaison, attendre),
+    ...servicesPerimetre(magasinPerimetres(o.utilisateur), (id) => liaisons.find((x) => x.id === id) ?? (projetDuDossier(id) as unknown as Liaison | undefined) ?? trouverLiaison(id), attendre),
 
     listerOperations: (liaisonId, f) => attendre(() => (operations.get(liaisonId) ?? []).filter((x) => !f?.enRetard || x.joursDepassement > 0)),
     lireOperation: (id) => attendre(() => trouverOperation(id)),
