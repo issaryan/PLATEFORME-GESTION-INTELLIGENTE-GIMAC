@@ -52,10 +52,10 @@ describe('Résultats de la sandbox (US-EXI-17)', () => {
     expect(screen.getByText('Bilan de certification')).toBeTruthy()
     expect(screen.getByText('Déjà conservée')).toBeTruthy()
     // Lecture seule : aucun bouton d'action dans l'onglet hors pagination, copie d'empreinte, onglets et bascule
-    // graphique ou tableau des cartes de graphe.
+    // graphique ou tableau des cartes de graphe ; l'export contrôlé de ChartCard (design-system) n'agit pas sur la sandbox.
     const section = container.querySelector('section[aria-label="Résultats de la sandbox"]') as HTMLElement
     const boutons = within(section).queryAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent ?? '')
-    expect(boutons.filter((b) => !/Précédente|Suivante|Copier|copier|^Graphique$|^Tableau$/.test(b))).toEqual([])
+    expect(boutons.filter((b) => !/Précédente|Suivante|Copier|copier|^Graphique$|^Tableau$|^Exporter \(contrôlé\)$/.test(b))).toEqual([])
     await axeSansViolation(container)
   })
 
