@@ -1889,6 +1889,7 @@
             "SBX_DON_CONSULTATION",
             "SBX_SCN_CONSULTATION",
             "SBX_TRA_CONSULTATION",
+            "SBX_REF_CONSULTATION",
             "NOT_INBOX_READ"
           ]
         },
@@ -1911,6 +1912,8 @@
             "ROLE_USER",
             "SBX_RAC_ADMINISTRATION",
             "SBX_RAC_CONSULTATION",
+            "SBX_CER_EXECUTION",
+            "SBX_CER_CONSULTATION",
             "SBX_DON_SIMULATION",
             "SBX_DON_CONSULTATION",
             "SBX_SIM_SIMULATION",
@@ -1923,6 +1926,7 @@
             "SBX_CAR_CONSULTATION",
             "SBX_SCN_CONSULTATION",
             "SBX_TRA_CONSULTATION",
+            "SBX_REF_CONSULTATION",
             "NOT_INBOX_READ"
           ]
         },
@@ -1954,6 +1958,7 @@
             "SBX_CAR_EXECUTION",
             "SBX_CAR_CONSULTATION",
             "SBX_TRA_CONSULTATION",
+            "SBX_REF_CONSULTATION",
             "NOT_INBOX_READ"
           ]
         },
@@ -1976,6 +1981,7 @@
             "ROLE_USER",
             "SBX_CER_CONSULTATION",
             "SBX_RAC_CONSULTATION",
+            "SBX_REF_CONSULTATION",
             "SBX_SIM_CONSULTATION",
             "SBX_MOB_CONSULTATION",
             "SBX_ISO_CONSULTATION",
@@ -2016,6 +2022,7 @@
             "SBX_CER_CONSULTATION",
             "SBX_SCN_CONSULTATION",
             "SBX_TRA_CONSULTATION",
+            "SBX_REF_CONSULTATION",
             "NOT_INBOX_READ"
           ]
         },

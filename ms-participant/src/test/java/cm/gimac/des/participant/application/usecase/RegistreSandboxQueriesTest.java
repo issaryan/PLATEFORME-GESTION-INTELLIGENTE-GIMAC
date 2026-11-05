@@ -36,6 +36,11 @@ class RegistreSandboxQueriesTest {
         }
 
         @Override
+        public List<String> servicesSouscrits(UUID institutionId) {
+            return ID.equals(institutionId) ? List.of("CARTE", "MOBILE") : List.of();
+        }
+
+        @Override
         public List<Service> services(int page, int taille) {
             List<Service> tous = List.of(new Service("CARTE", 3), new Service("MOBILE", 1), new Service("VIREMENT", 2));
             return tous.subList(Math.min(page * taille, tous.size()), Math.min((page + 1) * taille, tous.size()));
@@ -54,7 +59,7 @@ class RegistreSandboxQueriesTest {
     void lectureDeLaFiche() {
         versions.versions.put(ID, 4L);
         Fiche f = queries.fiche(" 99001 ");
-        assertThat(f).isEqualTo(new Fiche("99001", "Banque fictive 99001", "EN_HOMOLOGATION", 4, List.of(CORRESPONDANT)));
+        assertThat(f).isEqualTo(new Fiche("99001", "Banque fictive 99001", "EN_HOMOLOGATION", 4, List.of(CORRESPONDANT), List.of("CARTE", "MOBILE")));
         assertThat(codesLus).containsExactly("99001");
     }
 

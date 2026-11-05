@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gimac.cm/contrats/participant.subscription-changed.v1.schema.json",
+  "title": "participant.subscription-changed.v1",
+  "description": "Données (champ data de l'enveloppe CloudEvents) de l'évolution des services souscrits d'une institution, publiées par MS-PARTICIPANT, sujet participant.subscription, clé de partition : identifiant de l'institution. Lues par SBX-RACCORDEMENT, SBX-CAMPAGNE et SBX-REFERENTIEL.",
+  "type": "object",
+  "required": ["institutionId", "codesSouscrits", "versionSouscriptions", "dateEffet"],
+  "properties": {
+    "institutionId": { "type": "string", "format": "uuid" },
+    "participantCode": { "type": ["string", "null"], "description": "Code participant ; absent tant que l'institution n'en a pas reçu." },
+    "codesSouscrits": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true,
+      "description": "Tous les codes des abonnements actifs de l'institution après l'évolution, triés."
+    },
+    "versionSouscriptions": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Instant de l'évolution en millisecondes, croissant par institution ; un lecteur écarte une version inférieure ou égale à celle qu'il a retenue."
+    },
+    "dateEffet": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true
+}

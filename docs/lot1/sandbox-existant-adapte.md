@@ -64,10 +64,10 @@ maintenance passe par un accès temporaire par délégation (US-EXI-24), pas par
 | Production monétique | ROLE_PRODUCTION_MONETIQUE | CAR, DON, TRA : ADMINISTRATION ; CAR, DON : SIMULATION ; RAC, REF, TRA, CAR, DON, SIM, CER, LEC : CONSULTATION |
 | Exploitant | ROLE_ADMIN_SYSTEME | TRA : ADMINISTRATION, CONSULTATION ; RAC, SIM, CER, LEC : CONSULTATION |
 | Administrateur de l'institution | ROLE_SBX_ADMIN_INSTITUTION (externe) | HAB : ADMINISTRATION, CONSULTATION ; RAC, CER, TRA : CONSULTATION |
-| Chef de projet participant | ROLE_SBX_CHEF_PROJET (externe) | CER : EXECUTION, CONSULTATION ; SIM, MOB, ISO, CAR : SIMULATION, CONSULTATION ; RAC, DON, SCN, TRA : CONSULTATION |
-| Développeur du participant | ROLE_SBX_DEVELOPPEUR (externe) | RAC : ADMINISTRATION, CONSULTATION ; DON, SIM, MOB, ISO, CAR : SIMULATION, CONSULTATION ; SCN, TRA : CONSULTATION |
-| Testeur du participant | ROLE_SBX_TESTEUR (externe) | CER, SIM, MOB, ISO, CAR : EXECUTION, CONSULTATION ; TRA : CONSULTATION |
-| Lecteur du participant | ROLE_SBX_LECTEUR (externe) | CER, RAC, SIM, MOB, ISO, CAR : CONSULTATION |
+| Chef de projet participant | ROLE_SBX_CHEF_PROJET (externe) | CER : EXECUTION, CONSULTATION ; SIM, MOB, ISO, CAR : SIMULATION, CONSULTATION ; RAC, DON, SCN, TRA, REF : CONSULTATION |
+| Développeur du participant | ROLE_SBX_DEVELOPPEUR (externe) | RAC : ADMINISTRATION, CONSULTATION ; CER : EXECUTION, CONSULTATION (cas affectés, CA-SBX-GIMAC-02 UC-CER-04) ; DON, SIM, MOB, ISO, CAR : SIMULATION, CONSULTATION ; SCN, TRA, REF : CONSULTATION |
+| Testeur du participant | ROLE_SBX_TESTEUR (externe) | CER, SIM, MOB, ISO, CAR : EXECUTION, CONSULTATION ; TRA, REF : CONSULTATION |
+| Lecteur du participant | ROLE_SBX_LECTEUR (externe) | CER, RAC, REF, SIM, MOB, ISO, CAR : CONSULTATION |
 | Partenaire technique mandaté | ROLE_SBX_PARTENAIRE (externe) | comme le développeur, plus CER : EXECUTION, CONSULTATION |
 
 Les profils externes reçoivent aussi `NOT_INBOX_READ` (cloche du portail), comme le correspondant.
@@ -281,10 +281,14 @@ Interface interne de MS-PARTICIPANT (jamais relayée par la passerelle), jeton d
 
 | Méthode | Route | Réponse |
 |---|---|---|
-| GET | `/api/v1/interne/institutions/code/{code}/fiche` | `{ codeParticipant, raisonSociale, statut, versionStatut, correspondants: [{ id, compteId, nom, fonction }] }` ; 404 `PAR_INSTITUTION_NOT_FOUND` si le code est absent |
+| GET | `/api/v1/interne/institutions/code/{code}/fiche` | `{ codeParticipant, raisonSociale, statut, versionStatut, correspondants: [{ id, compteId, nom, fonction }], servicesSouscrits: [code] }` ; 404 `PAR_INSTITUTION_NOT_FOUND` si le code est absent |
 | GET | `/api/v1/interne/nomenclature/services?page=0&taille=50` | `{ contenu: [{ code, institutions }], total, page, taille }`, codes des abonnements actifs triés ; taille de 1 à 100, sinon 422 `PAR_PAGINATION_INVALIDE` |
 
 - `versionStatut` : version de statut courante (§6.5), 0 tant qu'aucun changement n'a été publié.
+- `servicesSouscrits` (ajout du 05/11/2026) : codes des abonnements actifs de l'institution, triés, lus par
+  SBX-RACCORDEMENT (« services souscrits lus sur la fiche », CC-SBX-GIMAC-02 algorithme 6.7). La nomenclature ne
+  donne, par code, que le nombre d'institutions abonnées (`institutions`, entier). Charge d'exemple partagée avec la
+  sandbox : `ms-participant/src/test/resources/contrats/fiche-sandbox.exemple.json`.
 - `correspondants` : correspondants actifs seulement ; `compteId` est le compte de la plateforme (MS-IAM) quand il
   existe. Aucun courriel ni téléphone.
 - **Port de SBX-ESPACE** (`RegistreParticipantPort`, lecture seule) : `lireFiche(code)` vers la fiche

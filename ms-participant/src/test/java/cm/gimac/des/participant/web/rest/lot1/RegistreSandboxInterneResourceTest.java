@@ -18,7 +18,7 @@ class RegistreSandboxInterneResourceTest {
     @DisplayName("Fiche et nomenclature rendues telles que lues par le cas d'utilisation")
     void delegation() {
         RegistreSandboxQueries queries = mock(RegistreSandboxQueries.class);
-        Fiche fiche = new Fiche("99001", "Banque fictive 99001", "ACTIF", 2, List.of());
+        Fiche fiche = new Fiche("99001", "Banque fictive 99001", "ACTIF", 2, List.of(), List.of());
         PageServices page = new PageServices(List.of(), 0, 0, 50);
         when(queries.fiche("99001")).thenReturn(fiche);
         when(queries.nomenclature(0, 50)).thenReturn(page);

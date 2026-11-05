@@ -1,0 +1,15 @@
+{
+  "codeParticipant": "99001",
+  "raisonSociale": "Banque fictive 99001",
+  "statut": "ACTIF",
+  "versionStatut": 4,
+  "correspondants": [
+    {
+      "id": "6f1c2a3e-1111-4a6b-9c1d-000000000001",
+      "compteId": "6f1c2a3e-2222-4a6b-9c1d-000000000002",
+      "nom": "Awa Ndiaye",
+      "fonction": "MONETIQUE"
+    }
+  ],
+  "servicesSouscrits": ["CRT.ATM", "ISO.ACC", "W2W"]
+}
