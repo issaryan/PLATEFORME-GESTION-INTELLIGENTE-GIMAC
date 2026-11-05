@@ -3255,7 +3255,10 @@
       ],
       "optionalClientScopes": [
         "offline_access"
-      ]
+      ],
+      "attributes": {
+        "tls.client.certificate.bound.access.tokens": "true"
+      }
     },
     {
       "clientId": "certification-service",

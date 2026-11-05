@@ -1,17 +1,21 @@
 package cm.gimac.des.homologation.infrastructure.client.sandbox;
 
 import cm.gimac.des.homologation.application.port.out.LectureSandboxPort;
+import cm.gimac.des.homologation.infrastructure.client.ClientMtls;
 import cm.gimac.des.homologation.infrastructure.client.ServiceTokenInterceptor;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.ssl.SslBundles;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
@@ -19,7 +23,8 @@ import org.springframework.web.client.RestClient;
 
 /**
  * Client du contrat de lecture v1 de SBX-LECTURE (US-EXI-14), par la passerelle interne de service : jeton du compte de
- * service de la plateforme du DES (lié au certificat client, RFC 8705, configuré par l'infrastructure). Seules les
+ * service de la plateforme du DES, lié au certificat client (RFC 8705, CC-SBX-GIMAC-02 §D.8). Le certificat est celui du
+ * paquet SSL {@code gimac.services.sbx-lecture.ssl-bundle}, présenté en mTLS ; l'adresse est alors en https. Seules les
  * méthodes GET et HEAD sont émises. 503 et 429 (Retry-After), comme un service injoignable, donnent
  * {@link LectureSandboxPort.Indisponible} sans aucune donnée ; toute autre réponse en erreur, ou hors contrat, donne
  * {@link LectureSandboxPort.HorsContrat}.
@@ -32,12 +37,27 @@ public class LectureSandboxRestAdapter implements LectureSandboxPort {
     private final RestClient client;
 
     @Autowired
-    public LectureSandboxRestAdapter(RestClient.Builder builder, ServiceTokenInterceptor jeton, @Value("${gimac.services.sbx-lecture.url}") String url) {
-        this(builder.baseUrl(url).requestInterceptor(jeton).build());
+    public LectureSandboxRestAdapter(
+        RestClient.Builder builder,
+        ServiceTokenInterceptor jeton,
+        SslBundles paquets,
+        @Value("${gimac.services.sbx-lecture.url}") String url,
+        @Value("${gimac.services.sbx-lecture.ssl-bundle:}") String paquet
+    ) {
+        this(construire(builder, jeton, paquets, url, paquet));
     }
 
     LectureSandboxRestAdapter(RestClient client) {
         this.client = client;
+    }
+
+    static RestClient construire(RestClient.Builder builder, ServiceTokenInterceptor jeton, SslBundles paquets, String url, String paquet) {
+        Optional<ClientHttpRequestFactory> mtls = ClientMtls.fabrique(paquets, paquet);
+        if (mtls.isPresent() && !url.startsWith("https://")) {
+            throw new IllegalStateException("SBX-LECTURE en mTLS : adresse https attendue, reçu " + url);
+        }
+        mtls.ifPresent(builder::requestFactory);
+        return builder.baseUrl(url).requestInterceptor(jeton).build();
     }
 
     @Override

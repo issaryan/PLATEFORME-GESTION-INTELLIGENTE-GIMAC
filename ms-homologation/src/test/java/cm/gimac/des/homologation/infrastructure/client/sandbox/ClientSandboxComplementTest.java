@@ -37,9 +37,9 @@ class ClientSandboxComplementTest {
     @Test
     @DisplayName("Adaptateur réel construit par Spring (passerelle interne, jeton de service) ; condensé d'un algorithme absent")
     void construction() throws NoSuchMethodException {
-        assertThat(new LectureSandboxRestAdapter(RestClient.builder(), new ServiceTokenInterceptor(mock(OAuth2AuthorizedClientManager.class)), "http://sbx-lecture:8111")).isNotNull();
+        assertThat(new LectureSandboxRestAdapter(RestClient.builder(), new ServiceTokenInterceptor(mock(OAuth2AuthorizedClientManager.class)), new org.springframework.boot.ssl.DefaultSslBundleRegistry(), "http://sbx-lecture:8111", "")).isNotNull();
         assertThat(
-            LectureSandboxRestAdapter.class.getConstructor(RestClient.Builder.class, ServiceTokenInterceptor.class, String.class).getAnnotation(org.springframework.beans.factory.annotation.Autowired.class)
+            LectureSandboxRestAdapter.class.getConstructor(RestClient.Builder.class, ServiceTokenInterceptor.class, org.springframework.boot.ssl.SslBundles.class, String.class, String.class).getAnnotation(org.springframework.beans.factory.annotation.Autowired.class)
         ).isNotNull();
         assertThatThrownBy(() -> LectureSandboxStubAdapter.condense(b("x"), "INCONNU")).isInstanceOf(IllegalStateException.class);
     }
