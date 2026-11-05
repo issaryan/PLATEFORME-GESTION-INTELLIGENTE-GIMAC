@@ -20,8 +20,8 @@ import cm.gimac.des.homologation.domain.Liaison;
 import cm.gimac.des.homologation.domain.enumeration.EtatLiaison;
 import cm.gimac.des.homologation.domain.sandbox.ReleveLiaisonSandbox;
 import cm.gimac.des.homologation.infrastructure.messaging.outbox.OutboxPublisher;
+import cm.gimac.des.homologation.infrastructure.persistence.EvaluationsLiaisonRepository;
 import cm.gimac.des.homologation.repository.CampagneSandboxRepository;
-import cm.gimac.des.homologation.repository.EvaluationBaseRepository;
 import cm.gimac.des.homologation.repository.ExecutionSandboxRepository;
 import cm.gimac.des.homologation.repository.LiaisonRepository;
 import cm.gimac.des.homologation.repository.PieceSandboxRepository;
@@ -95,7 +95,7 @@ class ReleveSandboxTest {
             mock(ExecutionSandboxRepository.class),
             mock(ScenariosSandboxRepository.class),
             releves,
-            mock(EvaluationBaseRepository.class),
+            mock(EvaluationsLiaisonRepository.class),
             mock(PieceSandboxRepository.class),
             pieces,
             mock(CouverturesSandbox.class),

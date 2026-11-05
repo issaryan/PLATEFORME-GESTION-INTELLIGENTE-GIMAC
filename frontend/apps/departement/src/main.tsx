@@ -1,3 +1,5 @@
+// crypto.randomUUID en http (contexte non sécurisé) : premier import, avant toute bibliothèque.
+import '@gimac/socle/polyfill'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'

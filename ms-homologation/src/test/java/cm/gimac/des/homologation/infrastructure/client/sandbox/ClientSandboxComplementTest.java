@@ -1,9 +1,12 @@
 package cm.gimac.des.homologation.infrastructure.client.sandbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import cm.gimac.des.homologation.application.port.out.LectureSandboxPort.HorsContrat;
 import cm.gimac.des.homologation.application.usecase.sandbox.ReleveSandbox;
@@ -50,6 +53,18 @@ class ClientSandboxComplementTest {
         ReleveSandbox r = mock(ReleveSandbox.class);
         new ReleveSandboxScheduler(r).relever();
         verify(r).releverTout();
+    }
+
+    @Test
+    @DisplayName("Planificateur : relève en échec consignée puis reprise ; une Error n'est jamais avalée")
+    void planificateurEnEchec() {
+        ReleveSandbox r = mock(ReleveSandbox.class);
+        when(r.releverTout()).thenThrow(new IllegalStateException("SBX-LECTURE injoignable")).thenReturn(3).thenThrow(new OutOfMemoryError("tas"));
+        ReleveSandboxScheduler s = new ReleveSandboxScheduler(r);
+        assertThatCode(s::relever).doesNotThrowAnyException();
+        assertThatCode(s::relever).doesNotThrowAnyException();
+        assertThatThrownBy(s::relever).isInstanceOf(OutOfMemoryError.class);
+        verify(r, times(3)).releverTout();
     }
 
     @Test

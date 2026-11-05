@@ -18,8 +18,8 @@ import cm.gimac.des.homologation.domain.sandbox.ExecutionSandbox;
 import cm.gimac.des.homologation.domain.sandbox.PieceSandbox;
 import cm.gimac.des.homologation.domain.sandbox.ReleveLiaisonSandbox;
 import cm.gimac.des.homologation.infrastructure.messaging.outbox.OutboxPublisher;
+import cm.gimac.des.homologation.infrastructure.persistence.EvaluationsLiaisonRepository;
 import cm.gimac.des.homologation.repository.CampagneSandboxRepository;
-import cm.gimac.des.homologation.repository.EvaluationBaseRepository;
 import cm.gimac.des.homologation.repository.ExecutionSandboxRepository;
 import cm.gimac.des.homologation.repository.LiaisonRepository;
 import cm.gimac.des.homologation.repository.PieceSandboxRepository;
@@ -67,7 +67,7 @@ public class ReleveSandbox {
     private final ExecutionSandboxRepository executions;
     private final ScenariosSandboxRepository scenarios;
     private final ReleveLiaisonSandboxRepository releves;
-    private final EvaluationBaseRepository evaluationBases;
+    private final EvaluationsLiaisonRepository evaluationBases;
     private final PieceSandboxRepository piecesSandbox;
     private final ConservationPiecesSandbox pieces;
     private final CouverturesSandbox couvertures;
@@ -83,7 +83,7 @@ public class ReleveSandbox {
         ExecutionSandboxRepository executions,
         ScenariosSandboxRepository scenarios,
         ReleveLiaisonSandboxRepository releves,
-        EvaluationBaseRepository evaluationBases,
+        EvaluationsLiaisonRepository evaluationBases,
         PieceSandboxRepository piecesSandbox,
         ConservationPiecesSandbox pieces,
         CouverturesSandbox couvertures,

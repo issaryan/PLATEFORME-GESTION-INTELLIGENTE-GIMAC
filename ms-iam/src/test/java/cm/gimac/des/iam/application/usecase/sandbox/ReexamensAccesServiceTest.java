@@ -20,9 +20,9 @@ import cm.gimac.des.iam.domain.compte.Acteur;
 import cm.gimac.des.iam.domain.compte.Compte;
 import cm.gimac.des.iam.domain.enumeration.ReviewDecision;
 import cm.gimac.des.iam.domain.enumeration.ReviewState;
-import cm.gimac.des.iam.repository.AccessReviewDecisionRepository;
-import cm.gimac.des.iam.repository.AccessReviewRepository;
-import cm.gimac.des.iam.repository.CollaboratorRepository;
+import cm.gimac.des.iam.infrastructure.persistence.sandbox.CollaborateursFederesRepository;
+import cm.gimac.des.iam.infrastructure.persistence.sandbox.DecisionsRevueRepository;
+import cm.gimac.des.iam.infrastructure.persistence.sandbox.RevuesAccesRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -45,9 +45,9 @@ class ReexamensAccesServiceTest {
     static final Acteur ACTEUR = new Acteur(ACTEUR_ID.toString(), "RSSI", Set.of("IAM_ACCOUNT_ROLES"));
     static final Instant T = Instant.parse("2026-10-27T12:00:00Z");
 
-    @Mock AccessReviewRepository reviews;
-    @Mock AccessReviewDecisionRepository decisions;
-    @Mock CollaboratorRepository collaborateurs;
+    @Mock RevuesAccesRepository reviews;
+    @Mock DecisionsRevueRepository decisions;
+    @Mock CollaborateursFederesRepository collaborateurs;
     @Mock AdministrationComptesService comptes;
     @Mock CatalogueProfils catalogue;
     @Mock JournalSandbox journal;

@@ -145,7 +145,7 @@ public class RegistreSandboxQueries {
         );
     }
 
-    private static Instant instant(Timestamp t) {
+    static Instant instant(Timestamp t) {
         return t == null ? null : t.toInstant();
     }
 }

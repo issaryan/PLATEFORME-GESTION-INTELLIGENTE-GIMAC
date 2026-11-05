@@ -134,6 +134,8 @@ enum ReviewState {
 }
 
 enum ReviewDecision {
+  /** Décision attendue : ligne ouverte avec la campagne, sans auteur ni date (US-EXI-23). */
+  EN_ATTENTE,
   MAINTENU,
   REDUIT,
   REVOQUE
@@ -273,8 +275,13 @@ entity AccessReviewDecision {
   id UUID
   decision ReviewDecision required
   comment String maxlength(500)
-  decidedBy UUID required
-  decidedAt Instant required
+  /** Auteur et date de la décision ; vides tant qu'elle est EN_ATTENTE (US-EXI-23). */
+  decidedBy UUID
+  decidedAt Instant
+  /** Profils du compte à l'ouverture de la campagne, ordonnés et séparés par un retour à la ligne. */
+  profilesSnapshot TextBlob
+  /** Permissions effectives à l'ouverture, SBX_* incluses, dans le même format canonique. */
+  permissionsSnapshot TextBlob
 }
 
 /* ---------------------------------------------------------------------------

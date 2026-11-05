@@ -29,10 +29,20 @@ public class DocumentRestAdapter implements DocumentRegistryPort {
 
     record Metadonnees(UUID id, String nomFichier, String typeMime, String sha256) {}
 
-    private final RestClient client;
+    /** Préfixe des comptes de service de Keycloak, suivi de l'identifiant du client. */
+    static final String PREFIXE_COMPTE_SERVICE = "service-account-";
 
-    public DocumentRestAdapter(RestClient.Builder builder, ServiceTokenInterceptor jeton, @Value("${gimac.services.document.url}") String url) {
+    private final RestClient client;
+    private final String compteService;
+
+    public DocumentRestAdapter(
+        RestClient.Builder builder,
+        ServiceTokenInterceptor jeton,
+        @Value("${gimac.services.document.url}") String url,
+        @Value("${spring.security.oauth2.client.registration.service-token.client-id}") String clientService
+    ) {
         this.client = builder.baseUrl(url).requestInterceptor(jeton).build();
+        this.compteService = PREFIXE_COMPTE_SERVICE + clientService;
     }
 
     /**
@@ -107,6 +117,15 @@ public class DocumentRestAdapter implements DocumentRegistryPort {
 
     @Override
     public Depot deposer(byte[] contenu, String nomFichier, String typeMime, String finalite, String reference, UUID deposantId) {
+        return deposer(contenu, nomFichier, finalite, reference, deposantId == null ? null : deposantId.toString());
+    }
+
+    @Override
+    public Depot deposerParLeService(byte[] contenu, String nomFichier, String typeMime, String finalite, String reference) {
+        return deposer(contenu, nomFichier, finalite, reference, compteService);
+    }
+
+    private Depot deposer(byte[] contenu, String nomFichier, String finalite, String reference, String deposant) {
         var corps = new LinkedMultiValueMap<String, Object>();
         corps.add(
             "fichier",
@@ -119,7 +138,7 @@ public class DocumentRestAdapter implements DocumentRegistryPort {
         );
         corps.add("finalite", finalite);
         corps.add("reference", reference);
-        corps.add("deposantId", deposantId == null ? "service-account-homologation-service" : deposantId.toString());
+        corps.add("deposantId", deposant);
         try {
             Depose d = client.post().uri("/api/v1/interne/documents").contentType(MediaType.MULTIPART_FORM_DATA).body(corps).retrieve().body(Depose.class);
             if (d == null || d.id() == null) {

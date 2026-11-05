@@ -27,9 +27,9 @@ import cm.gimac.des.homologation.domain.sandbox.ExecutionSandbox;
 import cm.gimac.des.homologation.domain.sandbox.PieceSandbox;
 import cm.gimac.des.homologation.domain.sandbox.ReleveLiaisonSandbox;
 import cm.gimac.des.homologation.infrastructure.messaging.outbox.OutboxPublisher;
+import cm.gimac.des.homologation.infrastructure.persistence.EvaluationsLiaisonRepository;
 import cm.gimac.des.homologation.repository.CampagneSandboxRepository;
 import cm.gimac.des.homologation.repository.CoverageRepository;
-import cm.gimac.des.homologation.repository.EvaluationBaseRepository;
 import cm.gimac.des.homologation.repository.ExecutionSandboxRepository;
 import cm.gimac.des.homologation.repository.LiaisonRepository;
 import cm.gimac.des.homologation.repository.PieceSandboxRepository;
@@ -67,7 +67,7 @@ class CouvertureSandboxComplementTest {
         when(repo.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
         assertThat(new ConservationPiecesSandbox(lecture, documents, repo, ReleveSandboxTest.transactions(), Clock.fixed(T, ZoneOffset.UTC)).conserver("C")).isEqualTo(1);
         verify(lecture, never()).telecharger("C", "BILAN", 1);
-        verify(documents, never()).deposer(any(), anyString(), anyString(), anyString(), anyString(), any());
+        verify(documents, never()).deposerParLeService(any(), anyString(), anyString(), anyString(), anyString());
         assertThatThrownBy(() -> ConservationPiecesSandbox.condense(octets, "INCONNU")).isInstanceOf(IllegalStateException.class).hasMessageContaining("INCONNU");
     }
 
@@ -100,7 +100,7 @@ class CouvertureSandboxComplementTest {
         when(campagnes.verrouiller("C1")).thenReturn(Optional.of(new CampagneSandbox("C1", l.getId())));
         when(lecture.executions(eq("C1"), any(), anyInt())).thenReturn(new PageExecutions(List.of(), "p1", true, "e"));
         ReleveSandbox r = new ReleveSandbox(lecture, liaisons, campagnes, executions, mock(ScenariosSandboxRepository.class), releves,
-            mock(EvaluationBaseRepository.class), mock(PieceSandboxRepository.class), mock(ConservationPiecesSandbox.class),
+            mock(EvaluationsLiaisonRepository.class), mock(PieceSandboxRepository.class), mock(ConservationPiecesSandbox.class),
             mock(CouverturesSandbox.class), mock(OutboxPublisher.class), ReleveSandboxTest.transactions(), Clock.fixed(T, ZoneOffset.UTC));
         assertThat(r.releverTout()).isEqualTo(1);
     }

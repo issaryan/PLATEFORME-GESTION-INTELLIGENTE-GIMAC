@@ -14,9 +14,9 @@ import cm.gimac.des.iam.domain.enumeration.HabilitationLevel;
 import cm.gimac.des.iam.domain.enumeration.ReviewDecision;
 import cm.gimac.des.iam.domain.enumeration.ReviewState;
 import cm.gimac.des.iam.domain.sandbox.ReexamenAcces;
-import cm.gimac.des.iam.repository.AccessReviewDecisionRepository;
-import cm.gimac.des.iam.repository.AccessReviewRepository;
-import cm.gimac.des.iam.repository.CollaboratorRepository;
+import cm.gimac.des.iam.infrastructure.persistence.sandbox.CollaborateursFederesRepository;
+import cm.gimac.des.iam.infrastructure.persistence.sandbox.DecisionsRevueRepository;
+import cm.gimac.des.iam.infrastructure.persistence.sandbox.RevuesAccesRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -49,9 +49,9 @@ public class ReexamensAccesService {
     ) {}
     public record VueCampagne(Campagne campagne, List<Acces> acces) {}
 
-    private final AccessReviewRepository reviews;
-    private final AccessReviewDecisionRepository decisions;
-    private final CollaboratorRepository collaborateurs;
+    private final RevuesAccesRepository reviews;
+    private final DecisionsRevueRepository decisions;
+    private final CollaborateursFederesRepository collaborateurs;
     private final AdministrationComptesService comptes;
     private final CatalogueProfils catalogue;
     private final JournalSandbox journal;
@@ -59,9 +59,9 @@ public class ReexamensAccesService {
     private final Clock clock;
 
     public ReexamensAccesService(
-        AccessReviewRepository reviews,
-        AccessReviewDecisionRepository decisions,
-        CollaboratorRepository collaborateurs,
+        RevuesAccesRepository reviews,
+        DecisionsRevueRepository decisions,
+        CollaborateursFederesRepository collaborateurs,
         AdministrationComptesService comptes,
         CatalogueProfils catalogue,
         JournalSandbox journal,

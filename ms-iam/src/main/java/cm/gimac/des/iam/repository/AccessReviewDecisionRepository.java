@@ -15,12 +15,6 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface AccessReviewDecisionRepository extends JpaRepository<AccessReviewDecision, UUID> {
-    List<AccessReviewDecision> findByReviewIdOrderByCollaboratorFederatedId(UUID reviewId);
-
-    Optional<AccessReviewDecision> findByReviewIdAndCollaboratorFederatedId(UUID reviewId, String federatedId);
-
-    long countByReviewIdAndDecision(UUID reviewId, cm.gimac.des.iam.domain.enumeration.ReviewDecision decision);
-
     default Optional<AccessReviewDecision> findOneWithEagerRelationships(UUID id) {
         return this.findOneWithToOneRelationships(id);
     }
