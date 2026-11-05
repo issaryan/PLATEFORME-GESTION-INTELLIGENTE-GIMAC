@@ -58,16 +58,6 @@ export function useDisponibilites(page: number, taille: number) {
 
 /** Clé d'idempotence d'une intention : tirée à l'ouverture du dialogue, gardée pour ses nouvelles tentatives. */
 export const nouvelleCle = (): string => uuidV4()
-export const nouvelleCle = (): string =>
-  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (c: string) => {
-        const n = Number(c)
-        const r = typeof crypto !== 'undefined' && crypto.getRandomValues
-          ? crypto.getRandomValues(new Uint8Array(1))[0]
-          : Math.floor(Math.random() * 256)
-        return (n ^ (r & (15 >> (n / 4)))).toString(16)
-      })
 
 /** Mesures par service : relues toutes les 30 secondes, au rythme des cycles de SBX-TRACE. */
 export function useServicesSupervises(page: number, taille: number) {
