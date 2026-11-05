@@ -160,6 +160,43 @@ test_designation_conducteur if authz.allow with input as {
 	"authentifie": true, "acr": "2",
 }
 
+# D-133 : périmètre du projet de certification, modifié par le gestionnaire, un super administrateur ou un chargé de
+# l'implémentation des projets de la SNA ; le service vérifie en plus que HOM_PERIMETRE_EDIT est tenu par le gestionnaire.
+test_perimetre_gestionnaire if authz.allow with input as {
+	"method": "PUT", "path": "/bff/des/homologation/liaisons/l1/perimetre", "permissions": ["HOM_PERIMETRE_EDIT"],
+	"authentifie": true, "acr": "2",
+}
+
+test_perimetre_edition_tous if authz.allow with input as {
+	"method": "PUT", "path": "/bff/des/homologation/liaisons/l1/perimetre", "permissions": ["HOM_PERIMETRE_EDIT_TOUS"],
+	"authentifie": true, "acr": "2",
+}
+
+test_perimetre_refuse_sans_permission if not authz.allow with input as {
+	"method": "PUT", "path": "/bff/des/homologation/liaisons/l1/perimetre", "permissions": ["HOM_LIAISON_READ", "HOM_OPERATION_VALIDATE", "HOM_LIAISON_OPEN"],
+	"authentifie": true, "acr": "2",
+}
+
+test_perimetre_refuse_sans_double_facteur if not authz.allow with input as {
+	"method": "PUT", "path": "/bff/des/homologation/liaisons/l1/perimetre", "permissions": ["HOM_PERIMETRE_EDIT_TOUS"],
+	"authentifie": true, "acr": "1",
+}
+
+test_perimetre_refuse_au_portail if not authz.allow with input as {
+	"method": "PUT", "path": "/bff/portail/homologation/liaisons/l1/perimetre", "permissions": ["HOM_PERIMETRE_EDIT_TOUS", "HOM_PORTAL_SUBMIT"],
+	"authentifie": true, "acr": "2", "institution_id": "i1",
+}
+
+test_perimetre_lecture if authz.allow with input as {
+	"method": "GET", "path": "/bff/des/homologation/liaisons/l1/perimetre/historique", "permissions": ["HOM_LIAISON_READ"],
+	"authentifie": true, "acr": "2",
+}
+
+test_perimetre_lecture_exige_sa_permission if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/homologation/liaisons/l1/perimetre", "permissions": ["HOM_PERIMETRE_EDIT"],
+	"authentifie": true, "acr": "2",
+}
+
 # D-64 : messagerie instantanée de travail (docs/lot1/messagerie.md §1), tout membre interne (DES et console).
 routes_messagerie := [
 	["GET", "/bff/des/collaboration/messagerie/annuaire", "COL_MESSAGE_READ"],

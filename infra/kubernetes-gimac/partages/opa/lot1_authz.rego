@@ -40,6 +40,10 @@ regles := [
 	{"m": "POST", "re": `^/bff/des/homologation/liaisons$`, "p": "HOM_LIAISON_OPEN"},
 	# Cadrage (étape 3, D-58) : désignation du conducteur de projet par un chef de département.
 	{"m": "PUT", "re": `^/bff/des/homologation/liaisons/[^/]+/chef-de-projet$`, "p": "HOM_PROJECT_DESIGNATE"},
+	# Périmètre du projet de certification (D-133) : modification par le gestionnaire (HOM_PERIMETRE_EDIT, le service
+	# vérifie qu'il est le gestionnaire) ou HOM_PERIMETRE_EDIT_TOUS (équivalence ci-dessous) ; lecture et historique.
+	{"m": "PUT", "re": `^/bff/des/homologation/liaisons/[^/]+/perimetre$`, "p": "HOM_PERIMETRE_EDIT"},
+	{"m": "GET", "re": `^/bff/des/homologation/liaisons/[^/]+/perimetre(/historique)?$`, "p": "HOM_LIAISON_READ"},
 	{"m": "POST", "re": `^/bff/des/homologation/operations/[^/]+/validation$`, "p": "HOM_OPERATION_VALIDATE"},
 	{"m": "POST", "re": `^/bff/des/homologation/operations/[^/]+/reouverture$`, "p": "HOM_OPERATION_REOPEN"},
 	# Parcours, étapes 4 à 10 (docs/lot1/parcours-backend.md §1) : gestes à permission unique. Les gestes
@@ -424,6 +428,7 @@ permissions_equivalentes := {
 	"HOM_REFERENTIEL_EDIT": {"REF_METIER_ADMIN"},
 	"HOM_REFERENTIEL_PUBLISH": {"REF_METIER_ADMIN"},
 	"HOM_REFERENTIEL_MIGRATE": {"REF_METIER_ADMIN"},
+	"HOM_PERIMETRE_EDIT": {"HOM_PERIMETRE_EDIT_TOUS"},
 }
 
 # La permission exigée, ou une permission qui la vaut.
