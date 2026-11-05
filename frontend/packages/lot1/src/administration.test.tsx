@@ -44,9 +44,12 @@ describe('navigation : groupe « Mon activité » (D-76)', () => {
       ['/des/taches', 'PIL_ACTIVITY_OWN'],
       ['/des/rapports', 'PIL_ACTIVITY_OWN'],
       ['/des/equipe', 'PIL_TEAM_READ'],
-      // Processus de l'unité (D-87) : tout membre interne.
+    ])
+    // Section « Processus et demandes » (barre en sections, 05/11/2026) : processus de l'unité (D-87), lancer une
+    // demande et mes demandes (D-98), tout compte interne.
+    expect(NAVIGATION_DES[2].libelleKey).toBe('nav.groupe.processus')
+    expect(NAVIGATION_DES[2].entrees.map((e) => [e.chemin, e.predicat?.any?.[0]])).toEqual([
       ['/des/processus', 'PIL_ACTIVITY_OWN'],
-      // Lancer une demande et Mes demandes (D-98) : tout compte interne.
       ['/des/demandes/lancer', 'PIL_ACTIVITY_OWN'],
       ['/des/demandes', 'PIL_ACTIVITY_OWN'],
     ])

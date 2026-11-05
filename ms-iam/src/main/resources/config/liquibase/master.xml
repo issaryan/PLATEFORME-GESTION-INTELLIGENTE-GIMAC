@@ -43,6 +43,7 @@
     <include file="config/liquibase/changelog/20261022090000_iam_sandbox_perimetres.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261022140000_iam_sandbox_delegations.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261027120000_iam_reexamen_acces.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261105120000_iam_navigation_sections.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

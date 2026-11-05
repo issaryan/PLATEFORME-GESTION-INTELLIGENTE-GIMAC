@@ -46,7 +46,7 @@ describe('D-98 : catalogue des fonctionnalités', () => {
   it('« Lancer une demande » et « Mes demandes » : module processus, ouvertes à PIL_ACTIVITY_OWN, avec leur écran', () => {
     for (const cle of ['lancerDemande', 'mesDemandes']) {
       const f = FONCTIONNALITES_INITIALES.find((x) => x.cle === cle)!
-      expect(f).toMatchObject({ application: 'des', module: 'processus', groupe: 'monActivite', visible: true, permissions: { tous: [], unDe: ['PIL_ACTIVITY_OWN'] } })
+      expect(f).toMatchObject({ application: 'des', module: 'processus', groupe: 'processus', visible: true, permissions: { tous: [], unDe: ['PIL_ACTIVITY_OWN'] } })
       expect(ECRANS_DES[cle]).toBeDefined()
     }
   })

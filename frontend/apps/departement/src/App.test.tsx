@@ -39,6 +39,11 @@ class FluxMuet {
 const monter = (chemin = '/') => render(<MemoryRouter initialEntries={[chemin]}><App /></MemoryRouter>)
 const navigation = () => screen.getByRole('navigation', { name: 'Navigation principale' })
 
+/** Barre en sections repliables (05/11/2026) : déplie toutes les sections pour lire chaque entrée. */
+function deplier() {
+  document.querySelectorAll('.gm-sidenav-section[aria-expanded="false"]').forEach((b) => fireEvent.click(b))
+}
+
 describe('profils de démonstration', () => {
   it('chefs du DES et de la DDRM : ouverture et désignation ; ingénieur : ni l’une ni l’autre ; conducteur : lecture', () => {
     // CR v1.7 (D-105) : l'ouverture d'un projet revient à la DDRM ; le chef du DES désigne les ressources.
@@ -83,6 +88,7 @@ describe('Mon activité (D-76)', () => {
     localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_COLLABORATEUR')
     monter()
     expect(await screen.findByRole('region', { name: 'Ma journée' }, { timeout: 8000 })).toBeTruthy()
+    deplier()
     for (const n of ['Ma journée', 'Agenda', 'Tâches', 'Rapports']) expect(within(navigation()).getByRole('link', { name: n })).toBeTruthy()
     expect(within(navigation()).queryByRole('link', { name: 'Mon équipe' })).toBeNull()
     expect(within(navigation()).queryByRole('link', { name: 'Institutions membres' })).toBeNull()
@@ -135,6 +141,7 @@ describe('Application du département', () => {
     // Messages non lus en pastille sur l'entrée « Messagerie » (D-64).
     expect(await screen.findByLabelText(/non lus/)).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Relations avec les membres (DDRM)' })).toBeTruthy()
+    deplier()
     for (const n of ['Institutions membres', 'Liaisons et parcours', 'Mon compte', 'Se déconnecter']) expect(screen.getAllByRole('link', { name: n }).length).toBeGreaterThan(0)
     expect(document.querySelector('.gm-footer')).toBeTruthy()
     fireEvent.click(screen.getByRole('link', { name: 'Mon compte' }))
@@ -183,6 +190,7 @@ describe('Application du département', () => {
     fireEvent.click(lien)
     expect(await screen.findByRole('heading', { level: 1, name: 'Comptes' }, { timeout: 8000 })).toBeTruthy()
     // Toujours l'application du département : sa navigation reste en place.
+    deplier()
     expect(screen.getAllByRole('link', { name: 'Liaisons et parcours' }).length).toBeGreaterThan(0)
     expect(screen.getByRole('link', { name: /Console de la plateforme/ }).getAttribute('href')).toBe('http://localhost:4202/console/tableau-de-bord')
   })

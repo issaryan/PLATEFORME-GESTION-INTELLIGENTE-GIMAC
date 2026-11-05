@@ -63,6 +63,11 @@ export type EnveloppeProps = {
   recherche?: SourceRecherche[]
   /** Logo, bandeau et pied d'un produit hébergé (D-118) ; ceux de la plateforme à défaut. */
   habillage?: HabillageEnveloppe
+  /**
+   * Sections repliables de la navigation (application du DES, 05/11/2026) : accordéons intégrés à la barre, section
+   * de l'écran courant ouverte, état mémorisé par couche et par compte dans le stockage local.
+   */
+  navigationRepliable?: boolean
   children: ReactNode
 }
 
@@ -158,7 +163,7 @@ export function Enveloppe(p: EnveloppeProps) {
     : p.navigation
   const autorisee = (e: EntreeNavigation) => !p.permissions || ((!e.permission || p.permissions.includes(e.permission)) && satisfait(p.permissions, e.predicat))
   const groupes = navigation
-    .map((g) => ({ label: g.libelle ?? (g.libelleKey ? t(g.libelleKey) : undefined), items: g.entrees.filter(autorisee).map((e) => ({ key: e.cle, label: e.libelle ?? t(e.libelleKey), icon: e.icone, href: e.chemin, badge: p.badges?.[e.cle] })) }))
+    .map((g) => ({ cle: g.libelleKey, label: g.libelle ?? (g.libelleKey ? t(g.libelleKey) : undefined), items: g.entrees.filter(autorisee).map((e) => ({ key: e.cle, label: e.libelle ?? t(e.libelleKey), icon: e.icone, href: e.chemin, badge: p.badges?.[e.cle] })) }))
     .filter((g) => g.items.length > 0)
   const courante = navigation.flatMap((g) => g.entrees).filter((e) => pathname.startsWith(e.chemin)).sort((a, b) => b.chemin.length - a.chemin.length)[0]
 
@@ -183,8 +188,9 @@ export function Enveloppe(p: EnveloppeProps) {
   // Logo principal blanc, fondu dans le dégradé bleu de la navigation (dans les deux thèmes).
   const h = p.habillage
   const logoNav = h?.logo?.sombre ?? logoBlanc
-  const nav = <SideNav current={courante?.cle ?? ''} groups={groupes} height="100%" logo={logoNav} couche={p.couche} />
-  const navLaterale = <SideNav current={courante?.cle ?? ''} groups={groupes} height="100%" logo={logoNav} couche={p.couche} reduite={reduite} />
+  const sections = p.navigationRepliable ? { repliable: true, memoire: `gm.nav.sections.${p.couche}.${p.utilisateur ?? ''}` } : {}
+  const nav = <SideNav current={courante?.cle ?? ''} groups={groupes} height="100%" logo={logoNav} couche={p.couche} {...sections} />
+  const navLaterale = <SideNav current={courante?.cle ?? ''} groups={groupes} height="100%" logo={logoNav} couche={p.couche} reduite={reduite} {...sections} />
 
   const barre = (cloche?: Cloche) => (
     <TopBar

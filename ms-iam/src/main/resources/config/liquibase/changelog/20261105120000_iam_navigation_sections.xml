@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Sections repliables de la barre du DES : processus et demandes dans « processus », institutions dans
+         « homologation » (Certification), sans écraser un groupe changé par un administrateur. -->
+    <changeSet id="20261105120000-1" author="gimac" dbms="postgresql">
+        <sqlFile path="config/liquibase/sql/iam_navigation_sections.sql" splitStatements="true" relativeToChangelogFile="false"/>
+    </changeSet>
+</databaseChangeLog>

@@ -26,6 +26,29 @@ const monter = (espacePersonnel?: string) =>
     </MemoryRouter>,
   )
 
+describe('Enveloppe : sections repliables (application du DES)', () => {
+  it('section de l’écran courant ouverte, autres repliées, état mémorisé par couche et par compte', () => {
+    localStorage.clear()
+    render(
+      <MemoryRouter initialEntries={['/des/agenda']}>
+        <ThemeProvider theme="light">
+          <Enveloppe couche="des" utilisateur="Agent" navigationRepliable navigation={[
+            { entrees: [{ cle: 'tb', libelleKey: 'x.tb', icone: 'gauge', chemin: '/des/tableau-de-bord' }] },
+            { libelleKey: 'x.activite', libelle: 'Mon activité', entrees: [{ cle: 'agenda', libelleKey: 'x.agenda', libelle: 'Agenda', icone: 'calendar', chemin: '/des/agenda' }] },
+            { libelleKey: 'x.sandbox', libelle: 'Sandbox', entrees: [{ cle: 'sbx', libelleKey: 'x.sbx', libelle: 'Activité des tests', icone: 'network', chemin: '/des/sandbox/activite' }] },
+          ]}>
+            <Routes><Route path="*" element={<Ici />} /></Routes>
+          </Enveloppe>
+        </ThemeProvider>
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('button', { name: /Mon activité/ }).getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByRole('button', { name: /Sandbox/ }).getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByRole('link', { name: 'Activité des tests' })).toBeNull()
+    expect(JSON.parse(localStorage.getItem('gm.nav.sections.des.Agent') as string)).toEqual(['x.activite'])
+  })
+})
+
 describe('Enveloppe : espace personnel', () => {
   it('groupe « Mon espace » : Mon compte et Se déconnecter, navigation sans rechargement', () => {
     monter('/console')

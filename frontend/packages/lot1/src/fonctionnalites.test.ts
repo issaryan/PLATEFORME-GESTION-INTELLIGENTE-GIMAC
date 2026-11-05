@@ -79,7 +79,7 @@ describe('catalogue des fonctionnalités (valeurs de départ de MS-IAM)', () => 
 
   it('barre latérale : groupes dans l’ordre de leur première fonctionnalité, libellés servis, prédicats repris ; repli : l’accueil', () => {
     const nav = navigationDepuis(CATALOGUE, 'des', ECRANS_DES, tr, 'nav.groupe.')
-    expect(nav.map((g) => g.libelleKey ?? '')).toEqual(['', 'nav.groupe.monActivite', 'nav.groupe.registre', 'nav.groupe.homologation', 'nav.groupe.administration', 'nav.groupe.monitoring', 'nav.groupe.plateforme', 'nav.groupe.sandbox'])
+    expect(nav.map((g) => g.libelleKey ?? '')).toEqual(['', 'nav.groupe.monActivite', 'nav.groupe.processus', 'nav.groupe.homologation', 'nav.groupe.administration', 'nav.groupe.monitoring', 'nav.groupe.plateforme', 'nav.groupe.sandbox'])
     const entrees = nav.flatMap((g) => g.entrees)
     expect(entrees.filter((e) => satisfait(PROFILS.ROLE_ADMIN_SYSTEME, e.predicat)).map((e) => e.cle)).toEqual(ouvertes(PROFILS.ROLE_ADMIN_SYSTEME).filter((c) => ECRANS_DES[c]))
     expect(entrees[0]).toMatchObject({ cle: 'tableauDeBord', libelle: '«nav.tableauDeBord»', chemin: '/des/tableau-de-bord' })
