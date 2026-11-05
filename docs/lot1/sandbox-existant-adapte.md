@@ -806,6 +806,12 @@ s'abonne aux onze sujets (`gimac.consommateurs.sandbox.sujets`, groupe
 `notification-sandbox`, idempotent par identifiant d'événement, files `.dlt` créées au démarrage) et crée une
 notification de type `SANDBOX` par destinataire résolu, jamais regroupée, avec `notification.inapp-created.v1`.
 
+- **Catalogue unique** (ajout du 05/11/2026) : modèles et rôles sont tenus dans
+  `ms-notification/src/main/resources/config/notifications-sandbox.json`, chargé par `CatalogueNotificationsSandbox` ;
+  le même fichier est copié dans le dépôt de la sandbox (`docs/contrats/notifications-sandbox.json`), où chaque service
+  émetteur refuse à l'émission tout modèle absent de sa liste (`ModelesNotification`) et vérifie par un test que ses
+  modèles et ses rôles figurent au catalogue. Préfixes : `SBX_CER_` (SBX-CAMPAGNE), `SBX_REF_`, `SBX_TRA_`, `SBX_SIM_` ;
+  un compte nommé est un identifiant nu, sans préfixe.
 - **Règles** (`ReglesSandbox`, service de domaine) : chaque modèle (`SBX_ESP_*` invitations, suspension,
   rétablissement, mandats et échéances ; `SBX_RAC_*` échéance de certificat, collision ; `SBX_CER_*` ouverture,
   affectation, anomalie, clôture de campagne ; `SBX_LEC_*` et `SBX_TRA_ALERTE` signalements et alertes ; `SBX_DON_*`

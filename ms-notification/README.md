@@ -74,6 +74,7 @@ Copié et adapté (paquet `cm.gimac.des.notification`) ; chaque bean est inactif
 | 2026-10-23 | D-124 | US-EXI-09 : type `SANDBOX` (portail et DES, préférence), `ReglesSandbox`, consommateur des onze sujets `sbx-*.notification-requested.v1` (groupe `notification-sandbox`), destinataires lus chez MS-IAM, rebut `rebut_notification_sandbox`, résolution à blanc `/api/v1/sandbox/**` (`SBX_HAB_ADMINISTRATION`) ; règle JaCoCo à 98 % des classes de la sandbox |
 | 2026-11-01 | US-EXI-09 | Constructeur Spring de `IamDestinatairesSandboxAdapter` rendu explicite malgré le second constructeur de test ; régression couverte par `DestinatairesSandboxAdaptersTest` (4 essais), image reconstruite et démarrage réel sain dans Docker. |
 | 2026-11-04 | US-EXI-09 | `DemandesSandboxConsumer` : sujets des onze services par défaut, identiques à `application.yml` ; le contexte de test démarre à nouveau (`DemandesSandboxKafkaIT`) ; `clean verify` : 177 tests unitaires et 358 d'intégration, seuils JaCoCo tenus |
+| 2026-11-05 | US-EXI-09 | Catalogue unique des modèles de la sandbox (`config/notifications-sandbox.json`, 98 modèles, rôles) chargé par `CatalogueNotificationsSandbox` ; modèles réellement émis par SBX-CAMPAGNE, SBX-RACCORDEMENT, SBX-REFERENTIEL, SBX-TRACE, SBX-SIMULATION et SBX-DONNEES ajoutés ; copie identique dans la sandbox (audit de cohérence M2) |
 <!-- GIMAC:FIN -->
 
 # notification
