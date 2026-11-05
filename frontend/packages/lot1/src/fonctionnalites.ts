@@ -106,6 +106,8 @@ export const ECRANS_DES: Record<string, Ecran> = {
   adminConsole: { chemin: versConsole('/console/tableau-de-bord') },
   // Espace sandbox du DES (D-118, D-122 ; paquet @gimac/sandbox-admin, une entrée par écran sous /des/sandbox).
   sandboxEspaces: { chemin: '/des/sandbox/espaces' },
+  sandboxSupervision: { chemin: '/des/sandbox/supervision' },
+  sandboxActivite: { chemin: '/des/sandbox/activite' },
 }
 
 /** Accueil de chaque application : seule entrée montrée tant que le catalogue n'est pas servi (repli prudent). */

@@ -10,6 +10,7 @@ import { ServicesSandboxProvider } from '../services/contexte'
 import { servicesSandboxSimules, type OptionsEspacesSimules } from '../services/simule'
 import type { ServicesSandbox } from '../services/ports'
 import type { OptionsSupervisionSimulee } from '../services/supervisionSimulee'
+import type { OptionsActiviteSimulee } from '../activite/simule'
 import { PERMISSION, PERMISSION_SUPERVISION } from '../modele'
 
 // Monte un écran comme dans l'application du département : routeur (/des/sandbox/*), services simulés sans latence,
@@ -22,7 +23,7 @@ export const session = (permissions: string[]): Session => ({
   sujet: 'u-test', nom: 'Agent de test', identifiant: 'test', roles: [], permissions, institutionId: '', acr: '2', doubleFacteur: true,
 })
 
-export const simules = (o: Partial<OptionsEspacesSimules & OptionsSupervisionSimulee> = {}) => servicesSandboxSimules({ permissions: ADMIN, maintenant: () => new Date('2026-10-22T09:00:00Z'), ...o })
+export const simules = (o: Partial<OptionsEspacesSimules & OptionsSupervisionSimulee & OptionsActiviteSimulee> = {}) => servicesSandboxSimules({ permissions: ADMIN, maintenant: () => new Date('2026-10-22T09:00:00Z'), ...o })
 
 export function rendre(page: ReactElement, o: { permissions?: string[]; services?: ServicesSandbox; langue?: Langue; chemin?: string; route?: string } = {}) {
   if (!i18next.isInitialized) initI18n([...cataloguesLot1, ...catalogues], o.langue ?? 'fr')
@@ -38,6 +39,7 @@ export function rendre(page: ReactElement, o: { permissions?: string[]; services
             <Routes>
               <Route path={o.route ?? '/des/sandbox/espaces'} element={page} />
               <Route path="/des/sandbox/espaces/:code" element={<p>fiche ouverte</p>} />
+              <Route path="/des/parcours/:id" element={<p>dossier ouvert</p>} />
             </Routes>
           </SessionProvider>
         </ServicesSandboxProvider>

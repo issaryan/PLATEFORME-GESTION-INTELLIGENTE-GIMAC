@@ -1,5 +1,6 @@
 import { http } from '@gimac/socle'
 import type { Alerte, Disponibilite, ElementSupervise, Espace, EtatSante, Ouverture, PageEspaces, PageSupervision } from '../modele'
+import { activiteHttp } from '../activite/http'
 import type { ServiceEspaces, ServiceSupervision, ServicesSandbox } from './ports'
 
 // SBX-ESPACE par la passerelle (D-118, D-122) : route des-sbx-espace, /bff/des/sbx-espace/(.*) réécrit en
@@ -24,4 +25,4 @@ export const supervisionHttp: ServiceSupervision = {
   disponibilites: (q) => http.get<PageSupervision<Disponibilite>>(`${BASE_SUPERVISION}/disponibilites`, { query: q }),
 }
 
-export const servicesSandboxHttp = (): ServicesSandbox => ({ espaces: espacesHttp, supervision: supervisionHttp })
+export const servicesSandboxHttp = (): ServicesSandbox => ({ espaces: espacesHttp, supervision: supervisionHttp, activite: activiteHttp })

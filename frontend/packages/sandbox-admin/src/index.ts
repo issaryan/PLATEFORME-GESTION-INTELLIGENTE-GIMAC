@@ -11,3 +11,7 @@ export { servicesSandboxSimules, espacesSimules, REGISTRE_DEMO, ESPACES_DEMO, CO
 export { supervisionSimulee, SANTE_DEMO, ELEMENTS_DEMO, ALERTES_DEMO, DISPONIBILITES_DEMO, type OptionsSupervisionSimulee } from './services/supervisionSimulee'
 export { EspaceInstitution, actesPossibles } from './composants/EspaceInstitution'
 export { catalogues as cataloguesSandbox } from './i18n'
+export { PERMISSION_ACTIVITE, PERMISSION_LIAISON, INTERFACES } from './activite/modele'
+export type { ServiceActivite } from './activite/ports'
+export { activiteHttp, BASE_STATISTIQUES } from './activite/http'
+export { activiteSimulee, CAMPAGNES_DEMO, EXECUTIONS_DEMO, LIAISONS_DEMO, type OptionsActiviteSimulee } from './activite/simule'

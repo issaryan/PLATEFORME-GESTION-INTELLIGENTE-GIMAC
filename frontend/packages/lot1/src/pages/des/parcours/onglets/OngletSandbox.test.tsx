@@ -32,6 +32,13 @@ describe('Résultats de la sandbox (US-EXI-17)', () => {
     expect(screen.getByText('Version de la table des verdicts')).toBeTruthy()
     expect(screen.getAllByText('Campagne entière').length).toBe(1)
     expect(screen.getAllByText('100.00 %').length).toBeGreaterThan(0)
+    // Vue graphique : jauges d'avancement et de réussite (numérateur sur dénominateur), verdicts, réussite par service.
+    const graphes = screen.getByLabelText('Vue graphique de la campagne')
+    expect(within(graphes).getByRole('img', { name: 'Avancement de la campagne : 100%' })).toBeTruthy()
+    expect(within(graphes).getByText('45 sur 45')).toBeTruthy()
+    expect(within(graphes).getByRole('img', { name: /Réussite de la campagne : 97\.7%/ })).toBeTruthy()
+    expect(within(graphes).getByText('Non encore jugés')).toBeTruthy()
+    expect(within(graphes).getByText('Réussite par service')).toBeTruthy()
     // Exécutions paginées par le service : 45 au total, 25 par page.
     expect(await screen.findByText('EXE-000003')).toBeTruthy()
     expect(screen.getAllByText('Favorable').length).toBeGreaterThan(0)
@@ -89,6 +96,7 @@ describe('Résultats de la sandbox (US-EXI-17)', () => {
     expect(await screen.findByText(/motif non communiqué/)).toBeTruthy()
     expect(screen.getByText('Campagne remplacée par un signalement')).toBeTruthy()
     expect(screen.getByText('Aucun taux restitué')).toBeTruthy()
+    expect(screen.getByText('Aucun taux par service à représenter')).toBeTruthy()
     expect(screen.getByText('Aucune pièce reprise')).toBeTruthy()
     expect(await screen.findByText('Aucune exécution reprise')).toBeTruthy()
     expect(screen.getByText('Tous les scénarios sont rapprochés du référentiel d’opérations')).toBeTruthy()

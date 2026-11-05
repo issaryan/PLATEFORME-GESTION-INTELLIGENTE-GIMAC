@@ -1,3 +1,4 @@
+import type { ServiceActivite } from '../activite/ports'
 import type { ActeEspace, Alerte, DemandeOuverture, Disponibilite, ElementSupervise, Espace, EtatSante, Ouverture, PageEspaces, PageSupervision } from '../modele'
 
 // Ports de l'espace sandbox du DES (D-122) : seul contrat entre les écrans et les données. Implémentations HTTP
@@ -18,4 +19,4 @@ export interface ServiceSupervision {
   disponibilites(q: { page: number; taille: number }): Promise<PageSupervision<Disponibilite>>
 }
 
-export type ServicesSandbox = { espaces: ServiceEspaces; supervision: ServiceSupervision }
+export type ServicesSandbox = { espaces: ServiceEspaces; supervision: ServiceSupervision; activite: ServiceActivite }

@@ -37,8 +37,8 @@ function monter(chemin: string, o: { permissions?: string[]; garde?: (cle: strin
 
 describe('espace sandbox du DES', () => {
   it('registre : espaces et supervision gardés par leurs permissions, chemins sous /des/sandbox', () => {
-    expect(ENTREES_SANDBOX.map((e) => [e.cle, e.permission])).toEqual([['sandboxEspaces', 'SBX_HAB_CONSULTATION'], ['sandboxSupervision', 'SBX_SUP_CONSULTATION']])
-    expect(CHEMINS_SANDBOX).toEqual({ sandboxEspaces: '/des/sandbox/espaces', sandboxSupervision: '/des/sandbox/supervision' })
+    expect(ENTREES_SANDBOX.map((e) => [e.cle, e.permission])).toEqual([['sandboxEspaces', 'SBX_HAB_CONSULTATION'], ['sandboxSupervision', 'SBX_SUP_CONSULTATION'], ['sandboxActivite', 'SBX_SUP_CONSULTATION']])
+    expect(CHEMINS_SANDBOX).toEqual({ sandboxEspaces: '/des/sandbox/espaces', sandboxSupervision: '/des/sandbox/supervision', sandboxActivite: '/des/sandbox/activite' })
   })
 
   it('routes : liste, fiche, et toute autre adresse ramène à la première entrée', async () => {
@@ -63,6 +63,11 @@ describe('espace sandbox du DES', () => {
   it('la supervision s’ajoute sans toucher aux autres', async () => {
     monter('/des/sandbox/supervision')
     expect(await screen.findByRole('heading', { level: 1, name: 'Supervision de la sandbox' })).toBeTruthy()
+  })
+
+  it('l’activité des tests s’ajoute de même', async () => {
+    monter('/des/sandbox/activite')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Activité des tests' })).toBeTruthy()
   })
 
   it('services : employés hors de leur fournisseur, une erreur explicite', () => {

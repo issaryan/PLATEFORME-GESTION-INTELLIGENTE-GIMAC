@@ -1398,6 +1398,46 @@
    "droits": []
   },
   {
+   "cle": "sandboxSupervision",
+   "application": "des",
+   "module": "sandbox",
+   "libelle": "nav.sandboxSupervision",
+   "groupe": "sandbox",
+   "ordre": 276,
+   "icone": "gauge",
+   "visible": true,
+   "permissions": {
+    "tous": [
+     "PIL_ACTIVITY_OWN"
+    ],
+    "unDe": [
+     "SBX_SUP_CONSULTATION"
+    ]
+   },
+   "widgets": [],
+   "droits": []
+  },
+  {
+   "cle": "sandboxActivite",
+   "application": "des",
+   "module": "sandbox",
+   "libelle": "nav.sandboxActivite",
+   "groupe": "sandbox",
+   "ordre": 277,
+   "icone": "square-check",
+   "visible": true,
+   "permissions": {
+    "tous": [
+     "PIL_ACTIVITY_OWN"
+    ],
+    "unDe": [
+     "SBX_SUP_CONSULTATION"
+    ]
+   },
+   "widgets": [],
+   "droits": []
+  },
+  {
    "cle": "dossierCertification",
    "application": "des",
    "module": "certification",

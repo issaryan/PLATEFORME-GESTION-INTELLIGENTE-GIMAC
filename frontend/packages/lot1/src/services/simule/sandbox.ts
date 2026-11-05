@@ -51,6 +51,7 @@ function campagneDemo(l: LiaisonDemo): CampagneSandbox {
     signalement: null,
     taux: [
       { service: null, nature: 'AVANCEMENT', numerateur: EXECUTIONS, denominateur: EXECUTIONS, valeur: '100.00', versionFormule: '1.0', horodatage: '2026-10-13T17:00:00Z' },
+      { service: null, nature: 'REUSSITE', numerateur: EXECUTIONS - 1, denominateur: EXECUTIONS, valeur: ((Math.floor(((EXECUTIONS - 1) / EXECUTIONS) * 10000)) / 100).toFixed(2), versionFormule: '1.0', horodatage: '2026-10-13T17:00:00Z' },
       ...services.map((s, i) => {
         const reussies = i === 1 ? parService - 1 : parService
         return { service: s, nature: 'REUSSITE', numerateur: reussies, denominateur: parService, valeur: ((Math.floor((reussies / parService) * 10000)) / 100).toFixed(2), versionFormule: '1.0', horodatage: '2026-10-13T17:00:00Z' }
