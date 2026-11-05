@@ -143,6 +143,18 @@
         "clientRole": false
       },
       {
+        "name": "HOM_PERIMETRE_EDIT",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "HOM_PERIMETRE_EDIT_TOUS",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "HOM_LIAISON_OPEN",
         "description": "Permission du lot 1",
         "composite": false,
@@ -1287,6 +1299,7 @@
             "HOM_REFERENTIEL_READ_ALL",
             "HOM_REFERENTIEL_MIGRATE",
             "REF_REPRISE_IMPORT",
+            "HOM_PERIMETRE_EDIT_TOUS",
             "HOM_REFERENTIEL_PUBLISH",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
@@ -1539,6 +1552,7 @@
             "PAR_INSTITUTION_READ",
             "HOM_LIAISON_OPEN",
             "HOM_PROJECT_DESIGNATE",
+            "HOM_PERIMETRE_EDIT",
             "PAR_INSTITUTION_CREATE",
             "PAR_INSTITUTION_EDIT",
             "PAR_ADHESION_INSTRUCT",
@@ -1607,6 +1621,36 @@
         "attributes": {
           "gimac_libelle": [
             "Normes et Agréments"
+          ]
+        }
+      },
+      {
+        "name": "ROLE_CHARGE_IMPLEMENTATION_SNA",
+        "description": "Service Normes et Agréments : définit et met à jour le périmètre des projets de certification, sans valider d'opération ni de verdict.",
+        "composite": true,
+        "clientRole": false,
+        "composites": {
+          "realm": [
+            "ROLE_USER",
+            "HOM_REFERENTIEL_READ",
+            "HOM_LIAISON_READ",
+            "HOM_LIAISON_LIST",
+            "HOM_DASHBOARD_READ",
+            "CER_CIRCUIT_READ",
+            "CER_DOSSIER_READ",
+            "CER_REGISTER_READ",
+            "PAR_INSTITUTION_READ",
+            "HOM_PERIMETRE_EDIT_TOUS",
+            "SBX_CER_CONSULTATION",
+            "COL_MESSAGE_READ",
+            "COL_MESSAGE_SEND",
+            "PIL_ACTIVITY_OWN",
+            "NOT_INBOX_READ"
+          ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Chargé de l'implémentation des projets (SNA)"
           ]
         }
       },
@@ -2827,6 +2871,39 @@
         ],
         "login": [
           "test-sna"
+        ],
+        "gimac_actions_requises": [
+          "SECOND_FACTEUR"
+        ]
+      }
+    },
+    {
+      "username": "test-charge-implementation-sna",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Chargé",
+      "lastName": "Implémentation des projets",
+      "email": "test-charge-implementation-sna@gimac.test",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${GIMAC_MOT_DE_PASSE_TEST}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-gimac",
+        "ROLE_CHARGE_IMPLEMENTATION_SNA"
+      ],
+      "groups": [
+        "/Users"
+      ],
+      "attributes": {
+        "langKey": [
+          "fr"
+        ],
+        "login": [
+          "test-charge-implementation-sna"
         ],
         "gimac_actions_requises": [
           "SECOND_FACTEUR"

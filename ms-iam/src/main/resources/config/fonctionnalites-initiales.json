@@ -510,6 +510,18 @@
           "libelle": "droits.permission.HOM_PROJECT_DESIGNATE"
         },
         {
+          "cle": "HOM_PERIMETRE_EDIT",
+          "nature": "MODIFIER",
+          "permission": "HOM_PERIMETRE_EDIT",
+          "libelle": "droits.permission.HOM_PERIMETRE_EDIT"
+        },
+        {
+          "cle": "HOM_PERIMETRE_EDIT_TOUS",
+          "nature": "MODIFIER",
+          "permission": "HOM_PERIMETRE_EDIT_TOUS",
+          "libelle": "droits.permission.HOM_PERIMETRE_EDIT_TOUS"
+        },
+        {
           "cle": "HOM_OPERATION_ASSIGN",
           "nature": "MODIFIER",
           "permission": "HOM_OPERATION_ASSIGN",

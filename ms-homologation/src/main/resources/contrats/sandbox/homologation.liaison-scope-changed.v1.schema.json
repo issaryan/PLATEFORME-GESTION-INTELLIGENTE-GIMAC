@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gimac.cm/contrats/homologation/homologation.liaison-scope-changed.v1",
+  "title": "homologation.liaison-scope-changed.v1",
+  "description": "Données (data) de l'événement CloudEvents 1.0 publié par MS-HOMOLOGATION sur le sujet homologation.liaison quand le périmètre d'un projet de certification est modifié par son gestionnaire, un super administrateur ou un chargé de l'implémentation des projets de la SNA (D-133). services : services inclus après la modification, TRANSVERSE compris. La version 1 du périmètre est celle de homologation.liaison-opened.v1 ; versionPerimetre croît strictement pour une liaison, et un lecteur acquitte sans effet toute version inférieure ou égale à celle qu'il connaît. Lu par SBX-CAMPAGNE, qui en dérive les services de ses campagnes, et par MS-AUDIT.",
+  "type": "object",
+  "required": ["liaisonId", "institutionId", "codeParticipant", "typeProjet", "services", "servicesAjoutes", "servicesRetires", "versionPerimetre", "auteurId", "permissionUtilisee", "motif", "modifieLe"],
+  "properties": {
+    "liaisonId": { "type": "string", "format": "uuid" },
+    "institutionId": { "type": "string", "format": "uuid" },
+    "codeParticipant": { "type": ["string", "null"] },
+    "typeProjet": { "type": "string" },
+    "services": { "type": "array", "minItems": 2, "items": { "type": "string", "maxLength": 40 } },
+    "servicesAjoutes": { "type": "array", "items": { "type": "string", "maxLength": 40 } },
+    "servicesRetires": { "type": "array", "items": { "type": "string", "maxLength": 40 } },
+    "versionPerimetre": { "type": "integer", "minimum": 2 },
+    "auteurId": { "type": "string", "format": "uuid" },
+    "permissionUtilisee": { "type": "string", "enum": ["HOM_PERIMETRE_EDIT", "HOM_PERIMETRE_EDIT_TOUS"] },
+    "motif": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "modifieLe": { "type": "string", "format": "date-time" }
+  }
+}

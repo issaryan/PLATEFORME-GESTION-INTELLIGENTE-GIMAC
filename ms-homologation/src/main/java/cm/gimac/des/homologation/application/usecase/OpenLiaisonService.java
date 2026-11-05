@@ -142,6 +142,8 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
             .institutionNom(institution.nom())
             .etat(EtatLiaison.OUVERTE)
             .chefDeProjetId(cmd.chefDeProjetId())
+            // D-133 : le créateur de la liaison en est le gestionnaire, seul à en modifier le périmètre.
+            .gestionnaireId(acteur.id())
             .banquePartenaireId(cmd.banquePartenaireId())
             .dateOuverture(maintenant)
             .cycleAptitude(0)

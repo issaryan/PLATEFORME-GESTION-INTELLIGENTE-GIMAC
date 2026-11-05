@@ -76,6 +76,11 @@ public class ServiceParcours {
         return inclus;
     }
 
+    /** Inclusion au périmètre, changée par le seul cas de modification du périmètre (D-133). */
+    public void setInclus(boolean inclus) {
+        this.inclus = inclus;
+    }
+
     public LocalDate getEntreeEssai() {
         return entreeEssai;
     }
