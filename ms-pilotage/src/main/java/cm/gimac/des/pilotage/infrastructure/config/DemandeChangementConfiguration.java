@@ -4,6 +4,7 @@ import cm.gimac.des.pilotage.domain.processus.ActionProcessus;
 import cm.gimac.des.pilotage.domain.processus.Champ;
 import cm.gimac.des.pilotage.domain.processus.ChampFormulaire;
 import cm.gimac.des.pilotage.domain.processus.Etape;
+import cm.gimac.des.pilotage.domain.processus.EtatProcessus;
 import cm.gimac.des.pilotage.domain.processus.Formulaire;
 import cm.gimac.des.pilotage.domain.processus.HistoriqueProcessus;
 import cm.gimac.des.pilotage.domain.processus.Initiateurs;
@@ -36,7 +37,10 @@ public class DemandeChangementConfiguration implements ApplicationRunner {
 
     public static final String CODE = "DEMANDE_CHANGEMENT";
     public static final String UNITE = "SSI";
-    public static final String REFERENCE = "CHG-{AAAA}-{MM}-{JJ}-{NNNNNN}";
+    public static final String REFERENCE = "CHG-{AAAA}-{N}";
+    /** Gabarit daté du modèle système publié du 28/10 au 04/11/2026 (recette), remplacé au démarrage. */
+    static final String REFERENCE_DATEE = "CHG-{AAAA}-{MM}-{JJ}-{NNNNNN}";
+    static final String PROFIL_SSI = "ROLE_RSSI";
     private static final Logger LOG = LoggerFactory.getLogger(DemandeChangementConfiguration.class);
 
     private final ProcessusRepository processus;
@@ -55,6 +59,7 @@ public class DemandeChangementConfiguration implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         transactions.executeWithoutResult(s -> {
             if (processus.existsByCode(CODE)) {
+                processus.findFirstByCodeAndEtat(CODE, EtatProcessus.PUBLIEE).filter(v -> REFERENCE_DATEE.equals(v.getReferenceModele())).ifPresent(this::remplacer);
                 return;
             }
             Instant le = horloge.instant();
@@ -67,6 +72,43 @@ public class DemandeChangementConfiguration implements ApplicationRunner {
             historique.save(new HistoriqueProcessus(p.getId(), null, null, le, "systeme", ActionProcessus.PUBLIE, "Modèle initial de la fiche RFC"));
             LOG.info("Processus {} publié avec la référence dynamique {}", CODE, REFERENCE);
         });
+    }
+
+    /**
+     * Version publiée encore au gabarit daté du modèle système : une nouvelle version, copie de celle-ci, prend le format
+     * de la fiche (CHG-{AAAA}-{N}, D-127) et le RSSI à l'étape SSI (D-130), puis remplace la précédente, retirée ; une
+     * version publiée n'est jamais modifiée. Un brouillon en cours ou un gabarit personnalisé sont laissés tels quels.
+     */
+    private void remplacer(Processus publiee) {
+        if (processus.findFirstByCodeAndEtat(CODE, EtatProcessus.BROUILLON).isPresent()) {
+            LOG.warn("Processus {} : brouillon en cours, gabarit daté de la version {} conservé", CODE, publiee.getVersion());
+            return;
+        }
+        Instant le = horloge.instant();
+        Processus p = publiee.nouvelleVersion(processus.derniereVersion(CODE) + 1, "systeme", le);
+        p.decrire(publiee.getLibelle(), publiee.getDescription(), publiee.getCategorie(), publiee.getDelaiCibleJours(), publiee.getDelaiMaxJours(), rssi(publiee.getEtapes()), "systeme", le);
+        p.definirReference(REFERENCE);
+        String motif = "Format de la fiche de changement CHG-AAAA-N (D-127) et RSSI signataire de la décision SSI (D-130)";
+        publiee.retirer("systeme", "Remplacée par la version " + p.getVersion(), le);
+        processus.saveAndFlush(publiee);
+        historique.save(new HistoriqueProcessus(publiee.getId(), null, null, le, "systeme", ActionProcessus.RETIRE, "Remplacée par la version " + p.getVersion()));
+        p.publier("systeme", motif, false, le);
+        processus.save(p);
+        historique.save(new HistoriqueProcessus(p.getId(), null, null, le, "systeme", ActionProcessus.PUBLIE, motif));
+        LOG.info("Processus {} : version {} publiée avec la référence {}, version {} retirée", CODE, p.getVersion(), REFERENCE, publiee.getVersion());
+    }
+
+    /** Étape SSI : intervenant et signataires de profil ramenés au RSSI ; les autres étapes restent identiques. */
+    static List<Etape> rssi(List<Etape> etapes) {
+        return etapes.stream().map(e -> !"SSI".equals(e.code()) ? e : new Etape(
+            e.code(), e.libelle(), e.action(), versRssi(e.intervenant()), e.validateur(), e.predecesseurs(), e.delaiJours(), e.livrables(),
+            e.signatures().stream().map(s -> new SignatureRequise(s.code(), s.libelle(), versRssi(s.signataire()), s.porte(), s.ordre())).toList(),
+            e.champs(), e.position(), e.delaiMaxJours()
+        )).toList();
+    }
+
+    private static Intervenant versRssi(Intervenant i) {
+        return i == null || i.mode() != ModeIntervenant.PROFIL ? i : new Intervenant(i.mode(), PROFIL_SSI, i.personneId(), i.unite(), i.remplacement());
     }
 
     public static Formulaire formulaire() {
@@ -93,7 +135,9 @@ public class DemandeChangementConfiguration implements ApplicationRunner {
     public static List<Etape> etapes() {
         Intervenant demandeur = new Intervenant(ModeIntervenant.LANCEUR, null, null, null, null);
         Intervenant responsable = new Intervenant(ModeIntervenant.AU_LANCEMENT, null, null, UNITE, "ROLE_PRODUCTION_MONETIQUE");
-        Intervenant ssi = new Intervenant(ModeIntervenant.PROFIL, "ROLE_AGENT_SSI", null, UNITE, null);
+        // Verrou 2, approbation de la sécurité : le RSSI seul décide et signe (décision du 04/11/2026, D-130) ; l'agent SSI
+        // n'y intervient pas.
+        Intervenant ssi = new Intervenant(ModeIntervenant.PROFIL, PROFIL_SSI, null, UNITE, null);
         return List.of(
             new Etape("IDENTIFICATION", "1. Identification du changement", "Vérifier l'élément de configuration, le demandeur, la priorité et le déclencheur.", demandeur, null, List.of(), 1, List.of(), List.of(), List.of(), new Position(0, 0)),
             new Etape("RAISON", "2. Raison du changement", "Vérifier la raison détaillée.", demandeur, null, List.of("IDENTIFICATION"), 1, List.of(), List.of(), List.of(), new Position(220, 0)),
