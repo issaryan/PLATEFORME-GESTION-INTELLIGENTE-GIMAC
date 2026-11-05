@@ -53,7 +53,7 @@ for (const theme of ['light', 'dark'] as const) {
         await capturer(page, `formulaire-${suffixe}`)
         await d.getByRole('button', { name: 'Envoyer la demande' }).click()
         await expect(page.getByRole('heading', { level: 1, name: 'Accès en lecture à la table AMA' })).toBeVisible()
-        await expect(page.getByText(/CHG-\d{4}-\d{2}-\d{2}-\d{6}/)).toBeVisible()
+        await expect(page.getByText(/CHG-\d{4}-\d{1,6}\b/)).toBeVisible()
         instance = new URL(page.url()).pathname.split('/').pop()!
       })
       await test.step('Les étapes 1 à 3 appartiennent au demandeur', async () => {
@@ -91,7 +91,7 @@ for (const theme of ['light', 'dark'] as const) {
         const telechargement = page.waitForEvent('download')
         await page.getByRole('button', { name: 'Télécharger le PDF' }).click()
         const pdf = await telechargement
-        expect(pdf.suggestedFilename()).toMatch(/CHG-\d{4}-\d{2}-\d{2}-\d{6}\.pdf/)
+        expect(pdf.suggestedFilename()).toMatch(/CHG-\d{4}-\d{1,6}\.pdf/)
       })
     })
   })
