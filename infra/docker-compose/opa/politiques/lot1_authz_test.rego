@@ -1681,8 +1681,8 @@ test_sbx_espace_departement if {
 }
 
 test_sbx_supervision_departement_d121 if {
-	# Quatre lectures seulement, sous la permission SUP et deux facteurs, pour un compte du GIMAC.
-	every chemin in ["/bff/des/sbx-trace/etat-sante/detail", "/bff/des/sbx-trace/elements-supervises", "/bff/des/sbx-trace/alertes", "/bff/des/sbx-trace/disponibilites"] {
+	# Six lectures seulement, sous la permission SUP et deux facteurs, pour un compte du GIMAC.
+	every chemin in ["/bff/des/sbx-trace/etat-sante/detail", "/bff/des/sbx-trace/elements-supervises", "/bff/des/sbx-trace/alertes", "/bff/des/sbx-trace/disponibilites", "/bff/des/sbx-trace/services", "/bff/des/sbx-trace/statistiques/codes-retour"] {
 		authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_SUP_CONSULTATION"], "authentifie": true, "acr": "2"}
 		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "2"}
 		not authz.allow with input as {"method": "POST", "path": chemin, "permissions": ["SBX_SUP_CONSULTATION"], "authentifie": true, "acr": "2"}
@@ -1692,7 +1692,7 @@ test_sbx_supervision_departement_d121 if {
 	}
 
 	# Aucun chemin voisin, détail supplémentaire ou méthode HEAD n'hérite de l'ouverture.
-	every chemin in ["/bff/des/sbx-trace/traces", "/bff/des/sbx-trace/etat-sante", "/bff/des/sbx-trace/alertes/a1", "/bff/des/sbx-trace/disponibilites/2026-10"] {
+	every chemin in ["/bff/des/sbx-trace/traces", "/bff/des/sbx-trace/etat-sante", "/bff/des/sbx-trace/alertes/a1", "/bff/des/sbx-trace/disponibilites/2026-10", "/bff/des/sbx-trace/services/sbx-mobile", "/bff/des/sbx-trace/statistiques", "/bff/des/sbx-trace/statistiques/codes-retour/x"] {
 		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["SBX_SUP_CONSULTATION"], "authentifie": true, "acr": "2"}
 	}
 	not authz.allow with input as {"method": "HEAD", "path": "/bff/des/sbx-trace/alertes", "permissions": ["SBX_SUP_CONSULTATION"], "authentifie": true, "acr": "2"}

@@ -1,5 +1,5 @@
 import { http } from '@gimac/socle'
-import type { Alerte, Disponibilite, ElementSupervise, Espace, EtatSante, Ouverture, PageEspaces, PageSupervision } from '../modele'
+import type { Alerte, Disponibilite, ElementSupervise, Espace, EtatSante, MesureService, Ouverture, PageEspaces, PageSupervision } from '../modele'
 import { activiteHttp } from '../activite/http'
 import type { ServiceEspaces, ServiceSupervision, ServicesSandbox } from './ports'
 
@@ -23,6 +23,7 @@ export const supervisionHttp: ServiceSupervision = {
   elements: (q) => http.get<PageSupervision<ElementSupervise>>(`${BASE_SUPERVISION}/elements-supervises`, { query: q }),
   alertes: (q) => http.get<PageSupervision<Alerte>>(`${BASE_SUPERVISION}/alertes`, { query: q }),
   disponibilites: (q) => http.get<PageSupervision<Disponibilite>>(`${BASE_SUPERVISION}/disponibilites`, { query: q }),
+  services: (q) => http.get<PageSupervision<MesureService>>(`${BASE_SUPERVISION}/services`, { query: q }),
 }
 
 export const servicesSandboxHttp = (): ServicesSandbox => ({ espaces: espacesHttp, supervision: supervisionHttp, activite: activiteHttp })

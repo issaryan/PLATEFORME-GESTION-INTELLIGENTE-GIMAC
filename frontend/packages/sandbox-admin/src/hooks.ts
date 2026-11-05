@@ -58,3 +58,9 @@ export function useDisponibilites(page: number, taille: number) {
 
 /** Clé d'idempotence d'une intention : tirée à l'ouverture du dialogue, gardée pour ses nouvelles tentatives. */
 export const nouvelleCle = (): string => uuidV4()
+
+/** Mesures par service : relues toutes les 30 secondes, au rythme des cycles de SBX-TRACE. */
+export function useServicesSupervises(page: number, taille: number) {
+  const { supervision } = useServicesSandbox()
+  return useQuery({ queryKey: [...KS, 'services', page, taille], queryFn: () => supervision.services({ page, taille }), refetchInterval: 30_000 })
+}

@@ -63,3 +63,23 @@ export type Alerte = {
   element: { id: string; nature: string }
 }
 export type Disponibilite = { id: string; code: string; module: string | null; periode: string; valeur: number; publieLe: string }
+
+/** Mesure par service (VueService de SBX-TRACE, lecture /services) : valeurs absentes (null) non mesurées. */
+export type PointMesure = { le: string; latenceMoyenneMs: number | null; debitParMinute: number | null; erreurs: number | null }
+export type MesureService = {
+  service: string
+  module: string
+  niveau: NiveauSante | null
+  joignable: boolean
+  mesureLe: string | null
+  delaiMs: number
+  latenceMoyenneMs: number | null
+  latenceMaxMs: number | null
+  debitParMinute: number | null
+  erreurs: number | null
+  retardKafka: number | null
+  rebuts: number | null
+  /** Centièmes de pour cent, sur les dernières 24 heures. */
+  disponibilite24h: number | null
+  serie: PointMesure[]
+}

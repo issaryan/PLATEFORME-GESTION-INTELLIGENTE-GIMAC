@@ -39,6 +39,15 @@ public class RegistreLectureJdbc implements RegistreLecture {
     }
 
     @Override
+    public List<String> servicesSouscrits(UUID institutionId) {
+        return jdbc
+            .sql("select distinct service_code from subscribed_service where institution_id = :institution and state = 'ACTIF' order by service_code")
+            .param("institution", institutionId)
+            .query(String.class)
+            .list();
+    }
+
+    @Override
     public List<Service> services(int page, int taille) {
         return jdbc
             .sql(

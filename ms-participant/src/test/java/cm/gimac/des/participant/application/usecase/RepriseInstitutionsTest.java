@@ -30,6 +30,7 @@ import cm.gimac.des.participant.domain.enumeration.SubscriptionState;
 import cm.gimac.des.participant.domain.event.InstitutionRegisteredPayload;
 import cm.gimac.des.participant.domain.event.InstitutionUpdatedPayload;
 import cm.gimac.des.participant.domain.event.StatusChangedPayload;
+import cm.gimac.des.participant.domain.event.SubscriptionChangedPayload;
 import cm.gimac.des.participant.infrastructure.messaging.outbox.OutboxPublisher;
 import cm.gimac.des.participant.repository.AdhesionPieceRepository;
 import cm.gimac.des.participant.repository.InstitutionRepository;
@@ -160,6 +161,8 @@ class RepriseInstitutionsTest {
         assertThat(t.getValue().getReason()).contains("Reprise de l'existant", "PV-7", "2022-01-01");
         verify(outbox).publish(eq("institution"), eq(id), eq(InstitutionRegisteredPayload.TYPE), any());
         verify(outbox).publish(eq("institution"), eq(id), eq(StatusChangedPayload.TYPE), any());
+        verify(outbox).publish("institution", id, SubscriptionChangedPayload.TYPE,
+            new SubscriptionChangedPayload(id, "BQ-01", List.of("PAIEMENT_MOBILE"), HORLOGE.millis(), HORLOGE.instant()));
         verify(pieces).save(any());
         assertThat(statuts.get(0).isRollbackOnly()).isFalse();
     }
@@ -217,6 +220,9 @@ class RepriseInstitutionsTest {
         assertThat(i.getJoinedOn()).isEqualTo(LocalDate.of(2020, 2, 2));
         verify(outbox).publish(eq("institution"), eq(i.getId()), eq(InstitutionUpdatedPayload.TYPE), any());
         verify(outbox).publish(eq("institution"), eq(i.getId()), eq(StatusChangedPayload.TYPE), any());
+        // Tous les abonnements actifs après l'évolution, triés : l'ancien et le nouveau.
+        verify(outbox).publish("institution", i.getId(), SubscriptionChangedPayload.TYPE,
+            new SubscriptionChangedPayload(i.getId(), "BQ-2", List.of("CARTE", "PAIEMENT_MOBILE"), HORLOGE.millis(), HORLOGE.instant()));
 
         Ligne arriere = une(ligne("BQ-2", "ADHERENT"), false);
         assertThat(arriere.resultat()).isEqualTo(Resultat.REFUSEE);

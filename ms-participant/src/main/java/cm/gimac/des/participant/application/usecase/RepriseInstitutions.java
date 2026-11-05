@@ -20,6 +20,7 @@ import cm.gimac.des.participant.domain.event.InstitutionRegisteredPayload;
 import cm.gimac.des.participant.domain.event.InstitutionUpdatedPayload;
 import cm.gimac.des.participant.application.port.out.VersionsStatutRegistre;
 import cm.gimac.des.participant.domain.event.StatusChangedPayload;
+import cm.gimac.des.participant.domain.event.SubscriptionChangedPayload;
 import cm.gimac.des.participant.domain.service.InstitutionLifecycle;
 import cm.gimac.des.participant.infrastructure.messaging.outbox.OutboxPublisher;
 import cm.gimac.des.participant.repository.AdhesionPieceRepository;
@@ -339,7 +340,7 @@ public class RepriseInstitutions implements RepriseInstitutionsUseCase {
         changer(identifiant(i.getSponsorBank()), identifiant(marraine), x -> i.setSponsorBank(marraine), "banqueMarraine", changements);
     }
 
-    /** Services souscrits absents ajoutés (jamais résiliés par la reprise). */
+    /** Services souscrits absents ajoutés (jamais résiliés par la reprise), publiés par participant.subscription-changed.v1. */
     private void souscrire(Institution i, Fiche f, List<String> changements) {
         Set<String> deja = new HashSet<>();
         if (i.getId() != null && em.contains(i)) {
@@ -355,6 +356,13 @@ public class RepriseInstitutions implements RepriseInstitutionsUseCase {
         }
         if (ajout) {
             changements.add("servicesSouscrits");
+            Instant maintenant = clock.instant();
+            outbox.publish(
+                AGREGAT,
+                i.getId(),
+                SubscriptionChangedPayload.TYPE,
+                new SubscriptionChangedPayload(i.getId(), i.getParticipantCode(), deja.stream().sorted().toList(), maintenant.toEpochMilli(), maintenant)
+            );
         }
     }
 

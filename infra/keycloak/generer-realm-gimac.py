@@ -247,8 +247,9 @@ SANDBOX_GIMAC = {
     # Ingénieur certificateur : seul à valider les verdicts.
     "ROLE_SNA": _sbx(("CER", "EXECUTION VALIDATION CONSULTATION"), (INTERFACES_SBX, "SIMULATION CONSULTATION"),
                      ("RAC REF SCN DON TRA LEC", "CONSULTATION")),
-    # Certificats, clés et plages de BIN de test, périmètre du compte de service du DES, conservation.
-    "ROLE_RSSI": _sbx(("RAC DON TRA LEC", "ADMINISTRATION"), ("*", "CONSULTATION")),
+    # Certificats, clés et plages de BIN de test, périmètre du compte de service du DES, conservation ; approbation
+    # du périmètre de lecture et du rattachement du certificat client (CC-SBX-GIMAC-02 §D.8, UC-LEC-10).
+    "ROLE_RSSI": _sbx(("RAC DON TRA LEC", "ADMINISTRATION"), ("LEC", "VALIDATION"), ("*", "CONSULTATION")),
     # Plages de BIN, profils de cartes, clés de test et paramètres ISO 8583 ; exploitation (catalogue D-91).
     "ROLE_PRODUCTION_MONETIQUE": _sbx(("CAR DON TRA", "ADMINISTRATION"), ("CAR DON", "SIMULATION"), ("RAC REF TRA CAR DON SIM CER LEC", "CONSULTATION")),
     # Exploitant de la plateforme.
@@ -259,13 +260,14 @@ SANDBOX_GIMAC = {
 SANDBOX_INSTITUTIONS = {
     "ROLE_SBX_ADMIN_INSTITUTION": _sbx(("HAB", "ADMINISTRATION CONSULTATION"), ("RAC CER TRA", "CONSULTATION")),
     "ROLE_SBX_CHEF_PROJET": _sbx(("CER", "EXECUTION CONSULTATION"), (INTERFACES_SBX, "SIMULATION CONSULTATION"),
-                                 ("RAC DON SCN TRA", "CONSULTATION")),
-    "ROLE_SBX_DEVELOPPEUR": _sbx(("RAC", "ADMINISTRATION CONSULTATION"), ("DON " + INTERFACES_SBX, "SIMULATION CONSULTATION"),
-                                 ("SCN TRA", "CONSULTATION")),
-    "ROLE_SBX_TESTEUR": _sbx(("CER " + INTERFACES_SBX, "EXECUTION CONSULTATION"), ("TRA", "CONSULTATION")),
-    "ROLE_SBX_LECTEUR": _sbx(("CER RAC " + INTERFACES_SBX, "CONSULTATION")),
+                                 ("RAC DON SCN TRA REF", "CONSULTATION")),
+    # Le développeur exécute les cas qui lui sont affectés (CA-SBX-GIMAC-02 UC-CER-04, acteur principal).
+    "ROLE_SBX_DEVELOPPEUR": _sbx(("RAC", "ADMINISTRATION CONSULTATION"), ("CER", "EXECUTION CONSULTATION"),
+                                 ("DON " + INTERFACES_SBX, "SIMULATION CONSULTATION"), ("SCN TRA REF", "CONSULTATION")),
+    "ROLE_SBX_TESTEUR": _sbx(("CER " + INTERFACES_SBX, "EXECUTION CONSULTATION"), ("TRA REF", "CONSULTATION")),
+    "ROLE_SBX_LECTEUR": _sbx(("CER RAC REF " + INTERFACES_SBX, "CONSULTATION")),
     "ROLE_SBX_PARTENAIRE": _sbx(("RAC", "ADMINISTRATION CONSULTATION"), ("DON " + INTERFACES_SBX, "SIMULATION CONSULTATION"),
-                                ("CER", "EXECUTION CONSULTATION"), ("SCN TRA", "CONSULTATION")),
+                                ("CER", "EXECUTION CONSULTATION"), ("SCN TRA REF", "CONSULTATION")),
 }
 PRESENTATIONS_SANDBOX = {
     "ROLE_SBX_ADMIN_INSTITUTION": ("Sandbox : administrateur de l'institution",
@@ -291,6 +293,11 @@ PROFILS_EXTERNES = PROFILS_EXTERNES | set(SANDBOX_INSTITUTIONS)
 # RG-05 : la validation des verdicts reste au GIMAC, à l'ingénieur certificateur (Normes et Agréments) seul.
 assert not [n for n in PROFILS_EXTERNES if any(p.startswith("SBX_") and p.endswith("_VALIDATION") for p in PROFILS[n])]
 assert [n for n, ps in PROFILS.items() if "SBX_CER_VALIDATION" in ps] == ["ROLE_SNA"]
+# Périmètre de lecture du compte de service du DES : proposé par l'administrateur GIMAC, approuvé par le RSSI seul.
+assert [n for n, ps in PROFILS.items() if "SBX_LEC_VALIDATION" in ps] == ["ROLE_RSSI"]
+# Documentation des interfaces au portail (CC-SBX-GIMAC-02 §6, SBX-REFERENTIEL, SBX_REF_CONSULTATION) : rôles qui
+# raccordent, exécutent ou consultent ; pas l'administrateur de l'institution (moindre privilège).
+assert sorted(n for n in SANDBOX_INSTITUTIONS if "SBX_REF_CONSULTATION" in PROFILS[n]) == ["ROLE_SBX_CHEF_PROJET", "ROLE_SBX_DEVELOPPEUR", "ROLE_SBX_LECTEUR", "ROLE_SBX_PARTENAIRE", "ROLE_SBX_TESTEUR"]
 # Exemples de US-EXI-02 : un testeur exécute, n'administre pas ; le lecteur n'a pas les traces.
 assert "SBX_MOB_EXECUTION" in PROFILS["ROLE_SBX_TESTEUR"] and "SBX_MOB_ADMINISTRATION" not in PROFILS["ROLE_SBX_TESTEUR"]
 assert "SBX_TRA_CONSULTATION" not in PROFILS["ROLE_SBX_LECTEUR"]
@@ -677,6 +684,23 @@ def catalogue_frontend(realm):
     }
 
 
+# Jetons liés au certificat client (RFC 8705, CC-SBX-GIMAC-02 §D.8) : en production seulement, car la demande de jeton
+# doit alors se faire en mTLS (paquet GIMAC_SERVICE_TOKEN_SSL_BUNDLE de MS-HOMOLOGATION, Keycloak en TLS demandant le
+# certificat client). Le domaine de développement et de démonstration reste sans liaison (aucune AC mTLS locale livrée).
+CLIENTS_LIES_AU_CERTIFICAT = {"homologation-service"}
+
+
+def lier_au_certificat(clients):
+    """Copie des clients, avec tls.client.certificate.bound.access.tokens pour les clients de CLIENTS_LIES_AU_CERTIFICAT."""
+    copie = []
+    for c in clients:
+        if c["clientId"] in CLIENTS_LIES_AU_CERTIFICAT:
+            c = dict(c, attributes={**c.get("attributes", {}), "tls.client.certificate.bound.access.tokens": "true"})
+        copie.append(c)
+    assert sorted(c["clientId"] for c in copie if (c.get("attributes") or {}).get("tls.client.certificate.bound.access.tokens") == "true") == sorted(CLIENTS_LIES_AU_CERTIFICAT)
+    return copie
+
+
 def main():
     realm = json.loads(SOURCE.read_text(encoding="utf-8"))
     realm = copy.deepcopy(realm)
@@ -889,7 +913,7 @@ def main():
     # D-94 : le caractère externe d'un profil est une donnée (attribut gimac_externe), plus un nom figé dans MS-IAM.
     assert all((r["attributes"].get("gimac_externe") == ["true"]) == (n in PROFILS_EXTERNES) for n, r in profils_realm.items())
     CIBLE.write_text(texte + "\n", encoding="utf-8")
-    production = dict(realm, users=[u for u in realm["users"] if u.get("serviceAccountClientId")])
+    production = dict(realm, users=[u for u in realm["users"] if u.get("serviceAccountClientId")], clients=lier_au_certificat(realm["clients"]))
     assert not any(u["username"].startswith("test-") for u in production["users"]) and production["users"], "domaine de production"
     CIBLE_PRODUCTION.write_text(json.dumps(production, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     frontend = catalogue_frontend(realm)

@@ -71,7 +71,7 @@ public class Processus extends EntitePilotage {
     @Column(name = "formulaire", columnDefinition = "jsonb", nullable = false)
     private Formulaire formulaire = Formulaire.vide();
 
-    /** Gabarit de référence lisible des instances : CODE, AAAA, MM, JJ et NNNNNN remplacés au lancement. */
+    /** Gabarit de référence lisible des instances : CODE, AAAA, MM, JJ, N et NNNNNN remplacés au lancement. */
     @Column(name = "reference_modele", length = 120)
     private String referenceModele;
 

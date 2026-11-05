@@ -22,6 +22,9 @@ public interface RegistreLecture {
 
     List<Correspondant> correspondantsActifs(UUID institutionId);
 
+    /** Codes des services souscrits par l'institution (abonnements actifs), triés (CC-SBX-GIMAC-02 algorithme 6.7). */
+    List<String> servicesSouscrits(UUID institutionId);
+
     /** Codes de service actifs, une page triée par code. */
     List<Service> services(int page, int taille);
 

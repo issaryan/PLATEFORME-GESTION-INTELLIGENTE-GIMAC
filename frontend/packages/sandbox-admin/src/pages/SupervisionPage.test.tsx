@@ -1,21 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
-import SupervisionPage from './SupervisionPage'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import SupervisionPage, { modules } from './SupervisionPage'
 import { rendre, simules } from '../test/rendu'
-import { ALERTES_DEMO, DISPONIBILITES_DEMO, SANTE_DEMO } from '../services/supervisionSimulee'
+import { ALERTES_DEMO, DISPONIBILITES_DEMO, SANTE_DEMO, SERVICES_DEMO } from '../services/supervisionSimulee'
 
 describe('SupervisionPage', () => {
   it('affiche la santé détaillée, les éléments, les alertes et les disponibilités', async () => {
     rendre(<SupervisionPage />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Supervision de la sandbox' })).toBeTruthy()
-    expect(await screen.findByText('Dégradé')).toBeTruthy()
-    expect(screen.getByLabelText('Détail des états par module').textContent).toContain('SBX-CARTE')
+    expect((await screen.findAllByText('Dégradé')).length).toBeGreaterThan(0)
+    expect(screen.getByLabelText('Détail des états par module').textContent).toContain('carte')
     expect(screen.getByText('Cause externe: Non')).toBeTruthy()
     expect(screen.getByText('Délai dépassé sur la liaison de test')).toBeTruthy()
     expect(screen.getByText('Levée')).toBeTruthy()
     expect(screen.getByText('Close')).toBeTruthy()
     expect(screen.getByText('99.50 %')).toBeTruthy()
-    expect(screen.getByText('100.00 %')).toBeTruthy()
+    expect(screen.getAllByText('100.00 %').length).toBeGreaterThan(1)
     expect(screen.getAllByText('Tous').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Oui').length).toBeGreaterThan(0)
   })
@@ -51,30 +51,70 @@ describe('SupervisionPage', () => {
     expect(screen.getAllByText('Page 1 sur 1 · 0 éléments')).toHaveLength(3)
   })
 
-  it('propose une nouvelle tentative sur chacune des quatre lectures', async () => {
+  it('propose une nouvelle tentative sur chacune des cinq lectures', async () => {
     const s = simules()
     let essais = 0
-    const echoueUneFois = async <T,>(f: () => Promise<T>) => { if (essais++ < 4) throw new Error('panne'); return f() }
+    const echoueUneFois = async <T,>(f: () => Promise<T>) => { if (essais++ < 5) throw new Error('panne'); return f() }
     const services = { ...s, supervision: {
       etatSante: () => echoueUneFois(s.supervision.etatSante),
       elements: (q: { page: number; taille: number }) => echoueUneFois(() => s.supervision.elements(q)),
       alertes: (q: { page: number; taille: number }) => echoueUneFois(() => s.supervision.alertes(q)),
       disponibilites: (q: { page: number; taille: number }) => echoueUneFois(() => s.supervision.disponibilites(q)),
+      services: (q: { page: number; taille: number }) => echoueUneFois(() => s.supervision.services(q)),
     } }
     rendre(<SupervisionPage />, { services })
-    const boutons = await screen.findAllByRole('button', { name: 'Réessayer' })
-    expect(boutons).toHaveLength(4)
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Réessayer' })).toHaveLength(5))
+    const boutons = screen.getAllByRole('button', { name: 'Réessayer' })
     boutons.forEach((b) => fireEvent.click(b))
-    expect(await screen.findByText('Dégradé')).toBeTruthy()
+    expect((await screen.findAllByText('Dégradé')).length).toBeGreaterThan(0)
     expect(await screen.findByText('Délai dépassé sur la liaison de test')).toBeTruthy()
     expect(await screen.findByText('99.50 %')).toBeTruthy()
+    expect(await screen.findByText('sbx-trace')).toBeTruthy()
+  })
+
+  it('affiche les onze services avec leurs mesures', async () => {
+    rendre(<SupervisionPage />)
+    expect(await screen.findByRole('heading', { name: 'Services de la sandbox' })).toBeTruthy()
+    expect(await screen.findByText('Page 1 sur 1 · 11 éléments')).toBeTruthy()
+    for (const s of SERVICES_DEMO) expect(screen.getByText(s.service)).toBeTruthy()
+    expect(screen.getByText('98.75 %')).toBeTruthy()
+    expect(screen.getAllByText('100.00 %').length).toBeGreaterThan(9)
+    expect(screen.getByText(`${SERVICES_DEMO[0].latenceMoyenneMs} ms / 180 ms`)).toBeTruthy()
+    expect(screen.getByRole('img', { name: /Latence moyenne de sbx-carte/ })).toBeTruthy()
+    expect(screen.getAllByText('Dégradé').length).toBeGreaterThan(1)
+  })
+
+  it('distingue un service injoignable, non mesuré ou sans valeurs', async () => {
+    const vide = { ...SERVICES_DEMO[0], service: 'sbx-vide', niveau: null, joignable: false, mesureLe: null, latenceMoyenneMs: null, latenceMaxMs: null, debitParMinute: null, erreurs: null, retardKafka: null, rebuts: null, disponibilite24h: null, serie: [] }
+    const injoignable = { ...SERVICES_DEMO[1], service: 'sbx-arrete', niveau: 'INDISPONIBLE' as const, joignable: false }
+    rendre(<SupervisionPage />, { services: simules({ servicesSupervises: [vide, injoignable] }) })
+    expect(await screen.findByText('Non mesuré')).toBeTruthy()
+    expect(screen.getByText('Injoignable')).toBeTruthy()
+    expect(screen.getByText('— / —')).toBeTruthy()
+    expect(screen.getAllByText('—').length).toBeGreaterThan(3)
+    expect(modules('pas du json')).toEqual([])
+    expect(modules('[1]')).toEqual([])
+    expect(modules('null')).toEqual([])
+    expect(modules('3')).toEqual([])
+  })
+
+  it('montre un module au niveau inconnu sans couleur', async () => {
+    rendre(<SupervisionPage />, { services: simules({ sante: { ...SANTE_DEMO, etatsModules: JSON.stringify({ carte: 'INCONNU' }) } }) })
+    expect((await screen.findByLabelText('Détail des états par module')).textContent).toContain('carte')
+  })
+
+  it('signale l’absence de mesure', async () => {
+    rendre(<SupervisionPage />, { services: simules({ servicesSupervises: [] }) })
+    expect(await screen.findByText('Aucun service mesuré')).toBeTruthy()
   })
 
   it('est traduit en anglais et en espagnol', async () => {
     const r = rendre(<SupervisionPage />, { langue: 'en' })
     expect(await screen.findByRole('heading', { level: 1, name: 'Sandbox supervision' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Sandbox services' })).toBeTruthy()
     r.unmount()
     rendre(<SupervisionPage />, { langue: 'es' })
     expect(await screen.findByRole('heading', { level: 1, name: 'Supervisión del sandbox' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Servicios del sandbox' })).toBeTruthy()
   })
 })

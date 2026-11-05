@@ -29,8 +29,17 @@ class ReferenceProcessusTest {
         assertThatThrownBy(() -> p.definirReference("AUTRE-{AAAA}-{MM}-{JJ}-{NNNNNN}")).isInstanceOf(PilotageException.class);
     }
 
+    @Test
+    void sequenceSansZerosEtDateFacultative() {
+        LocalDate jour = LocalDate.parse("2026-11-04");
+        assertThat(ReferenceProcessus.suivante("CHG-{AAAA}-{N}", "DEMANDE_CHANGEMENT", jour, 412)).isEqualTo("CHG-2026-412");
+        assertThat(ReferenceProcessus.suivante("CHG-{AAAA}-{NNNNNN}", "DEMANDE_CHANGEMENT", jour, 7)).isEqualTo("CHG-2026-000007");
+        assertThat(ReferenceProcessus.suivante("{CODE}-{AAAA}-{MM}-{N}", "CONGE", jour, 3)).isEqualTo("CONGE-2026-11-3");
+        assertThat(ReferenceProcessus.valider("CHG-{AAAA}-{JJ}-{NNNNNN}")).isEqualTo("CHG-{AAAA}-{JJ}-{NNNNNN}");
+    }
+
     @ParameterizedTest
-    @ValueSource(strings = {"CHG-2026", "CHG-{MM}-{JJ}-{NNNNNN}", "CHG-{AAAA}-{JJ}-{NNNNNN}", "CHG-{AAAA}-{MM}-{NNNNNN}", "CHG-{AAAA}-{MM}-{JJ}", "chg/{AAAA}/{MM}/{JJ}/{NNNNNN}", "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"})
+    @ValueSource(strings = {"CHG-2026", "CHG-{MM}-{JJ}-{NNNNNN}", "CHG-{N}", "CHG-{AAAA}-{MM}-{JJ}", "CHG-{AAAA}-{NN}", "chg/{AAAA}/{MM}/{JJ}/{NNNNNN}", "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"})
     void gabaritsInvalides(String modele) {
         assertThatThrownBy(() -> ReferenceProcessus.valider(modele)).isInstanceOf(PilotageException.class);
     }

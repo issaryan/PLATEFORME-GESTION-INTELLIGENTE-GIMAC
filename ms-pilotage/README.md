@@ -70,6 +70,12 @@ Copié et adapté (paquet `cm.gimac.des.pilotage`) ; chaque bean est inactif tan
 
 Écarts comblés (D-53) : `ValidateurLiaisonCertificat` et option du décodeur exigeant la liaison au certificat (RFC 8705) ; masquage des journaux limité aux numéros vérifiant Luhn, en 6+4 (RG-52).
 
+## Registre des écarts
+
+| Point | Sources qui divergent | État |
+|---|---|---|
+| Signataire de l'étape `SSI` de la demande de changement (D-127) | REC-GIMAC-01, verrou 2 : « approbation du changement par la sécurité des SI » ; domaine Keycloak (`infra/keycloak/generer-realm-gimac.py`) : `CER_QUITUS_SECURITE_SIGN` réservé à `ROLE_RSSI` (libellé « Sécurité des SI »), `ROLE_AGENT_SSI` n'a que `CER_SECURITY_VERIFY` ; code : `DemandeChangementConfiguration:96`, étape et signature `DECISION_SSI` confiées à `ROLE_AGENT_SSI` | Tranché le 04/11/2026 (D-130) : `ROLE_RSSI` seul ; `DemandeChangementConfiguration` aligné |
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -87,6 +93,9 @@ Copié et adapté (paquet `cm.gimac.des.pilotage`) ; chaque bean est inactif tan
 | 2026-10-13 | - | D-106 : délai maximal du processus (`processus.delai_max_jours`) et des étapes (`delaiMaxJours` en JSONB), contrôle maximum >= cible (400), tâche et retard sur l'échéance maximale, `echeance_cible` et « échéance proche » des étapes, `delais` de l'instance (changelog `20261013090000_pil_delai_maximal.xml`) ; public seul : version publiée seule, sans historique ni contrôle (403) |
 | 2026-10-28 | - | `DEMANDE_CHANGEMENT` : modèle SSI publié, référence datée par séquence, export PDF des instances via MS-DOCUMENT ; tests unitaires et `ProcessusChangementIT`, seuils JaCoCo à 98 % sur le nouveau code |
 | 2026-10-30 | - | Kafka : `ByteArraySerializer` rétabli sur le binder Cloud Stream, sans changer le `StringSerializer` des enveloppes CloudEvents de l'outbox ; tests `SerialisationKafkaIT` et `ProcessusChangementIT` |
+| 2026-11-04 | D-127 | Référence de la demande de changement au format de la fiche, `CHG-{AAAA}-{N}` (par exemple CHG-2026-412) : gabarit à `{AAAA}` et séquence `{N}` ou `{NNNNNN}`, `{CODE}`, `{MM}` et `{JJ}` facultatifs ; contrat `ReferenceFicheChangementContratTest` contre `ApprobationPolicy` de MS-CERTIFICATION ; gabarit daté conservé par les versions déjà publiées de la recette ; registre des écarts : signataire de l'étape SSI |
+| 2026-11-04 | D-130 | Étape `SSI` et signature `DECISION_SSI` de la demande de changement confiées à `ROLE_RSSI` seul ; l'agent SSI est refusé (`ProcessusChangementIT`, simulation du frontend) |
+| 2026-11-04 | D-131 | Provisionnement au démarrage : une version publiée de `DEMANDE_CHANGEMENT` encore au gabarit daté du modèle système est remplacée par une nouvelle version publiée (`CHG-{AAAA}-{N}`, RSSI à l'étape SSI), la précédente retirée et consignée ; brouillon en cours ou gabarit personnalisé laissés tels quels (`DemandeChangementConfigurationTest`) |
 <!-- GIMAC:FIN -->
 
 # pilotage

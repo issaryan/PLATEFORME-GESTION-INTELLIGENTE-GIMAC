@@ -32,6 +32,38 @@ class ProfilsCrV17(unittest.TestCase):
         self.assertIn(("test-agent-ssi", "Agent", "Sécurité des SI", "ROLE_AGENT_SSI", None), G.UTILISATEURS)
         self.assertEqual(G.PRESENTATIONS["ROLE_AGENT_SSI"][0], "Agent de la sécurité des SI")
 
+    def test_perimetre_de_lecture_approuve_par_le_rssi(self):
+        # CC-SBX-GIMAC-02 §D.8 et UC-LEC-10 : le périmètre du compte de service est approuvé par le RSSI
+        # (SBX_LEC_VALIDATION), profil interne ; aucun profil externe ne porte de validation (RG-05).
+        self.assertEqual([n for n, ps in G.PROFILS.items() if "SBX_LEC_VALIDATION" in ps], ["ROLE_RSSI"])
+        self.assertNotIn("ROLE_RSSI", G.PROFILS_EXTERNES)
+        for cible in (G.CIBLE, G.CIBLE_PRODUCTION):
+            realm = json.loads(cible.read_text(encoding="utf-8"))
+            rssi = next(r for r in realm["roles"]["realm"] if r["name"] == "ROLE_RSSI")
+            self.assertIn("SBX_LEC_VALIDATION", rssi["composites"]["realm"])
+
+    def test_jeton_de_homologation_service_lie_au_certificat_en_production(self):
+        # RFC 8705, CC-SBX-GIMAC-02 §D.8 : cnf.x5t#S256 exigé par SBX-LECTURE ; jamais hors production.
+        def lies(cible):
+            realm = json.loads(cible.read_text(encoding="utf-8"))
+            return [c["clientId"] for c in realm["clients"] if (c.get("attributes") or {}).get("tls.client.certificate.bound.access.tokens") == "true"]
+        self.assertEqual(lies(G.CIBLE_PRODUCTION), ["homologation-service"])
+        self.assertEqual(lies(G.CIBLE), [])
+        clients = [{"clientId": "homologation-service"}, {"clientId": "autre", "attributes": {"x": "1"}}]
+        self.assertEqual(G.lier_au_certificat(clients)[1], clients[1])
+        self.assertNotIn("attributes", clients[0])
+
+    def test_developpeur_execute_les_cas_affectes(self):
+        # CA-SBX-GIMAC-02 UC-CER-04 : développeur et testeur sont les acteurs principaux de l'exécution d'un cas.
+        for profil in ("ROLE_SBX_DEVELOPPEUR", "ROLE_SBX_TESTEUR"):
+            self.assertIn("SBX_CER_EXECUTION", G.PROFILS[profil])
+            self.assertIn("SBX_CER_CONSULTATION", G.PROFILS[profil])
+
+    def test_documentation_du_referentiel_au_portail(self):
+        # CC-SBX-GIMAC-02 §6 : /bff/portail/sbx-referentiel/** en lecture sous SBX_REF_CONSULTATION.
+        porteurs = sorted(n for n in G.SANDBOX_INSTITUTIONS if "SBX_REF_CONSULTATION" in G.PROFILS[n])
+        self.assertEqual(porteurs, ["ROLE_SBX_CHEF_PROJET", "ROLE_SBX_DEVELOPPEUR", "ROLE_SBX_LECTEUR", "ROLE_SBX_PARTENAIRE", "ROLE_SBX_TESTEUR"])
+
     def test_missions_selon_le_cr(self):
         m = {k: v[1] for k, v in G.PRESENTATIONS.items()}
         self.assertIn("Coordonnateur fonctionnel", m["ROLE_CHEF_DDRM"])

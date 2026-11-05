@@ -22,8 +22,18 @@ public class RegistreSandboxQueries {
 
     public static final int TAILLE_MAX = 100;
 
-    /** Fiche lue par SBX-ESPACE à l'ouverture d'un espace. */
-    public record Fiche(String codeParticipant, String raisonSociale, String statut, long versionStatut, List<Correspondant> correspondants) {}
+    /**
+     * Fiche lue par SBX-ESPACE à l'ouverture d'un espace, et par SBX-RACCORDEMENT pour les services souscrits de
+     * l'institution (« services souscrits lus sur la fiche », CC-SBX-GIMAC-02 algorithme 6.7).
+     */
+    public record Fiche(
+        String codeParticipant,
+        String raisonSociale,
+        String statut,
+        long versionStatut,
+        List<Correspondant> correspondants,
+        List<String> servicesSouscrits
+    ) {}
 
     /** Page de la nomenclature des services. */
     public record PageServices(List<Service> contenu, long total, int page, int taille) {}
@@ -40,7 +50,7 @@ public class RegistreSandboxQueries {
     public Fiche fiche(String codeParticipant) {
         String code = codeParticipant == null ? "" : codeParticipant.trim();
         Identite i = registre.parCode(code).orElseThrow(() -> ParticipantException.notFound("PAR_INSTITUTION_NOT_FOUND", code));
-        return new Fiche(i.codeParticipant(), i.raisonSociale(), i.statut(), versions.courante(i.id()), registre.correspondantsActifs(i.id()));
+        return new Fiche(i.codeParticipant(), i.raisonSociale(), i.statut(), versions.courante(i.id()), registre.correspondantsActifs(i.id()), registre.servicesSouscrits(i.id()));
     }
 
     /** Nomenclature des services souscrits, triée par code ; taille de 1 à 100. */

@@ -1,5 +1,5 @@
 import type { ServiceActivite } from '../activite/ports'
-import type { ActeEspace, Alerte, DemandeOuverture, Disponibilite, ElementSupervise, Espace, EtatSante, Ouverture, PageEspaces, PageSupervision } from '../modele'
+import type { ActeEspace, Alerte, DemandeOuverture, Disponibilite, ElementSupervise, Espace, EtatSante, MesureService, Ouverture, PageEspaces, PageSupervision } from '../modele'
 
 // Ports de l'espace sandbox du DES (D-122) : seul contrat entre les écrans et les données. Implémentations HTTP
 // (passerelle) et simulée au contrat exact (VITE_SERVICES=simule). Toute écriture porte une clé d'idempotence
@@ -17,6 +17,7 @@ export interface ServiceSupervision {
   elements(q: { page: number; taille: number }): Promise<PageSupervision<ElementSupervise>>
   alertes(q: { page: number; taille: number }): Promise<PageSupervision<Alerte>>
   disponibilites(q: { page: number; taille: number }): Promise<PageSupervision<Disponibilite>>
+  services(q: { page: number; taille: number }): Promise<PageSupervision<MesureService>>
 }
 
 export type ServicesSandbox = { espaces: ServiceEspaces; supervision: ServiceSupervision; activite: ServiceActivite }

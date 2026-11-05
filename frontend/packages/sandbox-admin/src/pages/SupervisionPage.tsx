@@ -1,23 +1,23 @@
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, DataTable, InlineAlert, PageHeader, PageSection, StatusBadge, type Column, type Status } from '@gimac/design-system'
 import { useAlertesSandbox, useDisponibilites, useElementsSupervises, useEtatSante } from '../hooks'
-import type { Alerte, Disponibilite, ElementSupervise, NiveauSante, PageSupervision } from '../modele'
+import type { Alerte, Disponibilite, ElementSupervise, NiveauSante } from '../modele'
 import { etatListe, useFormat } from '../composants/communs'
+import { PaginationSupervision as Pagination } from '../composants/PaginationSupervision'
+import { ServicesSupervision } from '../composants/ServicesSupervision'
 
 export const TAILLE_SUPERVISION = 10
 const STATUT_SANTE: Record<NiveauSante, Status> = { NOMINAL: 'ok', DEGRADE: 'warn', INDISPONIBLE: 'crit', EN_MAINTENANCE: 'info' }
 
-type RequetePage<T> = { data?: PageSupervision<T>; isPending: boolean; isError: boolean; refetch: () => unknown }
-
-function Pagination<T>({ titre, page, changerPage, requete, children }: { titre: string; page: number; changerPage: (page: number) => void; requete: RequetePage<T>; children: ReactNode }) {
-  const { t } = useTranslation()
-  const total = requete.data?.total ?? 0
-  const pages = Math.max(1, Math.ceil(total / TAILLE_SUPERVISION))
-  return <PageSection title={titre} description={t('sbx.supervision.page', { page: page + 1, pages, total })} actions={<span className="gm-row">
-    <Button variant="ghost" icon="arrow-left" disabled={page === 0} onClick={() => changerPage(page - 1)}>{t('sbx.supervision.precedente')}</Button>
-    <Button variant="ghost" icon="arrow-right" disabled={(page + 1) * TAILLE_SUPERVISION >= total} onClick={() => changerPage(page + 1)}>{t('sbx.supervision.suivante')}</Button>
-  </span>}>{children}</PageSection>
+/** États par module de SBX-TRACE : objet JSON {module: niveau} ; illisible, liste vide. */
+export function modules(brut: string): [string, NiveauSante][] {
+  try {
+    const lu = JSON.parse(brut) as Record<string, NiveauSante> | null
+    return lu?.constructor === Object ? Object.entries(lu) : []
+  } catch {
+    return []
+  }
 }
 
 export default function SupervisionPage() {
@@ -62,16 +62,19 @@ export default function SupervisionPage() {
       {sante.data ? <div className="gm-col">
         <p><StatusBadge status={STATUT_SANTE[sante.data.niveauGlobal]} label={t(`sbx.supervision.niveau.${sante.data.niveauGlobal}`)} /> {f.instant(sante.data.calculeLe)}</p>
         <p>{t('sbx.supervision.causeExterne')}: {t(sante.data.causeExterne ? 'sbx.supervision.oui' : 'sbx.supervision.non')}</p>
-        <pre aria-label={t('sbx.supervision.detailModules')}>{sante.data.etatsModules}</pre>
+        <ul className="gm-row" aria-label={t('sbx.supervision.detailModules')}>
+          {modules(sante.data.etatsModules).map(([m, n]) => <li key={m}><span className="gm-mono">{m}</span> <StatusBadge status={STATUT_SANTE[n] ?? 'neutral'} label={t(`sbx.supervision.niveau.${n}`)} /></li>)}
+        </ul>
       </div> : null}
     </PageSection>
-    <Pagination titre={t('sbx.supervision.elements')} page={pageElements} changerPage={setPageElements} requete={elements}>
+    <ServicesSupervision />
+    <Pagination taille={TAILLE_SUPERVISION} titre={t('sbx.supervision.elements')} page={pageElements} changerPage={setPageElements} requete={elements}>
       <DataTable columns={colonnesElements} rows={lignesElements} rowKey={(x) => x.id} pagination={false} emptyText={t('sbx.supervision.aucunElement')} emptyHelp={t('sbx.supervision.aucunElementAide')} {...etatListe(elements, lignesElements)} onRetry={() => void elements.refetch()} />
     </Pagination>
-    <Pagination titre={t('sbx.supervision.alertes')} page={pageAlertes} changerPage={setPageAlertes} requete={alertes}>
+    <Pagination taille={TAILLE_SUPERVISION} titre={t('sbx.supervision.alertes')} page={pageAlertes} changerPage={setPageAlertes} requete={alertes}>
       <DataTable columns={colonnesAlertes} rows={lignesAlertes} rowKey={(x) => x.id} pagination={false} emptyText={t('sbx.supervision.aucuneAlerte')} emptyHelp={t('sbx.supervision.aucuneAlerteAide')} {...etatListe(alertes, lignesAlertes)} onRetry={() => void alertes.refetch()} />
     </Pagination>
-    <Pagination titre={t('sbx.supervision.disponibilites')} page={pageDisponibilites} changerPage={setPageDisponibilites} requete={disponibilites}>
+    <Pagination taille={TAILLE_SUPERVISION} titre={t('sbx.supervision.disponibilites')} page={pageDisponibilites} changerPage={setPageDisponibilites} requete={disponibilites}>
       <DataTable columns={colonnesDisponibilites} rows={lignesDisponibilites} rowKey={(x) => x.id} pagination={false} emptyText={t('sbx.supervision.aucuneDisponibilite')} emptyHelp={t('sbx.supervision.aucuneDisponibiliteAide')} {...etatListe(disponibilites, lignesDisponibilites)} onRetry={() => void disponibilites.refetch()} />
     </Pagination>
   </div>

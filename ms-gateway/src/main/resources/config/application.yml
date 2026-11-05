@@ -647,11 +647,12 @@ spring:
                   args:
                     maxSize: 1MB
                 - RewritePath=/bff/des/sbx-espace/(?<p>.*), /api/v1/console/${p}
-            # D-121 : supervision de la sandbox, quatre lectures seulement ; aucune autre route DES vers SBX-TRACE.
+            # D-121 : supervision de la sandbox, lectures exactes seulement ; aucune autre route DES vers SBX-TRACE. Complément
+            # du 05/11/2026 : mesures par service (services) et statistiques des codes retour.
             - id: des-sbx-trace
               uri: ${gimac.services.sbx-trace}
               predicates:
-                - Path=/bff/des/sbx-trace/etat-sante/detail,/bff/des/sbx-trace/elements-supervises,/bff/des/sbx-trace/alertes,/bff/des/sbx-trace/disponibilites
+                - Path=/bff/des/sbx-trace/etat-sante/detail,/bff/des/sbx-trace/elements-supervises,/bff/des/sbx-trace/alertes,/bff/des/sbx-trace/disponibilites,/bff/des/sbx-trace/services,/bff/des/sbx-trace/statistiques/codes-retour
                 - Method=GET
               filters:
                 - OpaAuthorize
