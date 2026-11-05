@@ -1,0 +1,625 @@
+{
+  "description": "Catalogue unique des modèles de notification de la Sandbox GIMAC (US-EXI-09, D-124, contrat §11) : source de MS-NOTIFICATION (ReglesSandbox), copié tel quel dans le dépôt de la sandbox (docs/contrats/notifications-sandbox.json), dont chaque service émetteur vérifie ses modèles et ses rôles. Gabarits sans donnée sensible : seul {code} (code participant) y figure.",
+  "modeles": [
+    {
+      "code": "SBX_ESP_INVITATION_ADMINISTRATEUR",
+      "titre": "Invitation : administrateur de l'espace sandbox {code}",
+      "sousTitre": "Votre accès est prêt sur la plateforme du GIMAC.",
+      "portee": "INSTITUTION"
+    },
+    {
+      "code": "SBX_ESP_INVITATION_COLLABORATEUR",
+      "titre": "Invitation à l'espace sandbox {code}",
+      "sousTitre": "Votre accès est prêt sur la plateforme du GIMAC.",
+      "portee": "INSTITUTION"
+    },
+    {
+      "code": "SBX_ESP_ESPACE_SUSPENDU",
+      "titre": "Espace sandbox {code} suspendu",
+      "sousTitre": "Les accès de l'institution à la sandbox sont suspendus.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_ESP_ESPACE_RETABLI",
+      "titre": "Espace sandbox {code} rétabli",
+      "sousTitre": "Les accès de l'institution à la sandbox sont rétablis.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_ESP_RETABLISSEMENT_POSSIBLE",
+      "titre": "Espace sandbox {code} : rétablissement possible",
+      "sousTitre": "Le registre des participants admet de nouveau l'institution.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_ESP_FERMETURE_A_PRONONCER",
+      "titre": "Espace sandbox {code} : fermeture à prononcer",
+      "sousTitre": "L'institution est retirée du registre des participants.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_ESP_PLUS_AUCUN_ADMINISTRATEUR",
+      "titre": "Espace sandbox {code} sans administrateur",
+      "sousTitre": "L'institution n'a plus d'administrateur actif.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_ESP_MANDAT_ACCORDE",
+      "titre": "Mandat accordé sur l'espace sandbox {code}",
+      "sousTitre": "Un mandat de partenaire est accordé.",
+      "portee": "INSTITUTION"
+    },
+    {
+      "code": "SBX_ESP_MANDAT_ACTIF",
+      "titre": "Mandat actif sur l'espace sandbox {code}",
+      "sousTitre": "Un mandat de partenaire commence.",
+      "portee": "INSTITUTION"
+    },
+    {
+      "code": "SBX_ESP_MANDAT_PROLONGE",
+      "titre": "Mandat prolongé sur l'espace sandbox {code}",
+      "sousTitre": "La fin d'un mandat de partenaire est reportée.",
+      "portee": "INSTITUTION"
+    },
+    {
+      "code": "SBX_ESP_MANDAT_REVOQUE",
+      "titre": "Mandat révoqué sur l'espace sandbox {code}",
+      "sousTitre": "Un mandat de partenaire est révoqué.",
+      "portee": "INSTITUTION"
+    },
+    {
+      "code": "SBX_ESP_MANDAT_ECHU",
+      "titre": "Mandat échu sur l'espace sandbox {code}",
+      "sousTitre": "Un mandat de partenaire est arrivé à échéance.",
+      "portee": "INSTITUTION"
+    },
+    {
+      "code": "SBX_ESP_MANDAT_TERMINE",
+      "titre": "Mandat terminé sur l'espace sandbox {code}",
+      "sousTitre": "Un mandat de partenaire est terminé.",
+      "portee": "INSTITUTION"
+    },
+    {
+      "code": "SBX_ESP_RAPPEL_ECHEANCE_MANDAT",
+      "titre": "Échéance proche d'un mandat sur l'espace sandbox {code}",
+      "sousTitre": "Un mandat de partenaire arrive bientôt à échéance.",
+      "portee": "INSTITUTION"
+    },
+    {
+      "code": "SBX_RAC_ECHEANCE_CERTIFICAT",
+      "titre": "Certificat de test proche de son échéance ({code})",
+      "sousTitre": "Un certificat de raccordement à la sandbox expire bientôt.",
+      "portee": "INSTITUTION"
+    },
+    {
+      "code": "SBX_RAC_COLLISION_SIGNALEE",
+      "titre": "Collision de code participant signalée ({code})",
+      "sousTitre": "Deux raccordements revendiquent le même code participant.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_CER_CAMPAGNE_OUVERTE",
+      "titre": "Campagne de certification ouverte ({code})",
+      "sousTitre": "Une campagne est ouverte dans la sandbox.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_CAMPAGNE_AFFECTEE",
+      "titre": "Campagne de certification affectée ({code})",
+      "sousTitre": "Une campagne vous est affectée dans la sandbox.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_ANOMALIE",
+      "titre": "Anomalie dans une campagne de certification ({code})",
+      "sousTitre": "Une anomalie est constatée dans une campagne de la sandbox.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_CAMPAGNE_CLOSE",
+      "titre": "Campagne de certification close ({code})",
+      "sousTitre": "Une campagne est close dans la sandbox.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_LEC_COLLISION_SIGNALEE",
+      "titre": "Collision signalée au contrat de lecture ({code})",
+      "sousTitre": "Une campagne est remplacée par un signalement au contrat de lecture.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_LEC_NOTIFICATION_ABANDONNEE",
+      "titre": "Notification de fin de campagne abandonnée ({code})",
+      "sousTitre": "La plateforme n'a pas accusé la notification ; la relève périodique reprend la campagne.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_LEC_SEUIL_TENTATIVES_ECRITURE",
+      "titre": "Seuil de tentatives d'écriture atteint ({code})",
+      "sousTitre": "Des tentatives d'écriture sur le contrat de lecture sont refusées.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_TRA_ALERTE",
+      "titre": "Alerte de la sandbox ({code})",
+      "sousTitre": "Une alerte d'exploitation de la sandbox est levée.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_DON_RESTAURATION_ECHEC",
+      "titre": "Restauration d'un jeu de données en échec ({code})",
+      "sousTitre": "Le jeu de données est libéré ; l'essai doit être repris.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_DON_CLE_APPROUVEE",
+      "titre": "Clé de test approuvée ({code})",
+      "sousTitre": "Une clé de test de la sandbox est approuvée.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_DON_CLE_REVOQUEE",
+      "titre": "Clé de test révoquée ({code})",
+      "sousTitre": "Une clé de test de la sandbox est révoquée.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_DON_VISA_PLAGE",
+      "titre": "Plages BIN à viser ({code})",
+      "sousTitre": "Un fichier de plages BIN attend son visa.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_DON_PLAGE_VISEE",
+      "titre": "Plage BIN visée ({code})",
+      "sousTitre": "Une plage BIN de la sandbox est visée.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_DON_REFUS_REPETES",
+      "titre": "Refus hors plage répétés ({code})",
+      "sousTitre": "Le seuil journalier de refus hors plage est dépassé.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_RAC_ABSENT_DU_REGISTRE",
+      "titre": "Participant absent du registre ({code})",
+      "sousTitre": "Le registre des participants ne connaît plus ce participant raccordé.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_RAC_ACCES_CROISE",
+      "titre": "Accès croisé refusé ({code})",
+      "sousTitre": "Un identifiant de test a été présenté pour un autre participant.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_RAC_APPROBATION_ATTENDUE",
+      "titre": "Approbation attendue sur un raccordement ({code})",
+      "sousTitre": "Une modification de raccordement attend son approbation.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_RAC_CERTIFICAT_ACTIVE",
+      "titre": "Certificat de test activé ({code})",
+      "sousTitre": "Un certificat de raccordement à la sandbox est actif.",
+      "portee": "INSTITUTION"
+    },
+    {
+      "code": "SBX_RAC_COLLISION_LEVEE",
+      "titre": "Collision de code participant levée ({code})",
+      "sousTitre": "La collision de code participant est levée.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_RAC_COLLISION_OUVERTE",
+      "titre": "Collision de code participant ouverte ({code})",
+      "sousTitre": "Deux raccordements revendiquent le même code participant.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_RAC_COMPTE_RENDU_SYNCHRONISATION",
+      "titre": "Compte rendu de synchronisation du registre",
+      "sousTitre": "La synchronisation du registre des participants est terminée.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_RAC_CONFIGURATION_PUBLIEE",
+      "titre": "Configuration de raccordement publiée ({code})",
+      "sousTitre": "Une nouvelle configuration de raccordement est en vigueur.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_RAC_DESTINATION_REFUSEE",
+      "titre": "Destination refusée ({code})",
+      "sousTitre": "Une adresse de raccordement hors de la liste autorisée a été refusée.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_RAC_ECHEANCE_PROCHE",
+      "titre": "Échéance proche sur un raccordement ({code})",
+      "sousTitre": "Un élément de raccordement à la sandbox arrive bientôt à échéance.",
+      "portee": "INSTITUTION"
+    },
+    {
+      "code": "SBX_RAC_IDENTIFIANT_DELIVRE",
+      "titre": "Identifiant de test délivré ({code})",
+      "sousTitre": "Un identifiant d'accès de test est prêt à être retiré.",
+      "portee": "INSTITUTION"
+    },
+    {
+      "code": "SBX_RAC_IDENTIFIANT_DEVERROUILLE",
+      "titre": "Identifiant de test déverrouillé ({code})",
+      "sousTitre": "Un identifiant d'accès de test est de nouveau utilisable.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_RAC_IDENTIFIANT_REVOQUE",
+      "titre": "Identifiant de test révoqué ({code})",
+      "sousTitre": "Un identifiant d'accès de test est révoqué.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_RAC_IDENTIFIANT_VERROUILLE",
+      "titre": "Identifiant de test verrouillé ({code})",
+      "sousTitre": "Un identifiant d'accès de test est verrouillé après des échecs répétés.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_RAC_IMPORT_REFUSE",
+      "titre": "Import de configuration refusé ({code})",
+      "sousTitre": "Un lot de configuration de raccordement a été refusé.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_RAC_REGISTRE_INDISPONIBLE",
+      "titre": "Registre des participants indisponible",
+      "sousTitre": "La synchronisation du registre des participants n'a pas abouti.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_RAC_RELEVE_PERIME",
+      "titre": "Relevé de raccordement périmé ({code})",
+      "sousTitre": "Le dernier contrôle de raccordement est trop ancien.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_RAC_ROTATION_APPROBATION_EN_RETARD",
+      "titre": "Rotation en attente d'approbation ({code})",
+      "sousTitre": "Une rotation de certificat attend son approbation au-delà du délai.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_RAC_ROTATION_PREPAREE",
+      "titre": "Rotation de certificat préparée ({code})",
+      "sousTitre": "Une rotation de certificat de raccordement est préparée.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_RAC_ROTATION_SUSPENDUE",
+      "titre": "Rotation de certificat suspendue ({code})",
+      "sousTitre": "Une rotation de certificat de raccordement est suspendue.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_ACCUSE_RECEPTION_DEMANDE",
+      "titre": "Demande de campagne reçue ({code})",
+      "sousTitre": "Votre demande de campagne de certification est enregistrée.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_AFFECTATION_RETIREE",
+      "titre": "Affectation retirée ({code})",
+      "sousTitre": "Un cas de test ne vous est plus affecté.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_ANOMALIE_CLOSE",
+      "titre": "Anomalie close ({code})",
+      "sousTitre": "Une anomalie d'une campagne de certification est close.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_ANOMALIE_OUVERTE",
+      "titre": "Anomalie ouverte ({code})",
+      "sousTitre": "Une anomalie est ouverte dans une campagne de certification.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_ANOMALIE_SANDBOX",
+      "titre": "Anomalie de la sandbox ({code})",
+      "sousTitre": "Une anomalie imputée à la sandbox est signalée.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_BILAN_REEMIS",
+      "titre": "Bilan de campagne réémis ({code})",
+      "sousTitre": "Le bilan d'une campagne de certification est réémis.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_CAMPAGNE_ANNULEE",
+      "titre": "Campagne de certification annulée ({code})",
+      "sousTitre": "Une campagne de la sandbox est annulée.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_CAMPAGNE_DEMANDEE",
+      "titre": "Campagne de certification demandée ({code})",
+      "sousTitre": "Une demande de campagne attend son instruction.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_CAMPAGNE_REPRISE",
+      "titre": "Campagne de certification reprise ({code})",
+      "sousTitre": "Une campagne suspendue reprend dans la sandbox.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_CAMPAGNE_SUSPENDUE",
+      "titre": "Campagne de certification suspendue ({code})",
+      "sousTitre": "Une campagne est suspendue dans la sandbox.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_CAS_AFFECTES",
+      "titre": "Cas de test affectés ({code})",
+      "sousTitre": "Des cas de test vous sont affectés dans une campagne.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_COMPARAISON_REFERENCE",
+      "titre": "Comparaison à la référence ({code})",
+      "sousTitre": "Une exécution diffère du résultat de référence.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_CONTRE_TEST_ACCORDE",
+      "titre": "Contre-test accordé ({code})",
+      "sousTitre": "Un contre-test est accordé dans une campagne.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_CONTRE_TEST_DEMANDE",
+      "titre": "Contre-test demandé ({code})",
+      "sousTitre": "Un contre-test est demandé dans une campagne.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_CONTRE_TEST_REFUSE",
+      "titre": "Contre-test refusé ({code})",
+      "sousTitre": "Un contre-test est refusé dans une campagne.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_CORRECTION_DECLAREE",
+      "titre": "Correction déclarée ({code})",
+      "sousTitre": "Le participant déclare avoir corrigé une anomalie.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_DATES_REVISEES",
+      "titre": "Dates de campagne révisées ({code})",
+      "sousTitre": "Les dates d'une campagne de certification sont révisées.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_DEMANDE_REFUSEE",
+      "titre": "Demande de campagne refusée ({code})",
+      "sousTitre": "Une demande de campagne de certification est refusée.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_CER_REPRISE_CONFIRMEE",
+      "titre": "Reprise de l'existant confirmée ({code})",
+      "sousTitre": "La reprise d'une campagne de l'outil existant est confirmée.",
+      "portee": "MIXTE"
+    },
+    {
+      "code": "SBX_REF_ACTIVATION_EN_ATTENTE",
+      "titre": "Activation de service en attente",
+      "sousTitre": "Un service paramétré attend son activation par une version publiée.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_REF_ARBITRAGE_ARRETE",
+      "titre": "Arbitrage arrêté",
+      "sousTitre": "Une règle contradictoire du référentiel est arbitrée.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_REF_CORRESPONDANCE_A_VALIDER",
+      "titre": "Correspondance à valider",
+      "sousTitre": "Une correspondance entre cas de base et opérations attend sa validation.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_REF_DIVERGENCE_POLITIQUE_EFFECTIVE",
+      "titre": "Divergence de politique constatée",
+      "sousTitre": "La politique appliquée par un essai diffère de la version en vigueur.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_REF_HORLOGE_DERIVE",
+      "titre": "Dérive d'horloge constatée",
+      "sousTitre": "Une horloge de la sandbox dérive au-delà du seuil.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_REF_RUPTURE_CHAINE",
+      "titre": "Rupture de la chaîne des versions",
+      "sousTitre": "L'empreinte d'une version du référentiel ne suit plus la précédente.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_REF_VERSION_A_APPROUVER",
+      "titre": "Version du référentiel à approuver",
+      "sousTitre": "Une version du référentiel attend son approbation.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_REF_VERSION_PUBLIEE",
+      "titre": "Version du référentiel publiée",
+      "sousTitre": "Une nouvelle version du référentiel est en vigueur.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_REF_VERSION_REFUSEE",
+      "titre": "Version du référentiel refusée",
+      "sousTitre": "Une version soumise du référentiel est refusée.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_TRA_REFERENCE_ORPHELINE",
+      "titre": "Référence de trace orpheline",
+      "sousTitre": "Une référence de trace n'est rattachée à aucun échange.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_TRA_EXPORT_DISPONIBLE",
+      "titre": "Export de traces disponible",
+      "sousTitre": "L'export de traces demandé est prêt.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_TRA_RESTAURATION_REFUSEE",
+      "titre": "Restauration de traces refusée",
+      "sousTitre": "Une restauration de traces diverge et est refusée.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_TRA_REBUT_REJOUE",
+      "titre": "Rebut rejoué",
+      "sousTitre": "Un message au rebut de la sandbox est rejoué.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_TRA_OBJETS_SANS_LOT_SUPPRIMES",
+      "titre": "Objets sans lot supprimés",
+      "sousTitre": "La réconciliation a supprimé des objets sans lot indexé.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_TRA_CONTROLE_TEMOINS",
+      "titre": "Contrôle des témoins de masquage",
+      "sousTitre": "Le contrôle des témoins de masquage est terminé.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_TRA_RAPPORT_DISPONIBLE",
+      "titre": "Rapport d'activité disponible",
+      "sousTitre": "Le rapport d'activité périodique de la sandbox est prêt.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_SIM_CAS_NON_EXECUTE_REJOUABLE",
+      "titre": "Cas non exécuté, rejouable ({code})",
+      "sousTitre": "Un cas n'a pas pu être exécuté et peut être rejoué.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_SIM_ERREUR_CONFIGURATION",
+      "titre": "Erreur de configuration d'un essai ({code})",
+      "sousTitre": "Un essai s'est arrêté sur une erreur de configuration.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_SIM_APPEL_ACTEUR_SIMULE",
+      "titre": "Appel d'un acteur simulé ({code})",
+      "sousTitre": "Un acteur simulé signale un appel orphelin ou en échec.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_DON_COEUR_BASCULE",
+      "titre": "Bascule du cœur bancaire simulé",
+      "sousTitre": "Le cœur bancaire simulé a basculé sur son autre instance.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_TRA_REJETS_INGESTION",
+      "titre": "Rejets à l'ingestion des traces",
+      "sousTitre": "Des échanges ont été rejetés à l'ingestion des traces.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_TRA_MASQUAGE_INCOMPLET_OU_REJETS",
+      "titre": "Masquage incomplet ou rejets",
+      "sousTitre": "Un lot de traces présente un masquage incomplet ou des rejets.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_TRA_LOT_EN_QUARANTAINE",
+      "titre": "Lot de traces en quarantaine",
+      "sousTitre": "Un lot de traces est placé en quarantaine.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_TRA_EMPREINTE_DEPOT_DIVERGENTE",
+      "titre": "Empreinte de dépôt divergente",
+      "sousTitre": "L'empreinte d'un dépôt de traces ne correspond pas.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_TRA_EXPORT_PREALABLE_ECHOUE",
+      "titre": "Export préalable en échec",
+      "sousTitre": "L'export préalable au dépôt des traces n'a pas abouti.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_TRA_EMPREINTE_SCELLEMENT_DIVERGENTE",
+      "titre": "Empreinte de scellement divergente",
+      "sousTitre": "L'empreinte de scellement d'un lot de traces ne correspond pas.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_REF_PROPOSITION_PROFIL_ISO20022",
+      "titre": "Proposition de profil ISO 20022",
+      "sousTitre": "Un écart de la façade ISO 20022 propose une nouvelle version du profil.",
+      "portee": "GIMAC"
+    },
+    {
+      "code": "SBX_MOB_TRANSACTION_SIGNALEE",
+      "titre": "Transaction mobile à traiter manuellement ({code})",
+      "sousTitre": "Une notification n'a pas été acquittée après les réémissions prévues.",
+      "portee": "INSTITUTION"
+    },
+    {
+      "code": "SBX_MOB_FICHIER_REJETE",
+      "titre": "Fichier de fin de journée rejeté ({code})",
+      "sousTitre": "Un fichier de fin de journée déposé dans la sandbox est rejeté.",
+      "portee": "INSTITUTION"
+    }
+  ],
+  "roles": {
+    "ADMINISTRATEUR_INSTITUTION": {
+      "profilInstitution": "ROLE_SBX_ADMIN_INSTITUTION"
+    },
+    "CHEF_DE_PROJET": {
+      "profilInstitution": "ROLE_SBX_CHEF_PROJET"
+    },
+    "DEVELOPPEUR": {
+      "profilInstitution": "ROLE_SBX_DEVELOPPEUR"
+    },
+    "TESTEUR": {
+      "profilInstitution": "ROLE_SBX_TESTEUR"
+    },
+    "ADMINISTRATEUR_GIMAC": {
+      "permissionGimac": "SBX_HAB_ADMINISTRATION"
+    },
+    "RSSI": {
+      "permissionGimac": "SBX_LEC_ADMINISTRATION"
+    },
+    "CERTIFICATEUR": {
+      "permissionGimac": "SBX_CER_VALIDATION"
+    },
+    "EXPLOITANT": {
+      "permissionGimac": "SBX_TRA_ADMINISTRATION"
+    },
+    "EXPLOITATION": {
+      "permissionGimac": "SBX_TRA_ADMINISTRATION"
+    },
+    "PRODUCTION_MONETIQUE": {
+      "permissionGimac": "SBX_DON_ADMINISTRATION"
+    }
+  }
+}

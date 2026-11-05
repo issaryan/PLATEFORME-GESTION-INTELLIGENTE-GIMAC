@@ -64,46 +64,21 @@ public final class ReglesSandbox {
 
     private final Map<String, Modele> modeles = new LinkedHashMap<>();
 
-    public ReglesSandbox() {
-        // SBX-ESPACE (invitations, suspension et rétablissement, mandats).
-        modele("SBX_ESP_INVITATION_ADMINISTRATEUR", "Invitation : administrateur de l'espace sandbox {code}", "Votre accès est prêt sur la plateforme du GIMAC.", Portee.INSTITUTION);
-        modele("SBX_ESP_INVITATION_COLLABORATEUR", "Invitation à l'espace sandbox {code}", "Votre accès est prêt sur la plateforme du GIMAC.", Portee.INSTITUTION);
-        modele("SBX_ESP_ESPACE_SUSPENDU", "Espace sandbox {code} suspendu", "Les accès de l'institution à la sandbox sont suspendus.", Portee.MIXTE);
-        modele("SBX_ESP_ESPACE_RETABLI", "Espace sandbox {code} rétabli", "Les accès de l'institution à la sandbox sont rétablis.", Portee.MIXTE);
-        modele("SBX_ESP_RETABLISSEMENT_POSSIBLE", "Espace sandbox {code} : rétablissement possible", "Le registre des participants admet de nouveau l'institution.", Portee.GIMAC);
-        modele("SBX_ESP_FERMETURE_A_PRONONCER", "Espace sandbox {code} : fermeture à prononcer", "L'institution est retirée du registre des participants.", Portee.GIMAC);
-        modele("SBX_ESP_PLUS_AUCUN_ADMINISTRATEUR", "Espace sandbox {code} sans administrateur", "L'institution n'a plus d'administrateur actif.", Portee.GIMAC);
-        modele("SBX_ESP_MANDAT_ACCORDE", "Mandat accordé sur l'espace sandbox {code}", "Un mandat de partenaire est accordé.", Portee.INSTITUTION);
-        modele("SBX_ESP_MANDAT_ACTIF", "Mandat actif sur l'espace sandbox {code}", "Un mandat de partenaire commence.", Portee.INSTITUTION);
-        modele("SBX_ESP_MANDAT_PROLONGE", "Mandat prolongé sur l'espace sandbox {code}", "La fin d'un mandat de partenaire est reportée.", Portee.INSTITUTION);
-        modele("SBX_ESP_MANDAT_REVOQUE", "Mandat révoqué sur l'espace sandbox {code}", "Un mandat de partenaire est révoqué.", Portee.INSTITUTION);
-        modele("SBX_ESP_MANDAT_ECHU", "Mandat échu sur l'espace sandbox {code}", "Un mandat de partenaire est arrivé à échéance.", Portee.INSTITUTION);
-        modele("SBX_ESP_MANDAT_TERMINE", "Mandat terminé sur l'espace sandbox {code}", "Un mandat de partenaire est terminé.", Portee.INSTITUTION);
-        modele("SBX_ESP_RAPPEL_ECHEANCE_MANDAT", "Échéance proche d'un mandat sur l'espace sandbox {code}", "Un mandat de partenaire arrive bientôt à échéance.", Portee.INSTITUTION);
-        // SBX-RACCORDEMENT (échéances de certificat, collisions).
-        modele("SBX_RAC_ECHEANCE_CERTIFICAT", "Certificat de test proche de son échéance ({code})", "Un certificat de raccordement à la sandbox expire bientôt.", Portee.INSTITUTION);
-        modele("SBX_RAC_COLLISION_SIGNALEE", "Collision de code participant signalée ({code})", "Deux raccordements revendiquent le même code participant.", Portee.GIMAC);
-        // SBX-CAMPAGNE (ouverture, affectation, anomalie, clôture).
-        modele("SBX_CER_CAMPAGNE_OUVERTE", "Campagne de certification ouverte ({code})", "Une campagne est ouverte dans la sandbox.", Portee.MIXTE);
-        modele("SBX_CER_CAMPAGNE_AFFECTEE", "Campagne de certification affectée ({code})", "Une campagne vous est affectée dans la sandbox.", Portee.MIXTE);
-        modele("SBX_CER_ANOMALIE", "Anomalie dans une campagne de certification ({code})", "Une anomalie est constatée dans une campagne de la sandbox.", Portee.MIXTE);
-        modele("SBX_CER_CAMPAGNE_CLOSE", "Campagne de certification close ({code})", "Une campagne est close dans la sandbox.", Portee.MIXTE);
-        // SBX-LECTURE et SBX-TRACE (collisions, notifications abandonnées, tentatives, alertes).
-        modele("SBX_LEC_COLLISION_SIGNALEE", "Collision signalée au contrat de lecture ({code})", "Une campagne est remplacée par un signalement au contrat de lecture.", Portee.GIMAC);
-        modele("SBX_LEC_NOTIFICATION_ABANDONNEE", "Notification de fin de campagne abandonnée ({code})", "La plateforme n'a pas accusé la notification ; la relève périodique reprend la campagne.", Portee.GIMAC);
-        modele("SBX_LEC_SEUIL_TENTATIVES_ECRITURE", "Seuil de tentatives d'écriture atteint ({code})", "Des tentatives d'écriture sur le contrat de lecture sont refusées.", Portee.GIMAC);
-        modele("SBX_TRA_ALERTE", "Alerte de la sandbox ({code})", "Une alerte d'exploitation de la sandbox est levée.", Portee.GIMAC);
-        // SBX-DONNEES (restauration, clés de test, plages BIN, refus hors plage).
-        modele("SBX_DON_RESTAURATION_ECHEC", "Restauration d'un jeu de données en échec ({code})", "Le jeu de données est libéré ; l'essai doit être repris.", Portee.GIMAC);
-        modele("SBX_DON_CLE_APPROUVEE", "Clé de test approuvée ({code})", "Une clé de test de la sandbox est approuvée.", Portee.GIMAC);
-        modele("SBX_DON_CLE_REVOQUEE", "Clé de test révoquée ({code})", "Une clé de test de la sandbox est révoquée.", Portee.GIMAC);
-        modele("SBX_DON_VISA_PLAGE", "Plages BIN à viser ({code})", "Un fichier de plages BIN attend son visa.", Portee.GIMAC);
-        modele("SBX_DON_PLAGE_VISEE", "Plage BIN visée ({code})", "Une plage BIN de la sandbox est visée.", Portee.GIMAC);
-        modele("SBX_DON_REFUS_REPETES", "Refus hors plage répétés ({code})", "Le seuil journalier de refus hors plage est dépassé.", Portee.GIMAC);
+    /**
+     * Règles sur le catalogue des modèles (config/notifications-sandbox.json, lu par CatalogueNotificationsSandbox) : un
+     * code en double est refusé.
+     */
+    public ReglesSandbox(List<Modele> catalogue) {
+        for (Modele m : catalogue) {
+            if (modeles.putIfAbsent(m.code(), m) != null) {
+                throw new IllegalArgumentException("modèle en double au catalogue : " + m.code());
+            }
+        }
     }
 
-    private void modele(String code, String titre, String sousTitre, Portee portee) {
-        modeles.put(code, new Modele(code, titre, sousTitre, portee, code.startsWith("SBX_ESP_MANDAT_") || "SBX_ESP_RAPPEL_ECHEANCE_MANDAT".equals(code)));
+    /** Les comptes nommés des modèles de mandat sont admis hors de l'institution (intervenants désignés par SBX-ESPACE). */
+    public static boolean intervenants(String code) {
+        return code.startsWith("SBX_ESP_MANDAT_") || "SBX_ESP_RAPPEL_ECHEANCE_MANDAT".equals(code);
     }
 
     /** Catalogue des modèles, dans l'ordre (résolution à blanc, console). */

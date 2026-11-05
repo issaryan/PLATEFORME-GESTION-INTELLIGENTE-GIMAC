@@ -65,7 +65,7 @@ class NotificationsSandboxServiceTest {
 
     @BeforeEach
     void init() {
-        service = new NotificationsSandboxService(notifications, preferences, annuaire, outbox, new ReglesSandbox(), jdbc, Clock.fixed(T, ZoneOffset.UTC));
+        service = new NotificationsSandboxService(notifications, preferences, annuaire, outbox, cm.gimac.des.notification.infrastructure.catalogue.CatalogueNotificationsSandbox.regles(), jdbc, Clock.fixed(T, ZoneOffset.UTC));
         lenient().when(notifications.save(any())).thenAnswer(i -> i.getArgument(0));
         lenient().when(preferences.findById(anyString())).thenReturn(Optional.empty());
         lenient().when(annuaire.comptesInstitution("99001")).thenReturn(Map.of("adm", Set.of("ROLE_SBX_ADMIN_INSTITUTION"), "chef", Set.of("ROLE_SBX_CHEF_PROJET")));

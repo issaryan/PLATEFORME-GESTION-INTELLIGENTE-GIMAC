@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 /** Règles et gabarits de la sandbox (US-EXI-09) : portée, rôles, cloisonnement par institution, aucune donnée sensible. */
 class ReglesSandboxTest {
 
-    final ReglesSandbox regles = new ReglesSandbox();
+    final ReglesSandbox regles = cm.gimac.des.notification.infrastructure.catalogue.CatalogueNotificationsSandbox.regles();
 
     static final Map<String, Set<String>> INSTITUTION = Map.of(
         "adm",

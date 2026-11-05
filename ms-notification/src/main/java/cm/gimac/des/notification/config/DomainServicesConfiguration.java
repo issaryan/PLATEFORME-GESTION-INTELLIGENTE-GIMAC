@@ -32,6 +32,6 @@ public class DomainServicesConfiguration {
     /** Règles et gabarits des notifications de la Sandbox GIMAC (US-EXI-09). */
     @Bean
     public ReglesSandbox reglesSandbox() {
-        return new ReglesSandbox();
+        return cm.gimac.des.notification.infrastructure.catalogue.CatalogueNotificationsSandbox.regles();
     }
 }
