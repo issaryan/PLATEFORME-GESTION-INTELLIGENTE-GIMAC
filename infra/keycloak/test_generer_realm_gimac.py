@@ -42,6 +42,12 @@ class ProfilsCrV17(unittest.TestCase):
             rssi = next(r for r in realm["roles"]["realm"] if r["name"] == "ROLE_RSSI")
             self.assertIn("SBX_LEC_VALIDATION", rssi["composites"]["realm"])
 
+    def test_developpeur_execute_les_cas_affectes(self):
+        # CA-SBX-GIMAC-02 UC-CER-04 : développeur et testeur sont les acteurs principaux de l'exécution d'un cas.
+        for profil in ("ROLE_SBX_DEVELOPPEUR", "ROLE_SBX_TESTEUR"):
+            self.assertIn("SBX_CER_EXECUTION", G.PROFILS[profil])
+            self.assertIn("SBX_CER_CONSULTATION", G.PROFILS[profil])
+
     def test_missions_selon_le_cr(self):
         m = {k: v[1] for k, v in G.PRESENTATIONS.items()}
         self.assertIn("Coordonnateur fonctionnel", m["ROLE_CHEF_DDRM"])

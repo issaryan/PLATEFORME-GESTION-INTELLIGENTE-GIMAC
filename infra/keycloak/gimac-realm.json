@@ -1911,6 +1911,8 @@
             "ROLE_USER",
             "SBX_RAC_ADMINISTRATION",
             "SBX_RAC_CONSULTATION",
+            "SBX_CER_EXECUTION",
+            "SBX_CER_CONSULTATION",
             "SBX_DON_SIMULATION",
             "SBX_DON_CONSULTATION",
             "SBX_SIM_SIMULATION",
