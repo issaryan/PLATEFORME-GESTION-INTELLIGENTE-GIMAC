@@ -36,6 +36,11 @@ class RoutesSandboxTest {
         for (String service : RouteSandbox.MODULES.keySet()) {
             for (String[] c : new String[][] { { "console", "console" }, { "portail", "portail" } }) {
                 String chemin = "/bff/" + c[0] + "/sbx-" + service + "/ressources/r1";
+                if ("lecture".equals(service) && "portail".equals(c[0])) {
+                    // Audit de cohérence m1 : SBX-LECTURE n'expose aucun portail (CC-SBX-GIMAC-02 §6), aucune route.
+                    assertThat(RoutesPresentationTest.correspondantes(chemin)).as(chemin).isEmpty();
+                    continue;
+                }
                 List<Route> r = RoutesPresentationTest.correspondantes(chemin);
                 assertThat(r).as(chemin).hasSize(1);
                 assertThat(r.get(0).id()).isEqualTo(c[0] + "-sbx-" + service);
@@ -98,8 +103,9 @@ class RoutesSandboxTest {
     @DisplayName("GW-21 : toute route de la sandbox vise un service de la sandbox, adresses sbx-* locales ou internes, jamais une adresse IP")
     @SuppressWarnings("unchecked")
     void aucuneRouteVersLaProduction() throws Exception {
-        // Onze services en console et portail, espaces et supervision dans le département, administration déléguée.
-        assertThat(sandbox()).hasSize(11 * 2 + 2 + 1);
+        // Onze services en console, dix en portail (pas SBX-LECTURE), espaces et supervision dans le département,
+        // administration déléguée.
+        assertThat(sandbox()).hasSize(11 + 10 + 2 + 1);
         for (Route r : sandbox()) {
             if (r.id().equals("portail-sbx-habilitations")) {
                 assertThat(r.uri()).isEqualTo("${gimac.services.iam}");

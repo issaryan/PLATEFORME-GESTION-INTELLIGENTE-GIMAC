@@ -625,17 +625,8 @@ spring:
                   args:
                     maxSize: 1MB
                 - RewritePath=/bff/console/sbx-lecture/(?<p>.*), /api/v1/console/${p}
-            - id: portail-sbx-lecture
-              uri: ${gimac.services.sbx-lecture}
-              predicates:
-                - Path=/bff/portail/sbx-lecture/**
-              filters:
-                - OpaAuthorize
-                - CloisonnementSandbox
-                - name: RequestSize
-                  args:
-                    maxSize: 1MB
-                - RewritePath=/bff/portail/sbx-lecture/(?<p>.*), /api/v1/portail/${p}
+            # SBX-LECTURE n'a pas de portail (CC-SBX-GIMAC-02 §6 : console seule, /bff/console/sbx-lecture/**) ; le contrat
+            # de lecture v1 est servi à MS-HOMOLOGATION par la passerelle interne de service, jamais par MS-GATEWAY.
             - id: des-sbx-espace
               uri: ${gimac.services.sbx-espace}
               predicates:
