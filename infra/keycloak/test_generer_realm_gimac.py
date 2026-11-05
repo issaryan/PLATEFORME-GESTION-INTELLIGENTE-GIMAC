@@ -48,6 +48,11 @@ class ProfilsCrV17(unittest.TestCase):
             self.assertIn("SBX_CER_EXECUTION", G.PROFILS[profil])
             self.assertIn("SBX_CER_CONSULTATION", G.PROFILS[profil])
 
+    def test_documentation_du_referentiel_au_portail(self):
+        # CC-SBX-GIMAC-02 §6 : /bff/portail/sbx-referentiel/** en lecture sous SBX_REF_CONSULTATION.
+        porteurs = sorted(n for n in G.SANDBOX_INSTITUTIONS if "SBX_REF_CONSULTATION" in G.PROFILS[n])
+        self.assertEqual(porteurs, ["ROLE_SBX_CHEF_PROJET", "ROLE_SBX_DEVELOPPEUR", "ROLE_SBX_LECTEUR", "ROLE_SBX_PARTENAIRE", "ROLE_SBX_TESTEUR"])
+
     def test_missions_selon_le_cr(self):
         m = {k: v[1] for k, v in G.PRESENTATIONS.items()}
         self.assertIn("Coordonnateur fonctionnel", m["ROLE_CHEF_DDRM"])

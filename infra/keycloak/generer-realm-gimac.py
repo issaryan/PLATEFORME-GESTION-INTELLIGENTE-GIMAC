@@ -250,14 +250,14 @@ SANDBOX_GIMAC = {
 SANDBOX_INSTITUTIONS = {
     "ROLE_SBX_ADMIN_INSTITUTION": _sbx(("HAB", "ADMINISTRATION CONSULTATION"), ("RAC CER TRA", "CONSULTATION")),
     "ROLE_SBX_CHEF_PROJET": _sbx(("CER", "EXECUTION CONSULTATION"), (INTERFACES_SBX, "SIMULATION CONSULTATION"),
-                                 ("RAC DON SCN TRA", "CONSULTATION")),
+                                 ("RAC DON SCN TRA REF", "CONSULTATION")),
     # Le développeur exécute les cas qui lui sont affectés (CA-SBX-GIMAC-02 UC-CER-04, acteur principal).
     "ROLE_SBX_DEVELOPPEUR": _sbx(("RAC", "ADMINISTRATION CONSULTATION"), ("CER", "EXECUTION CONSULTATION"),
-                                 ("DON " + INTERFACES_SBX, "SIMULATION CONSULTATION"), ("SCN TRA", "CONSULTATION")),
-    "ROLE_SBX_TESTEUR": _sbx(("CER " + INTERFACES_SBX, "EXECUTION CONSULTATION"), ("TRA", "CONSULTATION")),
-    "ROLE_SBX_LECTEUR": _sbx(("CER RAC " + INTERFACES_SBX, "CONSULTATION")),
+                                 ("DON " + INTERFACES_SBX, "SIMULATION CONSULTATION"), ("SCN TRA REF", "CONSULTATION")),
+    "ROLE_SBX_TESTEUR": _sbx(("CER " + INTERFACES_SBX, "EXECUTION CONSULTATION"), ("TRA REF", "CONSULTATION")),
+    "ROLE_SBX_LECTEUR": _sbx(("CER RAC REF " + INTERFACES_SBX, "CONSULTATION")),
     "ROLE_SBX_PARTENAIRE": _sbx(("RAC", "ADMINISTRATION CONSULTATION"), ("DON " + INTERFACES_SBX, "SIMULATION CONSULTATION"),
-                                ("CER", "EXECUTION CONSULTATION"), ("SCN TRA", "CONSULTATION")),
+                                ("CER", "EXECUTION CONSULTATION"), ("SCN TRA REF", "CONSULTATION")),
 }
 PRESENTATIONS_SANDBOX = {
     "ROLE_SBX_ADMIN_INSTITUTION": ("Sandbox : administrateur de l'institution",
@@ -285,6 +285,9 @@ assert not [n for n in PROFILS_EXTERNES if any(p.startswith("SBX_") and p.endswi
 assert [n for n, ps in PROFILS.items() if "SBX_CER_VALIDATION" in ps] == ["ROLE_SNA"]
 # Périmètre de lecture du compte de service du DES : proposé par l'administrateur GIMAC, approuvé par le RSSI seul.
 assert [n for n, ps in PROFILS.items() if "SBX_LEC_VALIDATION" in ps] == ["ROLE_RSSI"]
+# Documentation des interfaces au portail (CC-SBX-GIMAC-02 §6, SBX-REFERENTIEL, SBX_REF_CONSULTATION) : rôles qui
+# raccordent, exécutent ou consultent ; pas l'administrateur de l'institution (moindre privilège).
+assert sorted(n for n in SANDBOX_INSTITUTIONS if "SBX_REF_CONSULTATION" in PROFILS[n]) == ["ROLE_SBX_CHEF_PROJET", "ROLE_SBX_DEVELOPPEUR", "ROLE_SBX_LECTEUR", "ROLE_SBX_PARTENAIRE", "ROLE_SBX_TESTEUR"]
 # Exemples de US-EXI-02 : un testeur exécute, n'administre pas ; le lecteur n'a pas les traces.
 assert "SBX_MOB_EXECUTION" in PROFILS["ROLE_SBX_TESTEUR"] and "SBX_MOB_ADMINISTRATION" not in PROFILS["ROLE_SBX_TESTEUR"]
 assert "SBX_TRA_CONSULTATION" not in PROFILS["ROLE_SBX_LECTEUR"]

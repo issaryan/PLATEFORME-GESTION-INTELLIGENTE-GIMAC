@@ -52,3 +52,4 @@ Le rattachement des jetons de service au certificat client (RFC 8705) reste une 
 | 2026-10-28 | - | `INTERNAL_DOCUMENT_RENDER` ajoutée au client `pilotage-service` pour le PDF des instances de processus ; domaines régénérés |
 | 2026-11-04 | - | Sandbox, périmètre de lecture : `SBX_LEC_VALIDATION` portée par le seul `ROLE_RSSI` (CC-SBX-GIMAC-02 §D.8, UC-LEC-10), assertion du générateur et test ; domaines et catalogue régénérés, contrat §2.2 aligné ; la sandbox reçoit la même valeur (`MatriceRoles`) |
 | 2026-11-05 | D-119 | `ROLE_SBX_DEVELOPPEUR` porte `SBX_CER_EXECUTION` et `SBX_CER_CONSULTATION` (CA-SBX-GIMAC-02 UC-CER-04), comme `MatriceRoles` de la sandbox ; domaines régénérés |
+| 2026-11-05 | D-119 | `SBX_REF_CONSULTATION` pour les rôles d'institution qui raccordent, exécutent ou consultent (portail du référentiel), pas pour l'administrateur de l'institution ; assertion et test |
