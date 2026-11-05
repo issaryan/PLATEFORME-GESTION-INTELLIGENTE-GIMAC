@@ -42,6 +42,17 @@ class ProfilsCrV17(unittest.TestCase):
             rssi = next(r for r in realm["roles"]["realm"] if r["name"] == "ROLE_RSSI")
             self.assertIn("SBX_LEC_VALIDATION", rssi["composites"]["realm"])
 
+    def test_supervision_de_la_sandbox_au_des(self):
+        # D-135 : SBX_SUP_CONSULTATION au chef du DES, à l'administrateur système et au super administrateur seuls ;
+        # aucun profil externe ni rôle d'institution de la sandbox.
+        porteurs = sorted(n for n, ps in G.PROFILS.items() if "SBX_SUP_CONSULTATION" in ps)
+        self.assertEqual(porteurs, ["ROLE_ADMIN_SYSTEME", "ROLE_CHEF_DES", "ROLE_SUPER_ADMIN"])
+        self.assertFalse(set(porteurs) & G.PROFILS_EXTERNES)
+        for cible in (G.CIBLE, G.CIBLE_PRODUCTION):
+            realm = json.loads(cible.read_text(encoding="utf-8"))
+            composites = {r["name"]: r.get("composites", {}).get("realm", []) for r in realm["roles"]["realm"]}
+            self.assertEqual(sorted(n for n, c in composites.items() if "SBX_SUP_CONSULTATION" in c), porteurs)
+
     def test_jeton_de_homologation_service_lie_au_certificat_en_production(self):
         # RFC 8705, CC-SBX-GIMAC-02 §D.8 : cnf.x5t#S256 exigé par SBX-LECTURE ; jamais hors production.
         def lies(cible):

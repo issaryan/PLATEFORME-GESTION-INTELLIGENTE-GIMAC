@@ -38,6 +38,8 @@
     "HOM_OPERATION_ASSIGN",
     "HOM_OPERATION_REOPEN",
     "HOM_OPERATION_VALIDATE",
+    "HOM_PERIMETRE_EDIT",
+    "HOM_PERIMETRE_EDIT_TOUS",
     "HOM_PORTAL_READ",
     "HOM_PORTAL_SUBMIT",
     "HOM_PROJECT_CONDUCT",
@@ -259,6 +261,7 @@
         "SBX_REF_CONSULTATION",
         "SBX_SCN_CONSULTATION",
         "SBX_SIM_CONSULTATION",
+        "SBX_SUP_CONSULTATION",
         "SBX_TRA_CONSULTATION"
       ]
     },
@@ -276,6 +279,7 @@
         "HOM_DASHBOARD_READ",
         "HOM_LIAISON_LIST",
         "HOM_LIAISON_READ",
+        "HOM_PERIMETRE_EDIT_TOUS",
         "HOM_REFERENTIEL_EDIT",
         "HOM_REFERENTIEL_MIGRATE",
         "HOM_REFERENTIEL_PUBLISH",
@@ -327,6 +331,7 @@
         "SBX_SCN_CONSULTATION",
         "SBX_SIM_ADMINISTRATION",
         "SBX_SIM_CONSULTATION",
+        "SBX_SUP_CONSULTATION",
         "SBX_TRA_ADMINISTRATION",
         "SBX_TRA_CONSULTATION"
       ]
@@ -516,6 +521,7 @@
         "HOM_LIAISON_LIST",
         "HOM_LIAISON_OPEN",
         "HOM_LIAISON_READ",
+        "HOM_PERIMETRE_EDIT",
         "HOM_PROJECT_DESIGNATE",
         "HOM_REFERENTIEL_EDIT",
         "HOM_REFERENTIEL_PUBLISH",
@@ -572,6 +578,28 @@
         "SBX_SIM_CONSULTATION",
         "SBX_SIM_SIMULATION",
         "SBX_TRA_CONSULTATION"
+      ]
+    },
+    {
+      "code": "ROLE_CHARGE_IMPLEMENTATION_SNA",
+      "libelle": "Chargé de l'implémentation des projets (SNA)",
+      "description": "Service Normes et Agréments : définit et met à jour le périmètre des projets de certification, sans valider d'opération ni de verdict.",
+      "externe": false,
+      "permissions": [
+        "CER_CIRCUIT_READ",
+        "CER_DOSSIER_READ",
+        "CER_REGISTER_READ",
+        "COL_MESSAGE_READ",
+        "COL_MESSAGE_SEND",
+        "HOM_DASHBOARD_READ",
+        "HOM_LIAISON_LIST",
+        "HOM_LIAISON_READ",
+        "HOM_PERIMETRE_EDIT_TOUS",
+        "HOM_REFERENTIEL_READ",
+        "NOT_INBOX_READ",
+        "PAR_INSTITUTION_READ",
+        "PIL_ACTIVITY_OWN",
+        "SBX_CER_CONSULTATION"
       ]
     },
     {
@@ -702,6 +730,7 @@
         "SBX_LEC_CONSULTATION",
         "SBX_RAC_CONSULTATION",
         "SBX_SIM_CONSULTATION",
+        "SBX_SUP_CONSULTATION",
         "SBX_TRA_ADMINISTRATION",
         "SBX_TRA_CONSULTATION"
       ]

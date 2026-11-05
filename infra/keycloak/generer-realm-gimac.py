@@ -375,7 +375,16 @@ _FONCTIONS_SBX = {"ADMINISTRATION": "administration", "SIMULATION": "simulation"
                   "VALIDATION": "validation de verdict", "CONSULTATION": "consultation"}
 LIBELLES_PERMISSIONS.update({f"SBX_{m}_{f}": f"Sandbox, {_MODULES_SBX[m]} : {_FONCTIONS_SBX[f]}" for m in SBX_MODULES for f in SBX_FONCTIONS})
 LIBELLES_PERMISSIONS["SBX_SUP_CONSULTATION"] = "Sandbox, supervision depuis la plateforme : consultation"
-assert len(PERMISSIONS["SBX"]) == 61 and not [n for n, ps in PROFILS.items() if "SBX_SUP_CONSULTATION" in ps], "SBX_SUP_CONSULTATION"
+# D-135 (décision de l'utilisateur, 05/11/2026) : la supervision de la sandbox depuis le DES (D-121, espace sandbox,
+# SBX-TRACE et statistiques de SBX-LECTURE) va au chef du DES, à l'administrateur système et au super administrateur ;
+# jamais à un profil externe ni à un rôle d'institution de la sandbox.
+SUPERVISION_SANDBOX_DES = ("ROLE_CHEF_DES", "ROLE_ADMIN_SYSTEME", "ROLE_SUPER_ADMIN")
+for _role in SUPERVISION_SANDBOX_DES:
+    if "SBX_SUP_CONSULTATION" not in PROFILS[_role]:
+        PROFILS[_role].append("SBX_SUP_CONSULTATION")
+assert len(PERMISSIONS["SBX"]) == 61, "SBX"
+assert sorted(n for n, ps in PROFILS.items() if "SBX_SUP_CONSULTATION" in ps) == sorted(SUPERVISION_SANDBOX_DES), "SBX_SUP_CONSULTATION"
+assert not set(SUPERVISION_SANDBOX_DES) & (PROFILS_EXTERNES | set(SANDBOX_INSTITUTIONS)), "SBX_SUP_CONSULTATION externe"
 
 # D-94 §3 : le conducteur de projet est le porteur de HOM_PROJECT_CONDUCT, donnée par défaut au profil conducteur seul.
 assert [n for n, ps in PROFILS.items() if "HOM_PROJECT_CONDUCT" in ps] == ["ROLE_CONDUCTEUR_PROJET"]

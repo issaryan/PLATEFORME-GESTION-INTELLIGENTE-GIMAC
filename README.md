@@ -211,6 +211,7 @@ Validations réellement exécutées et conservées dans les rapports du 27/10 :
 | 2026-11-04 | - | Sandbox, périmètre de lecture : `SBX_LEC_VALIDATION` portée par le seul `ROLE_RSSI` (CC-SBX-GIMAC-02 §D.8, UC-LEC-10), assertion du générateur et test ; domaines et catalogue régénérés, contrat §2.2 aligné ; la sandbox reçoit la même valeur (`MatriceRoles`) |
 | 2026-11-05 | D-121, complément | Supervision de la sandbox : SBX-TRACE collecte et historise les mesures des onze services ; lectures DES `services` et `statistiques/codes-retour` ouvertes par la passerelle et OPA ; section « Services de la sandbox » (état, disponibilité 24 h, latences et tendance, débit, erreurs, files Kafka, rebuts) dans `@gimac/sandbox-admin` ; complément daté au REC |
 | 2026-11-04 | D-123 | Liaison certificat et jeton vers SBX-LECTURE : jeton de `homologation-service` lié au certificat en production, demande de jeton et lecture en mTLS par paquet SSL dans MS-HOMOLOGATION, complément de D-123 au REC |
+| 2026-11-05 | D-135 | Supervision de la sandbox depuis le DES (`SBX_SUP_CONSULTATION`) attribuée au chef du DES, à l'administrateur système et au super administrateur ; générateur du realm et domaine régénérés |
 
 ### Mise a jour du 02/11/2026 : Releve Sandbox GIMAC et integration documentaire
 
