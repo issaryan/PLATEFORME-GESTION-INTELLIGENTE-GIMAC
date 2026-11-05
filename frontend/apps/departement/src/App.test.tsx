@@ -185,6 +185,7 @@ describe('Application du département', () => {
     expect(await screen.findByText('Sans second facteur')).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Derniers actes d’administration' })).toBeTruthy()
     expect(screen.queryByRole('region', { name: 'Mes accès' })).toBeNull()
+    deplier()
     const lien = (await screen.findAllByRole('link', { name: 'Comptes utilisateurs' }, { timeout: 8000 }))[0]
     expect(lien.getAttribute('href')).toBe('/des/administration/comptes')
     fireEvent.click(lien)
@@ -248,6 +249,7 @@ describe('Application du département', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Liaisons et parcours' }, { timeout: 8000 })).toBeTruthy()
     await waitFor(() => expect(spy.mock.calls.map(([u]) => new URL(String(u)).pathname)).toContain('/bff/des/homologation/liaisons'))
     expect(spy.mock.calls.map(([u]) => new URL(String(u)).pathname)).toContain('/bff/des/iam/moi')
+    deplier()
     expect(screen.getByRole('link', { name: 'Liaisons et parcours' })).toBeTruthy()
     // Catalogue non servi : repli prudent, l'accueil seul et un message clair.
     cleanup()

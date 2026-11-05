@@ -101,6 +101,9 @@ describe('Profils créés', () => {
     await signer('Astreinte de nuit du NOC')
     fireEvent.click(await screen.findByRole('button', { name: 'Continuer' }))
     expect(await screen.findByText('Profil ROLE_ASTREINTE créé.')).toBeTruthy()
+    // Vingt-cinq profils livrés (D-133, D-135), vingt-cinq par page : le profil créé est sur la page suivante.
+    const suivante = screen.queryByRole('button', { name: 'Suivante' }) as HTMLButtonElement | null
+    if (suivante && !suivante.disabled) fireEvent.click(suivante)
     fireEvent.click(await screen.findByRole('button', { name: 'Supprimer le profil ROLE_ASTREINTE' }))
     await signer('Astreinte supprimée')
     fireEvent.click(await screen.findByRole('button', { name: 'Continuer' }))
