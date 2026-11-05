@@ -135,6 +135,7 @@ export const parcoursHttp: ServiceParcours = {
   resultatsSandbox: (id) => http.get(`${L}/${id}/sandbox`),
   executionsSandbox: (id, campagneId, page, taille) =>
     http.get(`${L}/${id}/sandbox/campagnes/${encodeURIComponent(campagneId)}/executions`, { query: { page, taille } }),
+  repartitionSandbox: (id, campagneId) => http.get(`${L}/${id}/sandbox/campagnes/${encodeURIComponent(campagneId)}/repartition`),
   validerOperation: (opId, assertion) => http.post(`${H}/parcours/operations/${opId}/validation`, { body: {}, reauthAssertion: assertion }),
   // D-93 : renvoi motivé par le validateur, sans réauthentification.
   renvoyer: (opId, motif) => http.post(`${H}/parcours/operations/${opId}/renvoi`, { body: { motif } }),

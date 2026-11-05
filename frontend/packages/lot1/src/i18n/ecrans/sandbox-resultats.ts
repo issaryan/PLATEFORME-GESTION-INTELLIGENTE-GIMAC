@@ -4,6 +4,13 @@ import type { Catalogue } from '@gimac/socle'
 // depuis SBX-LECTURE, en lecture seule. FR, EN, ES.
 export const catalogue: Catalogue = {
   fr: {
+    "sandboxResultats.graphes.parCas": "Verdicts par cas",
+    "sandboxResultats.graphes.parCasAide": "{{n}} cas les plus défavorables sur {{total}}",
+    "sandboxResultats.graphes.sansCas": "Sans cas",
+    "sandboxResultats.graphes.cas": "Cas",
+    "sandboxResultats.graphes.chronologie": "Chronologie des exécutions",
+    "sandboxResultats.graphes.chronologieAide": "Exécutions par jour ({{fuseau}})",
+    "sandboxResultats.graphes.executions": "Exécutions",
     "sandboxResultats.graphes.parServiceVide": "Aucun taux par service à représenter",
     "sandboxResultats.graphes.titre": "Vue graphique de la campagne",
     "sandboxResultats.graphes.ratio": "{{n}} sur {{d}}",
@@ -100,6 +107,13 @@ export const catalogue: Catalogue = {
     "sandboxResultats.qualification.A_QUALIFIER": "À qualifier",
   },
   en: {
+    "sandboxResultats.graphes.parCas": "Verdicts by case",
+    "sandboxResultats.graphes.parCasAide": "{{n}} most failed cases out of {{total}}",
+    "sandboxResultats.graphes.sansCas": "No case",
+    "sandboxResultats.graphes.cas": "Case",
+    "sandboxResultats.graphes.chronologie": "Execution timeline",
+    "sandboxResultats.graphes.chronologieAide": "Executions per day ({{fuseau}})",
+    "sandboxResultats.graphes.executions": "Executions",
     "sandboxResultats.graphes.parServiceVide": "No rate by service to chart",
     "sandboxResultats.graphes.titre": "Campaign chart view",
     "sandboxResultats.graphes.ratio": "{{n}} out of {{d}}",
@@ -195,6 +209,13 @@ export const catalogue: Catalogue = {
     "sandboxResultats.qualification.A_QUALIFIER": "To be qualified",
   },
   es: {
+    "sandboxResultats.graphes.parCas": "Veredictos por caso",
+    "sandboxResultats.graphes.parCasAide": "{{n}} casos más desfavorables de {{total}}",
+    "sandboxResultats.graphes.sansCas": "Sin caso",
+    "sandboxResultats.graphes.cas": "Caso",
+    "sandboxResultats.graphes.chronologie": "Cronología de las ejecuciones",
+    "sandboxResultats.graphes.chronologieAide": "Ejecuciones por día ({{fuseau}})",
+    "sandboxResultats.graphes.executions": "Ejecuciones",
     "sandboxResultats.graphes.parServiceVide": "Ninguna tasa por servicio que representar",
     "sandboxResultats.graphes.titre": "Vista gráfica de la campaña",
     "sandboxResultats.graphes.ratio": "{{n}} de {{d}}",

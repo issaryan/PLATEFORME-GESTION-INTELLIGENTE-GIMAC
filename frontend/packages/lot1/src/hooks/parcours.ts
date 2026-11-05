@@ -33,6 +33,9 @@ export const useResultatsSandbox = (id: string, actif = true) => useLecture(cles
 /** US-EXI-17 : exécutions retenues d'une campagne reprise, pagination serveur. */
 export const useExecutionsSandbox = (id: string, campagneId: string | undefined, page: number, taille: number) =>
   useLecture(cles.parcoursDossier(id, `sandbox:${campagneId ?? ''}:${page}:${taille}`), (s) => s.parcours.executionsSandbox(id, campagneId ?? '', page, taille), { enabled: Boolean(id && campagneId) })
+/** D-121 : répartition d'une campagne reprise (verdicts par cas, chronologie par jour). */
+export const useRepartitionSandbox = (id: string, campagneId: string) =>
+  useLecture(cles.parcoursDossier(id, `sandbox:${campagneId}:repartition`), (s) => s.parcours.repartitionSandbox(id, campagneId), { enabled: Boolean(id && campagneId) })
 /** D-109 : pièce d'une opération (empreinte inscrite, revérifiée par le service puis par le navigateur). */
 export const useTelechargerPieceParcours = () => useEffet((s, v: { operationId: string; documentId: string }) => s.parcours.telechargerPiece(v.operationId, v.documentId), [])
 

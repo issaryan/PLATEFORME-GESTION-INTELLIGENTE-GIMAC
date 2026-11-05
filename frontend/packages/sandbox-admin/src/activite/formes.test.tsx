@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import ActivitePage from '../pages/ActivitePage'
 import { rendre, simules } from '../test/rendu'
 import type { LigneCampagne, LigneCas, PageStatistiques } from './modele'
@@ -46,8 +46,9 @@ describe('formes rares de l’écran Activité des tests', () => {
     let appels = 0
     const services = { ...s, activite: { ...s.activite, participants: (...a: Parameters<typeof s.activite.participants>) => (a[1].taille === 100 ? s.activite.participants(...a) : (appels++, panne())) } }
     rendre(<ActivitePage />, { route: '/des/sandbox/activite', chemin: '/des/sandbox/activite', services: { ...services, activite: { ...services.activite, campagnes: (f, t, p) => (p.taille === 10 ? panne() : s.activite.campagnes(f, t, p)) } } })
-    const boutons = await screen.findAllByRole('button', { name: /Réessayer/ })
-    boutons.forEach((b) => fireEvent.click(b))
+    // Deux tableaux en panne (certification et délais) : chacun propose sa nouvelle tentative.
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /Réessayer/ }).length).toBeGreaterThanOrEqual(2))
+    screen.getAllByRole('button', { name: /Réessayer/ }).forEach((b) => fireEvent.click(b))
     expect(appels).toBeGreaterThan(0)
   })
 })

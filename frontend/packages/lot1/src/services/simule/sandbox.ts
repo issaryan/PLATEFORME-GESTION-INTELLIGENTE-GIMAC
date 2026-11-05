@@ -1,5 +1,5 @@
 import type { TypeProjet } from '../../modele/commun'
-import { MENTION_REPRIS, type CampagneSandbox, type ExecutionSandbox, type PageExecutionsSandbox, type ResultatsSandbox } from '../../modele/sandbox'
+import { MENTION_REPRIS, type CampagneSandbox, type ExecutionSandbox, type PageExecutionsSandbox, type RepartitionSandbox, type ResultatsSandbox } from '../../modele/sandbox'
 import { empreinte } from './donnees'
 
 // Résultats de la sandbox simulés au contrat exact de MS-HOMOLOGATION (ResultatsSandbox, US-EXI-14, US-EXI-17) : une
@@ -20,10 +20,11 @@ function executionDemo(l: LiaisonDemo, i: number): ExecutionSandbox {
   const ko = echoue(i)
   return {
     identifiantExecution: `EXE-${String(i).padStart(6, '0')}`,
-    identifiantCas: `CAS-${String(i).padStart(3, '0')}`,
+    identifiantCas: `CAS-${String((i % 6) + 1).padStart(3, '0')}`,
     identifiantScenario: scenarioDe(i, l),
     versionScenario: '3',
-    dateExecution: `2026-10-13T16:${String(i % 60).padStart(2, '0')}:07Z`,
+    // Quatre exécutions par jour à partir du 1er octobre, dans l'ordre des numéros.
+    dateExecution: `2026-10-${String(1 + Math.floor((i - 1) / 4)).padStart(2, '0')}T16:${String(i % 60).padStart(2, '0')}:07Z`,
     verdictNatif: ko ? 'FAILED' : 'PASSED',
     verdictNormalise: ko ? 'defavorable' : 'favorable',
     motif: ko ? 'Code réponse 05 au lieu de 00' : null,
@@ -94,4 +95,24 @@ export function executionsSandboxDemo(l: LiaisonDemo, campagneId: string, page: 
     : []
   const p = Math.max(0, page)
   return { contenu: toutes.slice(p * t, (p + 1) * t), total: toutes.length, page: p, taille: t }
+}
+
+/**
+ * Répartition d'une campagne (RepartitionSandboxResource, D-121) : par cas, défavorables d'abord ; par jour du fuseau
+ * du GIMAC (Africa/Douala). Calculée ici parce que le service est simulé ; MS-HOMOLOGATION la compte en base.
+ */
+export function repartitionSandboxDemo(l: LiaisonDemo, campagneId: string): RepartitionSandbox {
+  const toutes = executionsSandboxDemo(l, campagneId, 0, 100).contenu
+  const compte = (x: ExecutionSandbox[], v: string | null) => x.filter((e) => e.verdictNormalise === v).length
+  const grouper = (cle: (e: ExecutionSandbox) => string) => [...toutes.reduce((m, e) => m.set(cle(e), [...(m.get(cle(e)) ?? []), e]), new Map<string, ExecutionSandbox[]>()).entries()]
+  const jour = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
+  return {
+    fuseau: 'Africa/Douala',
+    parCas: grouper((e) => e.identifiantCas ?? '')
+      .map(([id, x]) => ({ identifiantCas: id || null, executions: x.length, favorables: compte(x, 'favorable'), defavorables: compte(x, 'defavorable'), nonExecutes: compte(x, 'non_execute'), enAttente: compte(x, null) }))
+      .sort((a, b) => b.defavorables - a.defavorables || String(a.identifiantCas).localeCompare(String(b.identifiantCas))),
+    parJour: grouper((e) => jour(e.dateExecution))
+      .map(([j, x]) => ({ jour: j, executions: x.length, favorables: compte(x, 'favorable'), defavorables: compte(x, 'defavorable') }))
+      .sort((a, b) => a.jour.localeCompare(b.jour)),
+  }
 }

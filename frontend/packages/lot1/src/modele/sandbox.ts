@@ -77,3 +77,10 @@ export type ExecutionSandbox = {
 }
 
 export type PageExecutionsSandbox = { contenu: ExecutionSandbox[]; total: number; page: number; taille: number }
+
+/** Répartition d'une campagne reprise (D-121), comptée par MS-HOMOLOGATION : verdicts par cas, exécutions par jour du fuseau annoncé. */
+export type RepartitionSandbox = {
+  fuseau: string
+  parCas: { identifiantCas: string | null; executions: number; favorables: number; defavorables: number; nonExecutes: number; enAttente: number }[]
+  parJour: { jour: string; executions: number; favorables: number; defavorables: number }[]
+}

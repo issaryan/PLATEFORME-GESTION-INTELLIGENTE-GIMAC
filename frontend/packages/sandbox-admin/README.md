@@ -15,9 +15,20 @@ sans toucher aux autres entrées.
 |---|---|---|---|
 | Espaces des institutions | `/des/sandbox/espaces`, `/des/sandbox/espaces/:code` | `SBX_HAB_CONSULTATION` (lecture), `SBX_HAB_ADMINISTRATION` (actes) | SBX-ESPACE, `/bff/des/sbx-espace/**` réécrit en `/api/v1/console/**` |
 | Supervision de la sandbox | `/des/sandbox/supervision` | `SBX_SUP_CONSULTATION` | SBX-TRACE, quatre lectures exactes sous `/bff/des/sbx-trace` |
+| Activité des tests | `/des/sandbox/activite` | `SBX_SUP_CONSULTATION` ; chaîne de certification sous `HOM_LIAISON_READ` | SBX-LECTURE, cinq lectures exactes sous `/bff/des/sbx-lecture/statistiques` ; MS-HOMOLOGATION `/bff/des/homologation/liaisons/{id}` |
 
 Le composant `EspaceInstitution` (fiche, motifs, suspension, rétablissement, fermeture, ouverture si absent) sert aussi
 l'onglet « Sandbox » du dossier de liaison.
+
+## Graphes (D-121)
+
+« Activité des tests » montre les tests des participants dans la sandbox. Les agrégats sont calculés en SQL par SBX-LECTURE (`StatistiquesConsoleController`) : l'écran n'agrège rien en masse. Seul le pas du temps est complété par des zéros.
+
+- Bibliothèque : les composants SVG du design-system (`SerieTemporelle`, `BarresHorizontales`, `StatGrid`, `StateMachineBar`, `DataTable`), déjà présents dans le monorepo, sans dépendance nouvelle. Chaque carte de graphe a sa vue tableau.
+- Règles dataviz : une seule teinte (`gm-data-1`) pour les grandeurs ; les trois interfaces en petits multiples sur la même échelle, plutôt qu'en couleurs d'identité ; les statuts portent un libellé. Le validateur de palette rejette `gm-data-3` en sombre et `gm-data-7` et `8` dans les deux thèmes (note au journal du design-system), d'où ce choix.
+- Filtres portés par l'adresse : `periode` (7, 30, 90, 365 jours ; pas du jour, de la semaine, du mois), `participant`, `interface`.
+- Liens : participant vers `/des/sandbox/espaces/{code}`, campagne et dossier vers `/des/parcours/{liaison}?onglet=sandbox` (pièces, bilan et empreintes).
+- Codes de rejet : « source indisponible » tant que `exchange-captured.v1` ne porte pas `codeRetour` jusqu'à SBX-TRACE.
 
 ## Services
 
@@ -49,3 +60,4 @@ sans nouvelle capture et sans démarrage du Compose complet.
 | 2026-10-27 | - | D-121 : écran « Supervision de la sandbox », HTTP/simulation, FR/EN/ES, trois paginations, 46 tests et couverture au-dessus de 98 % |
 | 2026-10-27 | - | DEMO-SBX-12 : 30 captures des espaces et résultats référencées ; absence de nouvelles captures D-121 et de preuve Compose/serveurs réels explicitée |
 | 2026-11-04 | - | Couverture rétablie à 100 % (repli de la clé d'idempotence, troisième page des éléments supervisés) : 49 tests |
+| 2026-11-05 | - | D-121 : écran « Activité des tests » (/des/sandbox/activite, SBX_SUP_CONSULTATION) : indicateurs, exécutions par interface en petits multiples, verdicts, taux des campagnes, cas défavorables, codes de rejet (source indisponible), chaîne de certification (HOM_LIAISON_READ, mode dégradé), délais ; HTTP et simulé au contrat ; FR/EN/ES |

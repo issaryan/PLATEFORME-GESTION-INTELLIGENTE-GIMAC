@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { BarresHorizontales, ChartCard } from '@gimac/design-system'
-import type { CampagneSandbox, TauxSandbox } from '../../../../modele/sandbox'
+import { BarresHorizontales, ChartCard, SerieTemporelle } from '@gimac/design-system'
+import { useRepartitionSandbox } from '../../../../hooks/parcours'
+import type { CampagneSandbox, RepartitionSandbox, TauxSandbox } from '../../../../modele/sandbox'
+import { Donnees } from '../../liaisons/communs'
 
 // Vue graphique d'une campagne de l'onglet sandbox (D-121, règles dataviz) : jauges d'avancement et de réussite de la
 // campagne (numérateur sur dénominateur repris tels quels), répartition des verdicts qui s'en déduit, réussite par
@@ -48,6 +50,48 @@ export function GraphesCampagne({ campagne: c }: { campagne: CampagneSandbox }) 
         format={pc}
         elements={parService.map((x) => ({ cle: x.service as string, libelle: x.service as string, valeur: pourcent(x) }))}
         vide={t('sandboxResultats.graphes.parServiceVide')}
+      />
+    </div>
+  )
+}
+
+const CAS_MAX = 8
+/** Jour du fuseau du service (AAAA-MM-JJ) placé à minuit local : l'axe du design-system est en heure locale. */
+const minuit = (jour: string) => { const [a, m, j] = jour.split('-').map(Number); return new Date(a, m - 1, j).getTime() }
+
+/** Verdicts par cas et chronologie des exécutions d'une campagne, comptés par MS-HOMOLOGATION (D-121). */
+export function RepartitionCampagne({ liaisonId, campagneId }: { liaisonId: string; campagneId: string }) {
+  const q = useRepartitionSandbox(liaisonId, campagneId)
+  return <Donnees requete={q} estVide={(r) => r.parCas.length === 0}>{(r) => <Repartition r={r} />}</Donnees>
+}
+
+function Repartition({ r }: { r: RepartitionSandbox }) {
+  const { t } = useTranslation()
+  const cas = r.parCas.slice(0, CAS_MAX)
+  return (
+    <div className="gm-graphiques-grille">
+      <ChartCard
+        title={t('sandboxResultats.graphes.parCas')}
+        subtitle={t('sandboxResultats.graphes.parCasAide', { n: cas.length, total: r.parCas.length })}
+        type="bar"
+        labels={cas.map((c) => c.identifiantCas ?? t('sandboxResultats.graphes.sansCas'))}
+        xLabel={t('sandboxResultats.graphes.cas')}
+        series={[
+          { name: t('sandboxResultats.graphes.favorables'), data: cas.map((c) => c.favorables) },
+          { name: t('sandboxResultats.graphes.defavorables'), data: cas.map((c) => c.defavorables) },
+        ]}
+      />
+      <SerieTemporelle
+        title={t('sandboxResultats.graphes.chronologie')}
+        subtitle={t('sandboxResultats.graphes.chronologieAide', { fuseau: r.fuseau })}
+        granularite="jour"
+        aire={false}
+        min={0}
+        format={entier}
+        series={[
+          { nom: t('sandboxResultats.graphes.executions'), points: r.parJour.map((j) => ({ t: minuit(j.jour), v: j.executions })) },
+          { nom: t('sandboxResultats.graphes.defavorables'), points: r.parJour.map((j) => ({ t: minuit(j.jour), v: j.defavorables })) },
+        ]}
       />
     </div>
   )

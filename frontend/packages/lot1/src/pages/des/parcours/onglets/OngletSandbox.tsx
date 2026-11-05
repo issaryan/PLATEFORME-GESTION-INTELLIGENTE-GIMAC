@@ -5,7 +5,7 @@ import { useExecutionsSandbox, useResultatsSandbox } from '../../../../hooks/par
 import type { DossierLiaison } from '../../../../modele/parcours'
 import type { CampagneSandbox, ExecutionSandbox, PieceSandbox, ResultatsSandbox, ScenarioNonRapproche, TauxSandbox } from '../../../../modele/sandbox'
 import { Donnees, etatListe } from '../../liaisons/communs'
-import { GraphesCampagne } from './GraphesSandbox'
+import { GraphesCampagne, RepartitionCampagne } from './GraphesSandbox'
 import { Valeur } from '../communs'
 
 // Onglet « Résultats de la sandbox » du dossier de liaison (DES-09, US-EXI-17, D-118 point 1) : campagnes reprises par
@@ -135,6 +135,7 @@ function Campagne({ campagne: c, liaisonId }: { campagne: CampagneSandbox; liais
         />
       </Card>
       <GraphesCampagne campagne={c} />
+      <RepartitionCampagne liaisonId={liaisonId} campagneId={c.campagneId} />
       <Card title={t('sandboxResultats.taux.titre')}>
         <DataTable columns={taux} rows={c.taux} rowKey={(x) => `${x.service ?? '-'}:${x.nature}`} state={c.taux.length ? 'ok' : 'empty'} emptyText={t('sandboxResultats.taux.vide')} />
       </Card>
