@@ -272,6 +272,10 @@ spring:
       max-file-size: 20MB
       max-request-size: 21MB
 gimac:
+  # Jeton de service lié au certificat client (RFC 8705) : paquet SSL de la demande de jeton en mTLS, vide sinon.
+  # Obligatoire dès que le client homologation-service porte tls.client.certificate.bound.access.tokens (production).
+  service-token:
+    ssl-bundle: ${GIMAC_SERVICE_TOKEN_SSL_BUNDLE:}
   outbox:
     delay: 500
   # Sélection des adaptateurs, un port à la fois (PI §0.8) : real | stub.
@@ -304,6 +308,9 @@ gimac:
     # SBX-LECTURE par la passerelle interne de service (mTLS, jeton lié au certificat, US-EXI-14).
     sbx-lecture:
       url: http://localhost:8180
+      # Paquet SSL (spring.ssl.bundle.*) du certificat client présenté en mTLS à la passerelle interne de service ;
+      # vide : aucun certificat (CC-SBX-GIMAC-02 §D.8, RFC 8705). Désigné : adresse en https obligatoire.
+      ssl-bundle: ${GIMAC_SBX_LECTURE_SSL_BUNDLE:}
   # Relais des demandes de tâches vers MS-PILOTAGE (D-77, docs/lot1/modelisateur-processus.md §5).
   taches:
     delai: 2000

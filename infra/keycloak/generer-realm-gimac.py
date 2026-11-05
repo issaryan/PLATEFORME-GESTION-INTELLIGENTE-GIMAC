@@ -668,6 +668,23 @@ def catalogue_frontend(realm):
     }
 
 
+# Jetons liés au certificat client (RFC 8705, CC-SBX-GIMAC-02 §D.8) : en production seulement, car la demande de jeton
+# doit alors se faire en mTLS (paquet GIMAC_SERVICE_TOKEN_SSL_BUNDLE de MS-HOMOLOGATION, Keycloak en TLS demandant le
+# certificat client). Le domaine de développement et de démonstration reste sans liaison (aucune AC mTLS locale livrée).
+CLIENTS_LIES_AU_CERTIFICAT = {"homologation-service"}
+
+
+def lier_au_certificat(clients):
+    """Copie des clients, avec tls.client.certificate.bound.access.tokens pour les clients de CLIENTS_LIES_AU_CERTIFICAT."""
+    copie = []
+    for c in clients:
+        if c["clientId"] in CLIENTS_LIES_AU_CERTIFICAT:
+            c = dict(c, attributes={**c.get("attributes", {}), "tls.client.certificate.bound.access.tokens": "true"})
+        copie.append(c)
+    assert sorted(c["clientId"] for c in copie if (c.get("attributes") or {}).get("tls.client.certificate.bound.access.tokens") == "true") == sorted(CLIENTS_LIES_AU_CERTIFICAT)
+    return copie
+
+
 def main():
     realm = json.loads(SOURCE.read_text(encoding="utf-8"))
     realm = copy.deepcopy(realm)
@@ -880,7 +897,7 @@ def main():
     # D-94 : le caractère externe d'un profil est une donnée (attribut gimac_externe), plus un nom figé dans MS-IAM.
     assert all((r["attributes"].get("gimac_externe") == ["true"]) == (n in PROFILS_EXTERNES) for n, r in profils_realm.items())
     CIBLE.write_text(texte + "\n", encoding="utf-8")
-    production = dict(realm, users=[u for u in realm["users"] if u.get("serviceAccountClientId")])
+    production = dict(realm, users=[u for u in realm["users"] if u.get("serviceAccountClientId")], clients=lier_au_certificat(realm["clients"]))
     assert not any(u["username"].startswith("test-") for u in production["users"]) and production["users"], "domaine de production"
     CIBLE_PRODUCTION.write_text(json.dumps(production, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     frontend = catalogue_frontend(realm)

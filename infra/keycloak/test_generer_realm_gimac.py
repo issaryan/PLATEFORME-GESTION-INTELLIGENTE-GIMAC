@@ -42,6 +42,17 @@ class ProfilsCrV17(unittest.TestCase):
             rssi = next(r for r in realm["roles"]["realm"] if r["name"] == "ROLE_RSSI")
             self.assertIn("SBX_LEC_VALIDATION", rssi["composites"]["realm"])
 
+    def test_jeton_de_homologation_service_lie_au_certificat_en_production(self):
+        # RFC 8705, CC-SBX-GIMAC-02 §D.8 : cnf.x5t#S256 exigé par SBX-LECTURE ; jamais hors production.
+        def lies(cible):
+            realm = json.loads(cible.read_text(encoding="utf-8"))
+            return [c["clientId"] for c in realm["clients"] if (c.get("attributes") or {}).get("tls.client.certificate.bound.access.tokens") == "true"]
+        self.assertEqual(lies(G.CIBLE_PRODUCTION), ["homologation-service"])
+        self.assertEqual(lies(G.CIBLE), [])
+        clients = [{"clientId": "homologation-service"}, {"clientId": "autre", "attributes": {"x": "1"}}]
+        self.assertEqual(G.lier_au_certificat(clients)[1], clients[1])
+        self.assertNotIn("attributes", clients[0])
+
     def test_developpeur_execute_les_cas_affectes(self):
         # CA-SBX-GIMAC-02 UC-CER-04 : développeur et testeur sont les acteurs principaux de l'exécution d'un cas.
         for profil in ("ROLE_SBX_DEVELOPPEUR", "ROLE_SBX_TESTEUR"):
