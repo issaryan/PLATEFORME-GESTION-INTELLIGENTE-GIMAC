@@ -62,8 +62,8 @@ export default function SupervisionPage() {
       {sante.data ? <div className="gm-col">
         <p><StatusBadge status={STATUT_SANTE[sante.data.niveauGlobal]} label={t(`sbx.supervision.niveau.${sante.data.niveauGlobal}`)} /> {f.instant(sante.data.calculeLe)}</p>
         <p>{t('sbx.supervision.causeExterne')}: {t(sante.data.causeExterne ? 'sbx.supervision.oui' : 'sbx.supervision.non')}</p>
-        <ul className="gm-row" aria-label={t('sbx.supervision.detailModules')}>
-          {modules(sante.data.etatsModules).map(([m, n]) => <li key={m}><span className="gm-mono">{m}</span> <StatusBadge status={STATUT_SANTE[n] ?? 'neutral'} label={t(`sbx.supervision.niveau.${n}`)} /></li>)}
+        <ul className="gm-row" style={{ listStyle: 'none', padding: 0, margin: 0, flexWrap: 'wrap', gap: 16 }} aria-label={t('sbx.supervision.detailModules')}>
+          {modules(sante.data.etatsModules).map(([m, n]) => <li key={m} className="gm-row" style={{ gap: 6 }}><span className="gm-mono">{m}</span><StatusBadge status={STATUT_SANTE[n] ?? 'neutral'} label={t(`sbx.supervision.niveau.${n}`)} /></li>)}
         </ul>
       </div> : null}
     </PageSection>
