@@ -226,6 +226,8 @@ PY
   # Reprise de l'existant (D-107) : lecture des fichiers, jeton du compte de service, lots, simulation par défaut.
   controler "importer-reprise.py : lots, jeton, simulation et rapport ligne à ligne" \
     python3 -m unittest -q "$INFRA/reprise/test_importer_reprise.py"
+  controler "corriger-reprise-1310.py : propositions et fichiers des seules décisions, aucune écriture" \
+    python3 -m unittest -q "$INFRA/reprise/test_corriger_reprise_1310.py"
   fin_section
 }
 

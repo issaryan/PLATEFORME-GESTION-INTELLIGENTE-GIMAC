@@ -1,0 +1,15 @@
+{
+  "motif": "Reprise de l'existant : correspondants de la sandbox (exemple fictif)",
+  "correspondants": [
+    {
+      "codeMembre": "BQ-FICT-01",
+      "compteId": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+      "nom": "Awa Fictive",
+      "fonction": "MONETIQUE",
+      "email": "awa.fictive@banque-fictive.invalid",
+      "telephone": "+237 000 000 001",
+      "canaux": "messagerie",
+      "astreinte247": false
+    }
+  ]
+}

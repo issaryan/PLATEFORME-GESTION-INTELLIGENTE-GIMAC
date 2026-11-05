@@ -206,7 +206,7 @@ spring:
             - id: console-reprise-participant
               uri: ${gimac.services.participant}
               predicates:
-                - Path=/bff/console/participant/reprise/institutions
+                - Path=/bff/console/participant/reprise/institutions,/bff/console/participant/reprise/correspondants
               filters:
                 - OpaAuthorize
                 - name: RequestSize
@@ -216,7 +216,7 @@ spring:
             - id: console-reprise-homologation
               uri: ${gimac.services.homologation}
               predicates:
-                - Path=/bff/console/homologation/reprise/liaisons
+                - Path=/bff/console/homologation/reprise/liaisons,/bff/console/homologation/reprise/liaisons/clotures
               filters:
                 - OpaAuthorize
                 - name: RequestSize

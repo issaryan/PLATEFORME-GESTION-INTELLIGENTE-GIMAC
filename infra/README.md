@@ -61,3 +61,6 @@ en 200, `/actuator/env` refusé en 401 sans jeton et test ciblé `AdaptateursSup
 | 2026-10-22 | D-120 | OPA : catalogue des types de pièces de la sandbox depuis la console (SBX_TRA_CONSULTATION, SBX_TRA_ADMINISTRATION, comptes du GIMAC) |
 | 2026-10-27 | D-121 | OPA : quatre lectures SBX-TRACE et écritures de réexamen US-EXI-23, politiques Compose/Kubernetes identiques, 213 tests réussis ; limites AC mTLS locale, assemblages de recette, Compose complet et serveurs réels documentées |
 | 2026-11-05 | D-121, complément | OPA : lectures `services` et `statistiques/codes-retour` de SBX-TRACE sous `SBX_SUP_CONSULTATION`, voisins refusés ; politiques Compose et Kubernetes identiques ; `opa check --strict` et `opa test`, 214/214 |
+| 2026-11-05 | D-132 | `reprise/importer-reprise.py correspondants` (reprise des correspondants, D-132), exemple fictif et tests ; OPA : route de console de reprise des correspondants. |
+| 2026-11-05 | D-132 | `reprise/corriger-reprise-1310.py` : propositions de correctifs de la reprise du 13 au 15/10/2026 à partir des exports en lecture seule et du relevé du portail, puis fichiers d'import des seules décisions retenues ; tests joués par `ci/valider-infra.sh`. |
+| 2026-11-05 | D-137 | `reprise/importer-reprise.py clotures` (clôture sans suite des liaisons reprises) et tests ; OPA : route de console de clôture. |
