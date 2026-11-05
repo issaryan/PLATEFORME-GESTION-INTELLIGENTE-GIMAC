@@ -5,7 +5,10 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.regex.Pattern;
 
-/** Références lisibles générées par le moteur, selon le gabarit figé dans la version du processus. */
+/**
+ * Références lisibles générées par le moteur, selon le gabarit figé dans la version du processus : {CODE}, {AAAA},
+ * {MM} et {JJ} facultatifs, séquence {N} (sans zéros, format de la fiche de changement CHG-AAAA-N) ou {NNNNNN}.
+ */
 public final class ReferenceProcessus {
 
     private static final Pattern AUTORISE = Pattern.compile("^[A-Z0-9_{}\\-.]+$");
@@ -19,8 +22,9 @@ public final class ReferenceProcessus {
             return null;
         }
         String m = modele.strip().toUpperCase(java.util.Locale.ROOT);
-        if (m.length() > 120 || !AUTORISE.matcher(m).matches() || !m.contains("{AAAA}") || !m.contains("{MM}") || !m.contains("{JJ}") || !m.contains("{NNNNNN}")) {
-            throw PilotageException.champ("referenceModele", "Gabarit attendu : CODE, AAAA, MM, JJ et NNNNNN, par exemple CHG-{AAAA}-{MM}-{JJ}-{NNNNNN}");
+        boolean sequence = m.contains("{N}") || m.contains("{NNNNNN}");
+        if (m.length() > 120 || !AUTORISE.matcher(m).matches() || !m.contains("{AAAA}") || !sequence) {
+            throw PilotageException.champ("referenceModele", "Gabarit attendu : AAAA et N (ou NNNNNN), CODE, MM et JJ facultatifs, par exemple CHG-{AAAA}-{N}");
         }
         return m;
     }
@@ -35,6 +39,7 @@ public final class ReferenceProcessus {
             .replace("{AAAA}", ANNEE.format(date))
             .replace("{MM}", moisJour[0])
             .replace("{JJ}", moisJour[1])
-            .replace("{NNNNNN}", "%06d".formatted(sequence));
+            .replace("{NNNNNN}", "%06d".formatted(sequence))
+            .replace("{N}", Long.toString(sequence));
     }
 }

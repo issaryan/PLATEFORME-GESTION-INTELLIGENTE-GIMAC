@@ -458,9 +458,13 @@ contact du responsable de mise en œuvre, plan de test et plan de retour. Les é
 | `RAISON` | lanceur | vérification de la raison |
 | `IMPACT` | lanceur | vérification de l'impact |
 | `IMPLEMENTATION` | responsable désigné au lancement | livrable obligatoire `DOSSIER_CHANGEMENT`, PDF seulement |
-| `SSI` | profil `ROLE_AGENT_SSI` | dates de déploiement et de revue, évaluation, décision et description ; signature `DECISION_SSI` portant sur `DOSSIER_CHANGEMENT` |
+| `SSI` | profil `ROLE_RSSI` (D-130 ; `ROLE_AGENT_SSI` jusqu'au 04/11/2026) | dates de déploiement et de revue, évaluation, décision et description ; signature `DECISION_SSI` portant sur `DOSSIER_CHANGEMENT` |
 
-Chaque processus peut définir `referenceModele`. Pour ce modèle, `CHG-{AAAA}-{MM}-{JJ}-{NNNNNN}` est résolu au
+Chaque processus peut définir `referenceModele` : `{AAAA}` et une séquence, `{N}` (sans zéros) ou `{NNNNNN}`, sont
+exigés ; `{CODE}`, `{MM}` et `{JJ}` sont facultatifs. Pour ce modèle, `CHG-{AAAA}-{N}` (format de la fiche de
+changement, `CHG-AAAA-N`, admis par `ApprobationPolicy` de MS-CERTIFICATION au verrou 2 ; gabarit daté
+`CHG-{AAAA}-{MM}-{JJ}-{NNNNNN}` jusqu'au 04/11/2026, recette seulement : au démarrage, une version publiée qui le
+porte encore est remplacée par une nouvelle version publiée, la précédente étant retirée) est résolu au
 lancement avec la date locale et une séquence PostgreSQL ; la référence est persistée sur l'instance
 et exposée dans ses résumés et sa vue détaillée. Les instances sans modèle conservent leur comportement antérieur.
 
@@ -475,6 +479,6 @@ MS-PILOTAGE échappe les valeurs dans le HTML transmis à `POST /api/v1/interne/
 Validations locales : tests unitaires de la référence, du modèle et du rendu, scénario `ProcessusChangementIT`, seuils
 JaCoCo à 98 % sur le nouveau code ; tests Vitest ciblés et seuils de 98 % limités aux nouveaux fichiers frontend ;
 scénario Playwright complet en clair et sombre avec huit captures. Le 30/10/2026, DEMO-SBX 13 a aussi vérifié sur les
-vrais services la création, trois transitions, les captures et un PDF Gotenberg de deux pages (`13-changement/`). Une
+vrais services la création, trois transitions, les captures et un PDF Gotenberg de deux pages (`docs/recette/demonstration/13-changement/`). Une
 assertion FIDO2 réelle, les étapes 4 et 5 et une recette de production ne sont pas prouvés ; aucun appel aux serveurs
 GIMAC n'a été fait.

@@ -20,11 +20,15 @@ import org.springframework.http.MediaType;
 /** Fiche RFC du moteur : demandeur, responsable, SSI, référence datée et PDF avant/après signature. */
 class ProcessusChangementIT extends AbstractProcessusIT {
     private static final String SSI = "00000000-0000-4000-8000-0000000ss001";
+    private static final String AGENT_SSI = "00000000-0000-4000-8000-0000000ss002";
 
     @BeforeEach
-    void agentSsi() {
-        organisation.enregistrer(new Compte(SSI, "Sara SSI", "Agent SSI", "SSI", null, true, true));
-        organisation.attribuerProfils(SSI, "ROLE_AGENT_SSI");
+    void securite() {
+        // Verrou 2 (D-130) : le RSSI signe ; l'agent SSI de la même unité est refusé.
+        organisation.enregistrer(new Compte(SSI, "Sara SSI", "RSSI", "SSI", null, true, true));
+        organisation.attribuerProfils(SSI, "ROLE_RSSI");
+        organisation.enregistrer(new Compte(AGENT_SSI, "Alain SSI", "Agent SSI", "SSI", null, true, true));
+        organisation.attribuerProfils(AGENT_SSI, "ROLE_AGENT_SSI");
         organisation.attribuerProfils(AGENT, "ROLE_PRODUCTION_MONETIQUE");
     }
 
@@ -44,7 +48,7 @@ class ProcessusChangementIT extends AbstractProcessusIT {
         return d;
     }
 
-    private static Map<String, Object> lancement() {
+    static Map<String, Object> lancement() {
         Map<String, Object> f = new HashMap<>();
         f.put("TYPE_DEMANDEUR", "SUPPORT_MONETIQUE");
         f.put("ELEMENT_CONFIGURATION", "AMA");
@@ -65,7 +69,7 @@ class ProcessusChangementIT extends AbstractProcessusIT {
         return l;
     }
 
-    private String url(String id, String etape, String acte) {
+    static String url(String id, String etape, String acte) {
         return INSTANCES + "/" + id + "/etapes/" + etape + "/" + acte;
     }
 
@@ -76,7 +80,7 @@ class ProcessusChangementIT extends AbstractProcessusIT {
         JsonNode i = lire(mvc.perform(json(post(BASE + "/" + processus + "/instances").with(agent(AGENT)), lancement())).andExpect(status().isCreated()).andReturn());
         String id = i.get("id").asText();
         String reference = i.get("reference").asText();
-        assertThat(reference).matches("CHG-\\d{4}-\\d{2}-\\d{2}-\\d{6}");
+        assertThat(reference).matches("CHG-\\d{4}-\\d{1,6}");
         for (String etape : List.of("IDENTIFICATION", "RAISON", "IMPACT")) {
             mvc.perform(post(url(id, etape, "fin")).with(agent(AGENT))).andExpect(status().isOk());
         }
@@ -93,8 +97,11 @@ class ProcessusChangementIT extends AbstractProcessusIT {
         champs.put("EVALUATION", "Risque maîtrisé");
         champs.put("DECISION", "ACCEPTEE");
         champs.put("DESCRIPTION", "Favorable");
+        mvc.perform(json(put(url(id, "SSI", "champs")).with(agent(AGENT_SSI)), Map.of("valeurs", champs))).andExpect(status().isForbidden());
         mvc.perform(json(put(url(id, "SSI", "champs")).with(agent(SSI)), Map.of("valeurs", champs))).andExpect(status().isOk());
         mvc.perform(post(url(id, "SSI", "fin")).with(agent(SSI))).andExpect(status().isOk());
+        mvc.perform(post(url(id, "SSI", "signature")).with(agent(AGENT_SSI)).header("X-Reauth-Assertion", "assertion").contentType(MediaType.APPLICATION_JSON).content("{\"signature\":\"DECISION_SSI\"}"))
+            .andExpect(status().isForbidden());
         mvc.perform(post(url(id, "SSI", "signature")).with(agent(SSI)).header("X-Reauth-Assertion", "assertion").contentType(MediaType.APPLICATION_JSON).content("{\"signature\":\"DECISION_SSI\"}"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.etat").value("CLOSE"));
         byte[] pdf = mvc.perform(get(INSTANCES + "/" + id + "/pdf").with(agent(SSI))).andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
