@@ -643,10 +643,11 @@ allow if {
 	double_facteur
 }
 
-# D-121 : quatre lectures exactes de la supervision dans le DES, permission SUP dédiée ; aucun repli sur TRA.
+# D-121 : lectures exactes de la supervision dans le DES, permission SUP dédiée ; aucun repli sur TRA. Complément du
+# 05/11/2026 : mesures par service et statistiques des codes retour.
 sbx_supervision_des if {
 	input.method == "GET"
-	regex.match(`^/bff/des/sbx-trace/(etat-sante/detail|elements-supervises|alertes|disponibilites)$`, input.path)
+	regex.match(`^/bff/des/sbx-trace/(etat-sante/detail|elements-supervises|alertes|disponibilites|services|statistiques/codes-retour)$`, input.path)
 }
 
 allow if {

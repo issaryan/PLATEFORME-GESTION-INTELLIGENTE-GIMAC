@@ -8,12 +8,13 @@ const json = (corps: unknown) => new Response(JSON.stringify(corps), { status: 2
 afterEach(() => vi.restoreAllMocks())
 
 describe('supervision SBX-TRACE par la passerelle', () => {
-  it('appelle uniquement les quatre lectures DES avec leur pagination', async () => {
+  it('appelle uniquement les cinq lectures DES avec leur pagination', async () => {
     const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => json({}))
     await supervisionHttp.etatSante()
     await supervisionHttp.elements({ page: 1, taille: 10 })
     await supervisionHttp.alertes({ page: 2, taille: 20 })
     await supervisionHttp.disponibilites({ page: 0, taille: 10 })
+    await supervisionHttp.services({ page: 0, taille: 20 })
     expect(spy.mock.calls.map(([u]) => {
       const url = new URL(String(u))
       return `${url.pathname}${url.search}`
@@ -22,6 +23,7 @@ describe('supervision SBX-TRACE par la passerelle', () => {
       '/bff/des/sbx-trace/elements-supervises?page=1&taille=10',
       '/bff/des/sbx-trace/alertes?page=2&taille=20',
       '/bff/des/sbx-trace/disponibilites?page=0&taille=10',
+      '/bff/des/sbx-trace/services?page=0&taille=20',
     ])
     expect(servicesSandboxHttp().supervision).toBe(supervisionHttp)
   })
@@ -39,6 +41,7 @@ describe('supervision SBX-TRACE simulée', () => {
     expect(page.elements).toHaveLength(3)
     expect((await s.alertes({ page: 0, taille: 1 })).total).toBe(2)
     expect((await s.disponibilites({ page: 1, taille: 1 })).elements[0]).toEqual(DISPONIBILITES_DEMO[1])
+    expect((await s.services({ page: 0, taille: 20 })).elements.map((x) => x.service)).toHaveLength(11)
     page.elements[0].nature = 'MODIFIE'
     expect(ELEMENTS_DEMO[20].nature).not.toBe('MODIFIE')
   })

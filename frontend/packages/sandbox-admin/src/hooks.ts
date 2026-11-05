@@ -66,3 +66,9 @@ export const nouvelleCle = (): string =>
           : Math.floor(Math.random() * 256)
         return (n ^ (r & (15 >> (n / 4)))).toString(16)
       })
+
+/** Mesures par service : relues toutes les 30 secondes, au rythme des cycles de SBX-TRACE. */
+export function useServicesSupervises(page: number, taille: number) {
+  const { supervision } = useServicesSandbox()
+  return useQuery({ queryKey: [...KS, 'services', page, taille], queryFn: () => supervision.services({ page, taille }), refetchInterval: 30_000 })
+}
