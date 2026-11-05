@@ -6,6 +6,8 @@ const TRANCHES = '{src/pages/des/Institution*.tsx,src/pages/des/TableauDeBordPag
 const PROCESSUS_PDF = '{src/services/http/processus-pdf.ts,src/pages/des/processus/pdf.ts,src/services/simule/changement-modele.ts,src/services/simule/reference-processus.ts}'
 
 export default defineConfig({
+  // Le test des libellés de refus lit les sources Java de MS-PILOTAGE (src/i18n/processus.test.ts).
+  server: { fs: { allow: ['../../..'] } },
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],

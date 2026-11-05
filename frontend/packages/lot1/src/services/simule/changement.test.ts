@@ -9,25 +9,34 @@ const formulaire = {
 }
 
 describe('processus DEMANDE_CHANGEMENT simulé', () => {
-  it('conserve le modèle, la référence datée et produit le PDF signé', async () => {
+  it('conserve le modèle et la référence, refuse l’agent SSI, produit le PDF signé par le RSSI', async () => {
     const magasin = magasinPouvoirs()
-    magasin.organisation.push({ id: 'u-ssi', nomAffiche: 'Sara SSI', fonction: 'Agent SSI', unite: 'SSI', responsableId: null, actif: true })
-    magasin.definirProfils('u-ssi', ['ROLE_AGENT_SSI'])
+    magasin.organisation.push({ id: 'u-ssi', nomAffiche: 'Sara SSI', fonction: 'RSSI', unite: 'SSI', responsableId: null, actif: true })
+    magasin.definirProfils('u-ssi', ['ROLE_RSSI'])
+    magasin.organisation.push({ id: 'u-agent-ssi', nomAffiche: 'Alain SSI', fonction: 'Agent SSI', unite: 'SSI', responsableId: null, actif: true })
+    magasin.definirProfils('u-agent-ssi', ['ROLE_AGENT_SSI'])
+    // u-ssi seul RSSI de l'organisation simulée : l'étape SSI lui revient d'office.
+    for (const p of magasin.organisation) if (p.id !== 'u-ssi' && magasin.profilsDe(p.id).includes('ROLE_RSSI')) magasin.definirProfils(p.id, magasin.profilsDe(p.id).filter((x) => x !== 'ROLE_RSSI'))
     const demandeur = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-collab', nom: 'David Demandeur', profils: ['ROLE_COLLABORATEUR'] }, pouvoirs: magasin })
     const resume = (await demandeur.processus.lancables({})).groupes.flatMap((g) => g.processus).find((p) => p.code === 'DEMANDE_CHANGEMENT')!
     const modele = await demandeur.processus.lire(resume.id)
-    expect(modele.referenceModele).toBe('CHG-{AAAA}-{MM}-{JJ}-{NNNNNN}')
+    expect(modele.referenceModele).toBe('CHG-{AAAA}-{N}')
     expect(modele.etapes.map((e) => e.code)).toEqual(['IDENTIFICATION', 'RAISON', 'IMPACT', 'IMPLEMENTATION', 'SSI'])
     expect(modele.formulaire?.champs).toHaveLength(12)
     const d = await demandeur.processus.lancer(modele.id, { intitule: 'Accès lecture AMA', champs: {}, designations: { IMPLEMENTATION: 'u-collab' }, formulaire })
-    expect(d.reference).toMatch(/^CHG-\d{4}-\d{2}-\d{2}-\d{6}$/)
+    expect(d.reference).toMatch(/^[A-Z]{2,5}-\d{4}-\d{1,6}$/)
     for (const etape of ['IDENTIFICATION', 'RAISON', 'IMPACT']) await demandeur.processus.terminer(d.id, etape)
     const ticket = await demandeur.processus.televerserLivrable(new File(['%PDF-1.4'], 'dossier.pdf', { type: 'application/pdf' }), d.id)
     await demandeur.processus.deposerLivrable(d.id, 'IMPLEMENTATION', 'DOSSIER_CHANGEMENT', ticket.documentId)
     await demandeur.processus.terminer(d.id, 'IMPLEMENTATION')
-    const ssi = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-ssi', nom: 'Sara SSI', profils: ['ROLE_AGENT_SSI'] }, pouvoirs: magasin })
+    const agent = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-agent-ssi', nom: 'Alain SSI', profils: ['ROLE_AGENT_SSI'] }, pouvoirs: magasin })
+    const vue = await demandeur.processus.instance(d.id)
+    expect(vue.etapes[4]).toMatchObject({ etat: 'ACTIVE', executant: { id: 'u-ssi' } })
+    await expect(agent.processus.saisirChamps(d.id, 'SSI', { DECISION: 'ACCEPTEE' })).rejects.toMatchObject({ status: 403, code: 'PIL_PROCESSUS_NON_INTERVENANT' })
+    const ssi = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-ssi', nom: 'Sara SSI', profils: ['ROLE_RSSI'] }, pouvoirs: magasin })
     await ssi.processus.saisirChamps(d.id, 'SSI', { DATE_DEPLOIEMENT: '2026-11-02', DATE_REVUE: '2026-11-03', EVALUATION: 'Conforme', DECISION: 'ACCEPTEE', DESCRIPTION: 'Favorable' })
     await ssi.processus.terminer(d.id, 'SSI')
+    await expect(agent.processus.signer(d.id, 'SSI', 'DECISION_SSI', 'assertion')).rejects.toMatchObject({ status: 403 })
     const signee = await ssi.processus.signer(d.id, 'SSI', 'DECISION_SSI', 'assertion')
     expect(signee.etat).toBe('CLOSE')
     const pdf = await ssi.processus.telechargerPdf(d.id)

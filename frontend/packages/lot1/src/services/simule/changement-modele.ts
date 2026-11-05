@@ -6,11 +6,12 @@ const pos = (x: number, y: number) => ({ x, y })
 export function definitionChangementDemo(): SaisieProcessus {
   const demandeur: Intervenant = { mode: 'LANCEUR' }
   const responsable: Intervenant = { mode: 'AU_LANCEMENT', unite: 'SSI', remplacement: 'ROLE_PRODUCTION_MONETIQUE' }
-  const ssi: Intervenant = { mode: 'PROFIL', profil: 'ROLE_AGENT_SSI', unite: 'SSI' }
+  // Verrou 2 (D-130) : le RSSI seul décide et signe.
+  const ssi: Intervenant = { mode: 'PROFIL', profil: 'ROLE_RSSI', unite: 'SSI' }
   const champ = (code: string, libelle: string, type: 'TEXTE' | 'TEXTE_LONG' | 'LISTE', choix: string[] = []): ChampFormulaire => ({ code, libelle, type, choix, obligatoire: true, aide: null, typesPieces: [] })
   return {
     code: 'DEMANDE_CHANGEMENT', unite: 'SSI', libelle: 'Demande de changement', description: 'Fiche de demande de changement GIMAC.', categorie: 'Exploitation', delaiCibleJours: 10,
-    referenceModele: 'CHG-{AAAA}-{MM}-{JJ}-{NNNNNN}',
+    referenceModele: 'CHG-{AAAA}-{N}',
     initiateurs: { regles: ['TOUT_LE_GIMAC'], unites: [], profils: [], permissions: [], personnes: [], initiateurIntervenant: true },
     formulaire: { champs: [
       champ('TYPE_DEMANDEUR', 'Unité du demandeur', 'LISTE', ['SUPPORT_MONETIQUE', 'AUTRE_DES']), champ('ELEMENT_CONFIGURATION', 'Élément de configuration (AMA, BD…)', 'TEXTE'),
