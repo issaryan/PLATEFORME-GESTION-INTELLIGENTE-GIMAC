@@ -52,6 +52,7 @@ Copié et adapté (paquet `cm.gimac.des.audit`) ; chaque bean est inactif tant q
 | 2026-09-29 | — | `.gitignore` : exception `!src/**/out/`, pour que les ports sortants `application/port/out` soient versionnés |
 | 2026-10-23 | D-124 | US-EXI-10 : événements à effet de la sandbox consommés par motif (`sbx-*`, groupe `audit-sandbox`), enveloppe contrôlée (`EnveloppeSandbox`), registre (colonne `institution_id`), rebut `rebut_sandbox` et alerte au-delà du seuil ; `/api/v1/registre/sandbox` (recherche, export CSV, rebut, `SBX_TRA_CONSULTATION`) ; règle JaCoCo à 98 % des classes de la sandbox |
 | 2026-11-04 | D-124 | Isolement des tests rétabli : `src/test/resources/spring.properties` (`spring.test.context.cache.pause=never`, garde `IsolementContextesTestTest`) et `@TestPropertySource` de `AuditKafkaResourceIT` ; branches couvertes jusque-là par la seule lecture parasite des sujets `sbx-*` de la recette testées à part ; `institutionId` reporté au JDL et à `.jhipster/AuditEvent.json` ; `clean verify` : 89 tests unitaires et 165 d'intégration, seuils JaCoCo tenus |
+| 2026-11-07 | Exploitation | Binding `kafkaProducer-out-0` du gabarit JHipster configuré avec `ByteArraySerializer`, comme MS-PARTICIPANT : `spring.kafka.producer` (StringSerializer) lui faisait lever `SerializationException` à chaque envoi, soit une `KafkaSendFailureException` par seconde dans le journal depuis le 06/11. |
 <!-- GIMAC:FIN -->
 
 # audit

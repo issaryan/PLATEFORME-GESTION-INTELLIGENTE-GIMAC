@@ -75,6 +75,7 @@ Copié et adapté (paquet `cm.gimac.des.notification`) ; chaque bean est inactif
 | 2026-11-01 | US-EXI-09 | Constructeur Spring de `IamDestinatairesSandboxAdapter` rendu explicite malgré le second constructeur de test ; régression couverte par `DestinatairesSandboxAdaptersTest` (4 essais), image reconstruite et démarrage réel sain dans Docker. |
 | 2026-11-04 | US-EXI-09 | `DemandesSandboxConsumer` : sujets des onze services par défaut, identiques à `application.yml` ; le contexte de test démarre à nouveau (`DemandesSandboxKafkaIT`) ; `clean verify` : 177 tests unitaires et 358 d'intégration, seuils JaCoCo tenus |
 | 2026-11-05 | US-EXI-09 | Catalogue unique des modèles de la sandbox (`config/notifications-sandbox.json`, 98 modèles, rôles) chargé par `CatalogueNotificationsSandbox` ; modèles réellement émis par SBX-CAMPAGNE, SBX-RACCORDEMENT, SBX-REFERENTIEL, SBX-TRACE, SBX-SIMULATION et SBX-DONNEES ajoutés ; copie identique dans la sandbox (audit de cohérence M2) |
+| 2026-11-07 | Exploitation | Binding `kafkaProducer-out-0` du gabarit JHipster configuré avec `ByteArraySerializer`, comme MS-PARTICIPANT : `spring.kafka.producer` (StringSerializer) lui faisait lever `SerializationException` à chaque envoi, soit une `KafkaSendFailureException` par seconde dans le journal depuis le 06/11. |
 <!-- GIMAC:FIN -->
 
 # notification
