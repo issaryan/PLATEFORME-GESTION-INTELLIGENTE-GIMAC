@@ -92,6 +92,9 @@ class SandboxConfigurationTest {
             "",
             "original"
         );
+        // Valeur explicite vraie avec émetteur, valeur absente (nulle) sans émetteur : démarrage admis.
+        assertThat(config.cloisonnementSandbox(p, introspection, e -> {}, fournisseur(null), fournisseur(emetteur), fournisseur(null), " true ")).isNotNull();
+        assertThat(config.cloisonnementSandbox(p, introspection, e -> {}, fournisseur(null), fournisseur(null), fournisseur(null), null)).isNotNull();
         // Émetteur présent, sans valeur explicite : jeton réduit obligatoire et émis.
         assertThat(avec.evaluer(d).block().jeton()).isPresent();
         // Sans émetteur (déploiement Docker actuel) : jeton original relayé, réponse 200, aucun jeton réduit.
