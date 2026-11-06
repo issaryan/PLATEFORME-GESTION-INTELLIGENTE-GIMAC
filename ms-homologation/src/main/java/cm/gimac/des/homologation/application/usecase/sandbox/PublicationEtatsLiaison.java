@@ -143,7 +143,8 @@ public class PublicationEtatsLiaison {
                 l.getEtat().name(),
                 e.getVersionEtat(),
                 e.getPublieLe(),
-                l.getReferenceOrigine()
+                l.getReferenceOrigine(),
+                l.getInstitutionNom()
             ),
             l.getInstitutionId().toString()
         );
