@@ -25,7 +25,7 @@ La checklist de Paylogic marque E1 à E7 et E9 « Corrigé et testé en test —
 
 | Écart | Ce qu'annonce Paylogic | Résultat réel du 05/11 | Verdict |
 |---|---|---|---|
-| E1 Statut après doublon | pacs.028 renvoie le statut de toute transaction, y compris après un doublon | Cas 5 (A2A) accepté ACSC, puis le même message rejoué est bien rejeté AM05. Mais **pacs.028 sur l'original rend RJCT X050 « No data found »**. Même réponse pour la transaction du cas 1 (BLCK). Les transactions PDNG (cas 3, 4, 7) sont, elles, bien relues ACSC | **Non conforme** |
+| E1 Statut après doublon | pacs.028 renvoie la liste des transactions correspondantes, un statut par transaction : l'originale et chaque doublon (§10, « returns a list of matching payment and related status ») | Cas 5 (A2A) accepté ACSC, puis le même message rejoué, bien rejeté AM05. pacs.028 sur l'identifiant de transaction de l'original (OrgnlTxId) : **une seule entrée, RJCT X050 « No data found »**, au lieu de la liste attendue de deux entrées (original ACSC et doublon RJCT AM05). Ni l'original ni le doublon ne sont rendus. Même réponse pour la transaction du cas 1 (BLCK). Les transactions PDNG (cas 3, 4, 7) sont, elles, bien relues ACSC, en une entrée chacune | **Non conforme** |
 | E2 acmt.024 interprotocole | Nom et identité du bénéficiaire restitués, y compris pour un portefeuille | acmt.023 sur un portefeuille du membre 12001 : acmt.024 Vrfctn=true avec le nom complet du titulaire | Conforme |
 | E3 Message mal formé | Rejet maîtrisé « Invalid input message » | pacs.008 tronqué : HTTP 400, corps JSON `InvalidInputFile` « Invalid input message », sans erreur interne | Conforme |
 | E4 ClrSysRef | Référence du switch renseignée dans le pacs.002 | ClrSysRef présent sur tous les ACSC et PDNG (cas 2 à 9, 14, 19 à 22) ; absent sur RJCT et BLCK | Conforme ; à préciser pour RJCT et BLCK |
@@ -65,7 +65,7 @@ Contrôles complémentaires : doublon du cas 5 RJCT AM05 ; pacs.008 tronqué HTT
 
 ## 4. Demandes à adresser à Paylogic
 
-1. **E1** : corriger pacs.028 pour qu'il retrouve une transaction déjà traitée (ACSC ou BLCK), en particulier après un doublon, et indiquer la date de déploiement sur l'environnement de test.
+1. **E1** : corriger pacs.028 pour qu'il rende la liste complète des transactions correspondant à l'identifiant interrogé, avec un statut pour chacune : la transaction originale et chacun de ses doublons. Préciser si la recherche par ClrSysRef doit rendre la même liste. Indiquer la date de déploiement sur l'environnement de test.
 2. **E6** : appliquer la §12.3 aux quatre cas encore en XX99. Préciser le code attendu pour chacun : AM18 pour un nombre de transactions incohérent ; le code d'un montant négatif ; celui d'un SchmeNm absent ; AB06 ou XX99 pour un délai dépassé vers le destinataire.
 3. **E7** : fournir un exemple de pain.013 accepté sur l'environnement de test, avec le pain.014 attendu. Corriger l'erreur interne qui empêche de renvoyer un pain.014 de rejet.
 4. **E4** : confirmer si ClrSysRef doit aussi être renseigné sur les réponses RJCT et BLCK.
@@ -81,3 +81,4 @@ Messages envoyés et réponses brutes de chaque cas, horodatés : 22 cas rejoué
 | Date | Mise à jour |
 |---|---|
 | 06/11/2026 | Création du rapport à partir des essais réels du 05/11/2026 sur la façade de test |
+| 06/11/2026 | E1 précisé : le résultat attendu est la liste complète (originale et doublons, un statut par transaction) ; le réel rend une seule entrée X050 |
