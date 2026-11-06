@@ -10,6 +10,7 @@ final class TextesPdfInstance {
 
     private static final Map<String, Map<String, String>> TEXTES = Map.of(
         "fr", Map.ofEntries(
+            Map.entry("langue", "fr"), Map.entry("oui", "Oui"), Map.entry("non", "Non"),
             Map.entry("reference", "Référence"), Map.entry("etat", "État"), Map.entry("demandeur", "Demandeur"), Map.entry("date", "Date de la demande"),
             Map.entry("donnees", "Données du demandeur"), Map.entry("signature", "Signature"), Map.entry("signataire", "Signataire"),
             Map.entry("signeeLe", "Signée le"), Map.entry("empreinte", "Empreinte"), Map.entry("aucune", "Aucune donnée saisie."),
@@ -19,6 +20,7 @@ final class TextesPdfInstance {
             Map.entry("heure", "dd/MM/yyyy HH:mm"), Map.entry("jour", "dd/MM/yyyy")
         ),
         "en", Map.ofEntries(
+            Map.entry("langue", "en"), Map.entry("oui", "Yes"), Map.entry("non", "No"),
             Map.entry("reference", "Reference"), Map.entry("etat", "Status"), Map.entry("demandeur", "Requester"), Map.entry("date", "Request date"),
             Map.entry("donnees", "Requester data"), Map.entry("signature", "Signature"), Map.entry("signataire", "Signatory"),
             Map.entry("signeeLe", "Signed on"), Map.entry("empreinte", "Fingerprint"), Map.entry("aucune", "No data entered."),
@@ -28,6 +30,7 @@ final class TextesPdfInstance {
             Map.entry("heure", "yyyy-MM-dd HH:mm"), Map.entry("jour", "yyyy-MM-dd")
         ),
         "es", Map.ofEntries(
+            Map.entry("langue", "es"), Map.entry("oui", "Sí"), Map.entry("non", "No"),
             Map.entry("reference", "Referencia"), Map.entry("etat", "Estado"), Map.entry("demandeur", "Solicitante"), Map.entry("date", "Fecha de la solicitud"),
             Map.entry("donnees", "Datos del solicitante"), Map.entry("signature", "Firma"), Map.entry("signataire", "Firmante"),
             Map.entry("signeeLe", "Firmada el"), Map.entry("empreinte", "Huella"), Map.entry("aucune", "Ningún dato introducido."),

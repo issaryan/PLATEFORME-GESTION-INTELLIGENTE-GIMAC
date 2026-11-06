@@ -85,7 +85,8 @@ class PdfInstanceServiceTest {
             .contains("&lt;script&gt;alert(&#39;x&#39;)&lt;/script&gt; &amp; accès")
             .doesNotContain("<script>alert")
             .contains("<td class=\"valeur\">AMA</td>", "<td class=\"valeur\"><span class=\"muet\">—</span></td>")
-            .contains("<td class=\"valeur\">02/11/2026</td>", "ACCEPTEE")
+            .contains("<td class=\"valeur\">02/11/2026</td>", "<td class=\"valeur\">Acceptée</td>")
+            .doesNotContain("ACCEPTEE")
             .contains("Responsable de la sécurité des systèmes d&#39;information", "28/10/2026 11:00", "<div class=\"empreinte\">Empreinte : " + "3f6c".repeat(16) + "</div>")
             .contains("<span class=\"badge ok\">Signée</span>", "<span class=\"badge attente\">Attendue</span>")
             .contains("<h2>INCONNUE <span class=\"badge attente\">En attente</span></h2>");
@@ -98,9 +99,9 @@ class PdfInstanceServiceTest {
         assertThat(en.langue()).isEqualTo("en");
         assertThat(en.faits()).extracting(Fait::libelle).containsExactly("Reference", "Status", "Requester", "Request date");
         assertThat(en.faits().get(3).valeur()).isEqualTo("2026-10-28 10:00");
-        assertThat(en.corps()).contains("Requester data", "Signed", "Awaited", "2026-11-02");
+        assertThat(en.corps()).contains("Requester data", "Signed", "Awaited", "2026-11-02", "<td class=\"valeur\">Accepted</td>");
         Document es = rendu(i, "es");
-        assertThat(es.corps()).contains("Datos del solicitante", "Firmada", "Pendiente");
+        assertThat(es.corps()).contains("Datos del solicitante", "Firmada", "Pendiente", "<td class=\"valeur\">Aceptada</td>");
         assertThat(rendu(i, "de").langue()).isEqualTo("fr");
     }
 

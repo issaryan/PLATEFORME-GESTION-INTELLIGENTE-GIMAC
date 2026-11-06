@@ -13,15 +13,11 @@ import cm.gimac.des.pilotage.domain.processus.EtapeInstance;
 import cm.gimac.des.pilotage.domain.processus.EtatSignature;
 import cm.gimac.des.pilotage.domain.processus.InstanceProcessus;
 import cm.gimac.des.pilotage.domain.processus.SignatureInstance;
+import cm.gimac.des.pilotage.domain.processus.TypeChamp;
+import cm.gimac.des.pilotage.domain.processus.TypeChampFormulaire;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,8 +33,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class PdfInstanceService {
 
     public record PdfInstance(byte[] contenu, String nomFichier) {}
-
-    static final ZoneId DOUALA = ZoneId.of("Africa/Douala");
 
     private final InstancesProcessusUseCase instances;
     private final RenduPdfPort rendu;
@@ -71,7 +65,7 @@ public class PdfInstanceService {
             h.append("<p class=\"muet\">").append(e(t.get("aucune"))).append("</p>");
         } else {
             h.append("<table class=\"fiche\"><tbody>");
-            champs.forEach(c -> ligne(h, t, c.libelle(), i.getFormulaire().get(c.code())));
+            champs.forEach(c -> ligne(h, t, c.libelle(), i.getFormulaire().get(c.code()), c.type() == TypeChampFormulaire.LISTE));
             h.append("</tbody></table>");
         }
         for (EtapeInstance etape : lue.etapes()) {
@@ -96,7 +90,7 @@ public class PdfInstanceService {
         if (def != null && !def.champs().isEmpty()) {
             h.append("<table class=\"fiche\"><tbody>");
             for (Champ c : def.champs()) {
-                ligne(h, t, c.libelle(), etape.getValeurs().get(c.code()));
+                ligne(h, t, c.libelle(), etape.getValeurs().get(c.code()), c.type() == TypeChamp.CHOIX);
             }
             h.append("</tbody></table>");
         }
@@ -123,34 +117,17 @@ public class PdfInstanceService {
         return etat == null ? "—" : t.getOrDefault(etat.name(), etat.name());
     }
 
-    /** Instant, date-heure ISO ou date ISO lisibles, à l'heure de Douala ; toute autre valeur telle quelle. */
     static String date(Map<String, String> t, Object valeur) {
-        if (valeur == null) {
-            return "—";
-        }
-        DateTimeFormatter heure = DateTimeFormatter.ofPattern(t.get("heure"), Locale.ROOT);
-        if (valeur instanceof Instant x) {
-            return heure.format(x.atZone(DOUALA));
-        }
-        String s = valeur.toString();
-        try {
-            return heure.format(OffsetDateTime.parse(s).atZoneSameInstant(DOUALA));
-        } catch (DateTimeParseException pasUneDateHeure) {
-            try {
-                return DateTimeFormatter.ofPattern(t.get("jour"), Locale.ROOT).format(LocalDate.parse(s));
-            } catch (DateTimeParseException pasUneDate) {
-                return s;
-            }
-        }
+        return ValeursPdfInstance.date(t, valeur);
     }
 
     private static String nom(String id, Map<String, String> noms) {
         return noms.getOrDefault(id, id);
     }
 
-    private static void ligne(StringBuilder h, Map<String, String> t, String libelle, Object valeur) {
+    private static void ligne(StringBuilder h, Map<String, String> t, String libelle, Object valeur, boolean choix) {
         h.append("<tr><th>").append(e(libelle)).append("</th><td class=\"valeur\">");
-        String v = valeur == null ? "" : date(t, valeur);
+        String v = ValeursPdfInstance.lisible(t, t.get("langue"), valeur, choix);
         h.append(v.isBlank() ? "<span class=\"muet\">—</span>" : e(v)).append("</td></tr>");
     }
 

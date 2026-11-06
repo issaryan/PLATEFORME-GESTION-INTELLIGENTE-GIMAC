@@ -97,6 +97,7 @@ Copié et adapté (paquet `cm.gimac.des.pilotage`) ; chaque bean est inactif tan
 | 2026-11-04 | D-130 | Étape `SSI` et signature `DECISION_SSI` de la demande de changement confiées à `ROLE_RSSI` seul ; l'agent SSI est refusé (`ProcessusChangementIT`, simulation du frontend) |
 | 2026-11-04 | D-131 | Provisionnement au démarrage : une version publiée de `DEMANDE_CHANGEMENT` encore au gabarit daté du modèle système est remplacée par une nouvelle version publiée (`CHG-{AAAA}-{N}`, RSSI à l'étape SSI), la précédente retirée et consignée ; brouillon en cours ou gabarit personnalisé laissés tels quels (`DemandeChangementConfigurationTest`) |
 | 2026-11-06 | D-139 | PDF des instances de processus (dont la demande de changement) au gabarit commun de MS-DOCUMENT : cartouche (référence, état, demandeur, date), états des étapes et des signatures en badges, dates à l'heure de Douala, libellés fr, en ou es (`GET …/instances/{id}/pdf?langue=`) ; `RenduPdfPort.Document`. |
+| 2026-11-06 | D-139, finition | `ValeursPdfInstance` : libellés fr, en, es des codes des listes fermées (choix d'étape, liste du formulaire), code non traduit mis en forme, sigles et valeurs saisies inchangés ; case cochée, période et pièce jointe lisibles. |
 <!-- GIMAC:FIN -->
 
 # pilotage
