@@ -225,6 +225,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 <!-- GIMAC:FIN -->
 | 2026-11-05 | D-134 | `TraductionInstitution` : institution_id traduit en code participant pour l'introspection, les périmètres, les mandats, les sagas et l'administration déléguée ; cache de la seule correspondance ; refus `INSTITUTION_NON_TRADUITE` et `REGISTRE_INDISPONIBLE` |
 | 2026-11-06 | D-134 | `RegistreInstitutionsParticipant` : constructeur d’injection marqué `@Autowired` ; avec deux constructeurs, MS-IAM ne démarrait pas en profil prod sur le serveur 214. |
+| 2026-11-06 | D-134 | `ConstructeursInjectionTest` : tout composant à plusieurs constructeurs, adaptateurs « real » de prod compris (conditions non évaluées), en désigne un seul par `@Autowired` ; échoue sans le correctif de `RegistreInstitutionsParticipant` |
 
 # iam
 
