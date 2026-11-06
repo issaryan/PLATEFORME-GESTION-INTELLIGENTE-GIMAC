@@ -215,6 +215,9 @@ services:
       - GIMAC_SECURITE_JETON_INTERNE_ACTIF=true
       - GIMAC_CLE_SIGNATURE_CHEMIN=/run/gimac/cle-signature-passerelle.pem
       - GIMAC_CLE_SIGNATURE_EPHEMERE=false
+      # Levier de repli : false dans le .env fait relayer le jeton original (comptes du GIMAC et d'une institution, comme
+      # avant D-134) ; vide, le jeton réduit est obligatoire puisque l'émetteur est actif.
+      - GIMAC_SANDBOX_JETON_REDUIT_OBLIGATOIRE=${GIMAC_SANDBOX_JETON_REDUIT_OBLIGATOIRE:-}
     volumes:
       - ${GIMAC_CLE_SIGNATURE_PASSERELLE:-./secrets/cle-signature-passerelle.pem}:/run/gimac/cle-signature-passerelle.pem:ro
     ports: !override
