@@ -62,7 +62,7 @@ export async function empreinteAttendue(instance: InstanceProcessus, porte: stri
 type Geste = 'terminer' | 'valider' | 'renvoyer' | 'reaffecter' | 'suspendre' | 'reprendre' | 'annuler'
 
 function Suivi({ instance: i }: { instance: InstanceProcessus }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const session = useSession()
   // L'initiateur suit sa demande : retour à « Mes demandes » ; les autres reviennent aux instances de l'unité.
@@ -115,7 +115,7 @@ function Suivi({ instance: i }: { instance: InstanceProcessus }) {
   const telecharger = async () => {
     setEchec(null)
     try {
-      await telechargerPdfInstance(services.processus, i)
+      await telechargerPdfInstance(services.processus, i, (i18n.language || 'fr').slice(0, 2))
       setAnnonce(t('proc.suivi.pdfPret'))
     } catch (e) { setEchec(e) }
   }

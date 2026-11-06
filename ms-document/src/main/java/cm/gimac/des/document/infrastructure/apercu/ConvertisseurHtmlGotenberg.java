@@ -7,6 +7,7 @@ import cm.gimac.des.document.application.usecase.ApercuProprietes;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ByteArrayResource;
@@ -50,6 +51,12 @@ public class ConvertisseurHtmlGotenberg implements ConvertisseurHtml {
 
     @Override
     public byte[] imprimer(String html, String piedDePage, Papier papier) {
+        return imprimer(html, piedDePage, papier, Map.of());
+    }
+
+    /** Métadonnées du PDF (D-139) : champ {@code metadata} de Gotenberg, objet JSON des clés XMP courantes. */
+    @Override
+    public byte[] imprimer(String html, String piedDePage, Papier papier, Map<String, String> metadonnees) {
         MultiValueMap<String, Object> f = new LinkedMultiValueMap<>();
         f.add("files", fichier("index.html", html));
         if (piedDePage != null && !piedDePage.isBlank()) {
@@ -64,6 +71,9 @@ public class ConvertisseurHtmlGotenberg implements ConvertisseurHtml {
         f.add("printBackground", "true");
         f.add("preferCssPageSize", "false");
         f.add("emulatedMediaType", "print");
+        if (metadonnees != null && !metadonnees.isEmpty()) {
+            f.add("metadata", json(metadonnees));
+        }
         try {
             return client
                 .post()
@@ -98,6 +108,36 @@ public class ConvertisseurHtmlGotenberg implements ConvertisseurHtml {
         h.setContentType(new MediaType("text", "html", StandardCharsets.UTF_8));
         h.setContentDisposition(ContentDisposition.formData().name("files").filename(nom).build());
         return new HttpEntity<>(new ByteArrayResource(contenu.getBytes(StandardCharsets.UTF_8)), h);
+    }
+
+    /** Objet JSON plat de chaînes, sans dépendance au sérialiseur de l'application. */
+    static String json(Map<String, String> m) {
+        StringBuilder b = new StringBuilder("{");
+        m.forEach((k, v) -> {
+            if (b.length() > 1) {
+                b.append(',');
+            }
+            b.append(chaine(k)).append(':').append(chaine(v));
+        });
+        return b.append('}').toString();
+    }
+
+    private static String chaine(String s) {
+        StringBuilder b = new StringBuilder("\"");
+        for (char c : (s == null ? "" : s).toCharArray()) {
+            switch (c) {
+                case '"' -> b.append("\\\"");
+                case '\\' -> b.append("\\\\");
+                default -> {
+                    if (c < 0x20) {
+                        b.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        b.append(c);
+                    }
+                }
+            }
+        }
+        return b.append('"').toString();
     }
 
     static String pouces(double mm) {

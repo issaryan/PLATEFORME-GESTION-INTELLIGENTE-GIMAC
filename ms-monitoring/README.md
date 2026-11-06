@@ -53,6 +53,7 @@ Copié et adapté (paquet `cm.gimac.des.monitoring`) ; chaque bean est inactif t
 | 2026-10-20 | D-116 | Rapports de monitoring (`RapportsMonitoringService`, tables `monitoring_report` et `monitoring_report_send`), rapport quotidien de 8 h (`AvisRapportQuotidien`, ordonnanceur, table `daily_report_notice`), contraintes de génération (`ContraintesGrille`, table `roster_constraints`, chef de quart désactivable), activité de l'équipe ; tests d'intégration `RapportsMonitoringIT` |
 | 2026-10-20 | - | D-117 : ModeleCreneaux (modèle par défaut de la feuille du DES, modèle historique de D-114), CreneauxProgramme, ProgrammeGrilles, PublicationProgramme, ExportProgramme (PDF par MS-DOCUMENT, xlsx sans dépendance), routes GET et PUT /grilles/creneaux et GET /grilles/{id}/export, changeset 20261021090000 ; formulation en cliques ; 132 tests unitaires et 438 d’intégration |
 | 2026-10-30 | D-128 | `SecurityConfiguration` accepte aussi `/actuator` avec les règles de `/management` : `health`, `info` et `prometheus` publics, tout autre point réservé à `ROLE_ADMIN` (supervision de la recette intégrée, journal consigné le 04/11/2026) |
+| 2026-11-06 | D-139 | Programme d'astreinte en PDF au gabarit commun de MS-DOCUMENT : cartouche (semaine, révision, état, publication), blocs quotidiens à deux colonnes, chef de quart signalé, support de niveau 2, créneaux non couverts en encart, filigrane « Projet » tant que la grille n'est pas publiée ; `RenduPdfPort.Document`. |
 <!-- GIMAC:FIN -->
 
 # monitoring

@@ -5,6 +5,8 @@ import cm.gimac.des.monitoring.domain.exception.MonitoringException;
 import cm.gimac.des.monitoring.infrastructure.client.ServiceTokenInterceptor;
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.time.ZoneOffset;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,7 +19,8 @@ import org.springframework.web.client.RestClientException;
 
 /**
  * Adaptateur réel de {@link RenduPdfPort} (D-117) : route interne {@code POST /api/v1/interne/rendus/pdf} de MS-DOCUMENT,
- * jeton de service de monitoring-service, corps {@code { html, piedDePage, format, orientation }}, réponse : le PDF.
+ * jeton de service de monitoring-service, corps {@code { html, format, orientation, gabarit }} (gabarit commun, D-139),
+ * réponse : le PDF.
  * Toute réponse autre qu'un PDF, délai dépassé (90 s) ou connexion impossible : 503 MON_PDF_INDISPONIBLE.
  */
 @Component
@@ -27,7 +30,21 @@ public class RenduPdfDocument implements RenduPdfPort {
     private static final Logger LOG = LoggerFactory.getLogger(RenduPdfDocument.class);
     static final String ROUTE = "/api/v1/interne/rendus/pdf";
 
-    record Requete(String html, String piedDePage, String format, String orientation) {}
+    record Requete(String html, String piedDePage, String format, String orientation, Gabarit gabarit) {}
+
+    /** En-tête et pied du gabarit commun de MS-DOCUMENT (D-139) ; date d'édition ISO 8601. */
+    record Gabarit(String titre, String sousTitre, String reference, String classification, String langue, String edition, String filigrane, List<Fait> faits) {}
+
+    /** Corps de la requête interne pour un document. */
+    static Requete requete(Document d) {
+        return new Requete(
+            d.corps(),
+            null,
+            "A4",
+            d.paysage() ? "PAYSAGE" : "PORTRAIT",
+            new Gabarit(d.titre(), d.sousTitre(), d.reference(), d.classification(), d.langue(), d.edition().atOffset(ZoneOffset.UTC).toString(), d.filigrane(), d.faits())
+        );
+    }
 
     private final RestClient client;
 
@@ -39,8 +56,8 @@ public class RenduPdfDocument implements RenduPdfPort {
     }
 
     @Override
-    public byte[] rendre(String html, String piedDePage, boolean paysage) {
-        Requete corps = new Requete(html, piedDePage, "A4", paysage ? "PAYSAGE" : "PORTRAIT");
+    public byte[] rendre(Document document) {
+        Requete corps = requete(document);
         try {
             return client
                 .post()

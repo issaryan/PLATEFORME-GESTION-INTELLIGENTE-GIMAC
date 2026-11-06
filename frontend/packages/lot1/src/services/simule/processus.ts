@@ -15,6 +15,12 @@ import { PRESENTATIONS_PROFILS } from './presentations'
 import { pdfDemo } from './messagerie'
 import { definitionChangementDemo } from './changement-modele'
 import { referenceSimulee } from './reference-processus'
+import INSTANCE_PDF_FR from '../../assets/instance-demonstration-fr.pdf?url'
+import INSTANCE_PDF_EN from '../../assets/instance-demonstration-en.pdf?url'
+import INSTANCE_PDF_ES from '../../assets/instance-demonstration-es.pdf?url'
+
+/** Exemples de démonstration du PDF d'une instance (D-139), par langue. */
+const EXEMPLES_INSTANCE_PDF: Record<string, string> = { fr: INSTANCE_PDF_FR, en: INSTANCE_PDF_EN, es: INSTANCE_PDF_ES }
 
 // MS-PILOTAGE simulé pour les processus d'unité (D-87, docs/lot1/processus-unite.md §5) : mêmes formes et mêmes codes de
 // refus que le service ; ses règles ne sont qu'une imitation (contrôle de publication, versions, résolution des
@@ -1179,11 +1185,18 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       return vueInstance(lancer(p, l, moiId))
     }),
     instance: (iid) => attendre(() => vueInstance(trouverInstance(iid))),
-    telechargerPdf: (iid) => attendre(() => {
-      const inst = trouverInstance(iid)
-      const signatures = inst.etapes.flatMap((e) => e.signatures.filter((s) => s.etat === 'SIGNEE').map((s) => `${s.code}:${s.signePar?.nomAffiche ?? ''}:${s.empreinte ?? ''}`))
-      return `%PDF-1.4\n% ${inst.reference ?? inst.id}\n${inst.intitule}\n${signatures.join('\n')}`
-    }).then((contenu) => new Blob([contenu], { type: 'application/pdf' })),
+    // D-139 : aucun moteur de mise en page simulé ; le PDF est l'exemple de démonstration produit par la chaîne réelle
+    // (MS-PILOTAGE, MS-DOCUMENT, Gotenberg) au gabarit commun, marqué « Démonstration », comme l'organigramme (D-102 §5).
+    telechargerPdf: async (iid, langue) => {
+      await attendre(() => trouverInstance(iid))
+      try {
+        const r = await fetch(EXEMPLES_INSTANCE_PDF[langue ?? 'fr'] ?? EXEMPLES_INSTANCE_PDF.fr)
+        if (!r.ok) throw new Error(String(r.status))
+        return new Blob([await r.arrayBuffer()], { type: 'application/pdf' })
+      } catch {
+        throw refus(503, 'PIL_PDF_INDISPONIBLE', 'Le moteur PDF de MS-DOCUMENT est indisponible')
+      }
+    },
     // QUO-04 : pièce du formulaire de lancement ou livrable déposé, lisible de qui lit l'instance (comme MS-PILOTAGE).
     documentInstance: (iid, documentId) => attendre(() => {
       const inst = trouverInstance(iid)

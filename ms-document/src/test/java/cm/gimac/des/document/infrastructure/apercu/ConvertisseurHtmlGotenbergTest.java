@@ -67,6 +67,22 @@ class ConvertisseurHtmlGotenbergTest {
     }
 
     @Test
+    @DisplayName("Métadonnées du PDF (D-139) : champ metadata en JSON échappé ; absentes : aucun champ metadata")
+    void metadonnees() {
+        java.util.Map<String, String> m = new java.util.LinkedHashMap<>();
+        m.put("Title", "Programme \"W46\" \\ é");
+        m.put("Keywords", "a\nb");
+        assertThat(adaptateur().imprimer("<html></html>", null, A3_PAYSAGE, m)).isEqualTo(PDF);
+        assertThat(corps.get()).contains("name=\"metadata\"").contains("{\"Title\":\"Programme \\\"W46\\\" \\\\ é\",\"Keywords\":\"a\\u000ab\"}");
+        adaptateur().imprimer("<html></html>", null, A3_PAYSAGE);
+        assertThat(corps.get()).doesNotContain("name=\"metadata\"");
+        assertThat(ConvertisseurHtmlGotenberg.json(java.util.Map.of())).isEqualTo("{}");
+        java.util.Map<String, String> nul = new java.util.HashMap<>();
+        nul.put("Subject", null);
+        assertThat(ConvertisseurHtmlGotenberg.json(nul)).isEqualTo("{\"Subject\":\"\"}");
+    }
+
+    @Test
     @DisplayName("POST /forms/chromium/convert/html : index.html, footer.html, papier A3 paysage en pouces, marges, fonds imprimés")
     void impression() {
         assertThat(adaptateur().imprimer("<html>Organigramme é</html>", "<p>pied</p>", A3_PAYSAGE)).isEqualTo(PDF);
