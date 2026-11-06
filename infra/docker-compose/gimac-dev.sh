@@ -105,6 +105,8 @@ preparer_env() {
   # Clé AES-256-GCM des secrets de MS-IAM (enrôlement TOTP, mot de passe SMTP, D-65) : 32 octets en base 64.
   grep -q "^GIMAC_IAM_CLE_CHIFFREMENT=" "$fichier" \
     || { echo "GIMAC_IAM_CLE_CHIFFREMENT=$(openssl rand -base64 32)" >> "$fichier"; echo "Secret ajouté à .env : GIMAC_IAM_CLE_CHIFFREMENT"; }
+  # Clé RSA du jeton interne de la passerelle (D-134), montée par docker-compose.gimac.yml ; secrets/ est ignoré par git.
+  bash "$ICI/scripts/generer-cle-passerelle.sh" "$ICI/secrets/cle-signature-passerelle.pem"
 }
 
 # Avant l'arrêt sur échec, conserve les journaux des conteneurs en mauvaise santé ou arrêtés.

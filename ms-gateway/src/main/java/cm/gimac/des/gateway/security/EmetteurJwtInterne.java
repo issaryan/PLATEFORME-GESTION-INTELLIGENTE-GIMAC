@@ -1,6 +1,6 @@
 package cm.gimac.des.gateway.security;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JOSEObjectType;
@@ -38,7 +38,8 @@ import org.springframework.stereotype.Component;
  * privee ne quitte jamais la passerelle ; les services ne recoivent que la
  * partie publique, via {@code /api/internal/jwks}.
  */
-@ConditionalOnProperty(name = "gimac.securite.jeton-fantome.actif", havingValue = "true")
+// Émetteur du jeton interne, de sa clé et de son JWKS : mode jeton fantôme, ou seul jeton réduit de la sandbox (D-134).
+@ConditionalOnExpression("${gimac.securite.jeton-fantome.actif:false} or ${gimac.securite.jeton-interne.actif:false}")
 @Component
 public class EmetteurJwtInterne {
 

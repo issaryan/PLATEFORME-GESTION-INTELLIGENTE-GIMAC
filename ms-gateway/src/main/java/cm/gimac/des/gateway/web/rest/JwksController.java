@@ -1,6 +1,6 @@
 package cm.gimac.des.gateway.web.rest;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 
 import com.nimbusds.jose.jwk.JWKSet;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,7 +15,8 @@ import java.util.Map;
  * Les microservices utilisent cet endpoint pour valider les JWT internes RS256.
  * La clé publique n'est pas un secret : ce endpoint est accessible sans authentification.
  */
-@ConditionalOnProperty(name = "gimac.securite.jeton-fantome.actif", havingValue = "true")
+// Émetteur du jeton interne, de sa clé et de son JWKS : mode jeton fantôme, ou seul jeton réduit de la sandbox (D-134).
+@ConditionalOnExpression("${gimac.securite.jeton-fantome.actif:false} or ${gimac.securite.jeton-interne.actif:false}")
 @RestController
 @RequestMapping("/api/internal")
 public class JwksController {

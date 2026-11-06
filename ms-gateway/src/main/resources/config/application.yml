@@ -817,10 +817,23 @@ jhipster:
 # https://www.jhipster.tech/common-application-properties/
 # ===================================================================
 
-# application:
+# Clé RSA du jeton interne (RsaKeyConfig) : fichier PEM PKCS#8 monté hors du dépôt (GIMAC_CLE_SIGNATURE_CHEMIN) ;
+# sans fichier, paire éphémère admise seulement si GIMAC_CLE_SIGNATURE_EPHEMERE vaut true (développement).
+application:
+  signing-key:
+    private-key-pem: ''
+    private-key-path: ${GIMAC_CLE_SIGNATURE_CHEMIN:}
+    previous-public-key-paths: []
+    minimum-key-size: 2048
+    allow-ephemeral: ${GIMAC_CLE_SIGNATURE_EPHEMERE:true}
 
 # Adresses des microservices joints par la passerelle (GW-19) ; surchargées en prod.
 gimac:
+  # Jeton interne réduit de la sandbox (D-134) : émetteur, clé et /api/internal/jwks, sans le mode jeton fantôme
+  # des routes de la plateforme. Actif, il rend le jeton réduit obligatoire (gimac.sandbox.jeton-reduit.obligatoire).
+  securite:
+    jeton-interne:
+      actif: ${GIMAC_SECURITE_JETON_INTERNE_ACTIF:false}
   opa:
     url: http://localhost:8181
   services:

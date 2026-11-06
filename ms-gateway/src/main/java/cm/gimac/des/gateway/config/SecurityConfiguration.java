@@ -97,6 +97,8 @@ public class SecurityConfiguration {
                     .pathMatchers("/api/connexion", "/api/connexion/**").permitAll()
                     // Délégation par redirection vers Keycloak retirée (D-65) : aucun traitement, 404.
                     .pathMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                    // Clés publiques du jeton interne (RFC 7517), lues sans jeton par les services de la sandbox (D-134).
+                    .pathMatchers(HttpMethod.GET, "/api/internal/jwks").permitAll()
                     .pathMatchers("/api/authenticate").permitAll()
                     .pathMatchers("/api/auth-info").permitAll()
                     .pathMatchers("/api/admin/**").hasAuthority(AuthoritiesConstants.ADMIN)

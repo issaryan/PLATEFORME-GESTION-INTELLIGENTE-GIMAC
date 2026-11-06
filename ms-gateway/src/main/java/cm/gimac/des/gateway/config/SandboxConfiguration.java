@@ -71,12 +71,15 @@ public class SandboxConfiguration {
         ObjectProvider<TokenBucketRateLimiter> valkey,
         ObjectProvider<EmetteurJwtInterne> emetteur,
         ObjectProvider<Clock> horloge,
-        @org.springframework.beans.factory.annotation.Value("${gimac.sandbox.jeton-reduit.obligatoire:${gimac.securite.jeton-fantome.actif:false}}") boolean jetonReduitObligatoire
+        @org.springframework.beans.factory.annotation.Value("${gimac.sandbox.jeton-reduit.obligatoire:}") String obligatoire
     ) {
         Clock h = ConnexionConfiguration.horloge(horloge);
         EmetteurJwtInterne jwt = emetteur.getIfAvailable();
+        // D-134 : obligatoire dès que l'émetteur est actif (gimac.securite.jeton-interne.actif ou jeton fantôme), sauf
+        // valeur explicite ; obligatoire sans émetteur : démarrage refusé.
+        boolean jetonReduitObligatoire = obligatoire == null || obligatoire.isBlank() ? jwt != null : Boolean.parseBoolean(obligatoire.strip());
         if (jetonReduitObligatoire && jwt == null) {
-            throw new IllegalStateException("gimac.sandbox.jeton-reduit.obligatoire exige l'émetteur du jeton interne (gimac.securite.jeton-fantome.actif=true)");
+            throw new IllegalStateException("gimac.sandbox.jeton-reduit.obligatoire exige l'émetteur du jeton interne (gimac.securite.jeton-interne.actif=true)");
         }
         return new CloisonnementSandbox(
             introspection,
