@@ -1,6 +1,6 @@
 package cm.gimac.des.gateway.security;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 
 import cm.gimac.des.gateway.config.ApplicationProperties;
 import com.nimbusds.jose.jwk.JWK;
@@ -53,7 +53,8 @@ import org.springframework.context.annotation.Configuration;
  * nouveaux sont signes avec la nouvelle. La procedure detaillee est en
  * {@code api-gateway/docs/ROTATION_CLE_SIGNATURE.md}.
  */
-@ConditionalOnProperty(name = "gimac.securite.jeton-fantome.actif", havingValue = "true")
+// Émetteur du jeton interne, de sa clé et de son JWKS : mode jeton fantôme, ou seul jeton réduit de la sandbox (D-134).
+@ConditionalOnExpression("${gimac.securite.jeton-fantome.actif:false} or ${gimac.securite.jeton-interne.actif:false}")
 @Configuration
 public class RsaKeyConfig {
 

@@ -211,6 +211,7 @@ Validations réellement exécutées et conservées dans les rapports du 27/10 :
 | 2026-11-05 | D-134 | `institution_id` : identifiant au registre côté plateforme, code participant côté sandbox, traduit une seule fois par MS-IAM (correspondance lue dans MS-PARTICIPANT) ; la passerelle ne relaie plus le jeton original |
 | 2026-11-06 | D-134 | `ConstructeursInjectionTest` dans les quatorze services : tout composant Spring, adaptateurs de prod compris (conditions non évaluées), a un constructeur `@Autowired` ou un constructeur sans argument dès qu'il en déclare plusieurs ; panne de MS-IAM du 06/11 sur le 214 |
 | 2026-11-06 | D-140 | Liste paginée des membres du registre dans MS-PARTICIPANT pour la provision des comptes de test de SBX-DONNEES ; `INTERNAL_PARTICIPANT_READ` donnée à `sbx-donnees` |
+| 2026-11-06 | D-134 | Jeton réduit de la sandbox finalisé en Docker : émetteur de la passerelle actif, clé RSA générée hors dépôt par `infra/docker-compose/scripts/generer-cle-passerelle.sh` (gimac-dev.sh, deployer-serveur.sh), JWKS ouvert aux services de la sandbox |
 
 ### Mise a jour du 02/11/2026 : Releve Sandbox GIMAC et integration documentaire
 

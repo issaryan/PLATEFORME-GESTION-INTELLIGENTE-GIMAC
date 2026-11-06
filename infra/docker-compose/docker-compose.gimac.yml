@@ -209,6 +209,14 @@ services:
       # le sujet gateway.security.events, scellé par MS-AUDIT.
       - GIMAC_PASSERELLE_JOURNAL_DECISIONS_ACTIF=true
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      # Jeton interne réduit de la sandbox (D-134) : émetteur, clé et /api/internal/jwks actifs, sans le mode jeton
+      # fantôme des routes de la plateforme ; le jeton réduit devient obligatoire. Clé RSA persistante générée hors
+      # du dépôt par scripts/generer-cle-passerelle.sh (gimac-dev.sh, mettre-a-jour.sh, deployer-serveur.sh).
+      - GIMAC_SECURITE_JETON_INTERNE_ACTIF=true
+      - GIMAC_CLE_SIGNATURE_CHEMIN=/run/gimac/cle-signature-passerelle.pem
+      - GIMAC_CLE_SIGNATURE_EPHEMERE=false
+    volumes:
+      - ${GIMAC_CLE_SIGNATURE_PASSERELLE:-./secrets/cle-signature-passerelle.pem}:/run/gimac/cle-signature-passerelle.pem:ro
     ports: !override
       - ${GIMAC_PORT_GATEWAY:-8080}:8080
 

@@ -273,6 +273,7 @@ Tests : `AppareilsDomaineTest`, `SuiviEtServiceAppareilsTest`, `FermetureAutresS
 | 2026-10-27 | - | Introspection MS-IAM sans cache dans le cloisonnement ; règles OPA des réexamens US-EXI-23 ; limites AC mTLS locale, Compose complet et serveurs réels documentées |
 | 2026-11-05 | D-134 | Jeton réduit : codes participants rendus par MS-IAM (`institution_id`, `institution_propre`, `code_participant`) ; plus aucun relais du jeton original vers la sandbox |
 | 2026-11-06 | D-134 | Mesure d'attente après la panne du 214 : jeton réduit obligatoire seulement avec l'émetteur du jeton interne (`gimac.sandbox.jeton-reduit.obligatoire`, par défaut `gimac.securite.jeton-fantome.actif`) ; sans émetteur, jeton original relayé pour un compte du GIMAC ou d'une institution, jamais pour un mandat ni un prestataire ; démarrage refusé si obligatoire sans émetteur ; `JetonReduitDeploiementTest` |
+| 2026-11-06 | D-134 | Jeton réduit finalisé : émetteur, clé et `/api/internal/jwks` actifs avec `gimac.securite.jeton-interne.actif`, sans le mode jeton fantôme ; JWKS lu sans jeton ; jeton réduit obligatoire dès que l'émetteur est actif ; clé RSA persistante (`GIMAC_CLE_SIGNATURE_CHEMIN`, paire éphémère refusée en Docker) ; `JwksPasserelleIT` |
 <!-- GIMAC:FIN -->
 
 # gateway

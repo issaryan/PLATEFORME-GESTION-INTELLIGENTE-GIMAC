@@ -102,6 +102,9 @@ configurer_env() {
   # Service en http sous une adresse IP : un témoin Secure n'y serait jamais renvoyé.
   definir GIMAC_SESSION_TEMOIN_SECURISE false
   definir GIMAC_KEYCLOAK_DB_PASSWORD "$(openssl rand -hex 20)"
+  # Clé RSA du jeton interne de la passerelle (D-134) : générée une fois dans l'état du serveur, hors du dépôt.
+  bash "$COMPOSE_DIR/scripts/generer-cle-passerelle.sh" "$ETAT_SERVEUR/cle-signature-passerelle.pem"
+  definir GIMAC_CLE_SIGNATURE_PASSERELLE "$ETAT_SERVEUR/cle-signature-passerelle.pem"
 }
 
 # Publication (D-75, infra/serveur/publication.env) : en mode mixte ou https, les adresses publiques,

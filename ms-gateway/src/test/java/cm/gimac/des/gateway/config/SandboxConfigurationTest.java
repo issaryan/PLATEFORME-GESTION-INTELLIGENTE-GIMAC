@@ -78,8 +78,8 @@ class SandboxConfigurationTest {
         cm.gimac.des.gateway.domain.sandbox.port.IntrospectionSandbox introspection = (j, i, c) -> Mono.just(
             new cm.gimac.des.gateway.domain.sandbox.port.IntrospectionSandbox.Portee(true, "u", "99001", List.of("SBX_TRA_CONSULTATION"), "COMPTE")
         );
-        CloisonnementSandbox avec = config.cloisonnementSandbox(p, introspection, e -> {}, fournisseur(null), fournisseur(emetteur), fournisseur(null), true);
-        CloisonnementSandbox sans = config.cloisonnementSandbox(p, introspection, e -> {}, fournisseur(null), fournisseur(null), fournisseur(null), false);
+        CloisonnementSandbox avec = config.cloisonnementSandbox(p, introspection, e -> {}, fournisseur(null), fournisseur(emetteur), fournisseur(null), "");
+        CloisonnementSandbox sans = config.cloisonnementSandbox(p, introspection, e -> {}, fournisseur(null), fournisseur(null), fournisseur(null), "");
         CloisonnementSandbox.Demande d = new CloisonnementSandbox.Demande(
             "u",
             "99001",
@@ -92,6 +92,7 @@ class SandboxConfigurationTest {
             "",
             "original"
         );
+        // Émetteur présent, sans valeur explicite : jeton réduit obligatoire et émis.
         assertThat(avec.evaluer(d).block().jeton()).isPresent();
         // Sans émetteur (déploiement Docker actuel) : jeton original relayé, réponse 200, aucun jeton réduit.
         assertThat(sans.evaluer(d).block().jeton()).isEmpty();
