@@ -29,10 +29,8 @@ export default function ActivitePage() {
   return <div className="gm-col">
     <PageHeader title={t('sbx.activite.titre')} subtitle={t('sbx.activite.sousTitre')} />
     <FilterBar
-      query={vue.filtre.participant ?? ''}
-      onQuery={(q) => { if (q === '' || /^[0-9]{5}$/.test(q)) changer('participant', q) }}
       filters={[
-        { key: 'periode', label: t('sbx.activite.periode'), value: String(vue.periode), options: PERIODES.map((p) => ({ value: String(p), label: t(`sbx.activite.periode.${p}`) })) },
+        { key: 'periode', label: t('sbx.activite.periode'), value: String(vue.periode), tous: false, options: PERIODES.map((p) => ({ value: String(p), label: t(`sbx.activite.periode.${p}`) })) },
         { key: 'participant', label: t('sbx.activite.participant'), value: vue.filtre.participant ?? '', options: (choix.data?.elements ?? []).map((p) => ({ value: p.codeParticipant, label: p.codeParticipant })) },
         { key: 'interface', label: t('sbx.activite.interface'), value: vue.filtre.interface ?? '', options: INTERFACES.map((i) => ({ value: i, label: t(`sbx.activite.interface.${i}`) })) },
       ]}

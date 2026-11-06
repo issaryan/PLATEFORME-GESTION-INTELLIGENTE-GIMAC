@@ -80,7 +80,7 @@ export const fr = {
   'sbx.activite.titreCodes': 'Principaux codes de rejet',
   'sbx.activite.sousTitreCodes': 'Codes de retour des échanges (RC09, AG01, codes action ISO 8583…)',
   'sbx.activite.codesIndisponibles': 'Source indisponible',
-  'sbx.activite.codesIndisponiblesAide': 'SBX-TRACE ne reçoit pas encore les codes de retour des échanges : le contrat exchange-captured.v1 est en cours de correction.',
+  'sbx.activite.codesIndisponiblesAide': 'SBX-TRACE ne sert pas encore la statistique des codes de retour des échanges : la mise à jour du service est attendue.',
   'sbx.activite.aucunCode': 'Aucun code de rejet sur la période',
 }
 
@@ -166,7 +166,7 @@ export const en: Cles = {
   'sbx.activite.titreCodes': 'Top rejection codes',
   'sbx.activite.sousTitreCodes': 'Exchange return codes (RC09, AG01, ISO 8583 action codes…)',
   'sbx.activite.codesIndisponibles': 'Source unavailable',
-  'sbx.activite.codesIndisponiblesAide': 'SBX-TRACE does not receive exchange return codes yet: the exchange-captured.v1 contract is being fixed.',
+  'sbx.activite.codesIndisponiblesAide': 'SBX-TRACE does not serve the exchange return code statistics yet: the service update is pending.',
   'sbx.activite.aucunCode': 'No rejection code over the period',
 }
 
@@ -250,6 +250,6 @@ export const es: Cles = {
   'sbx.activite.titreCodes': 'Principales códigos de rechazo',
   'sbx.activite.sousTitreCodes': 'Códigos de retorno de los intercambios (RC09, AG01, códigos de acción ISO 8583…)',
   'sbx.activite.codesIndisponibles': 'Fuente no disponible',
-  'sbx.activite.codesIndisponiblesAide': 'SBX-TRACE todavía no recibe los códigos de retorno de los intercambios: el contrato exchange-captured.v1 se está corrigiendo.',
+  'sbx.activite.codesIndisponiblesAide': 'SBX-TRACE todavía no ofrece la estadística de los códigos de retorno de los intercambios: se espera la actualización del servicio.',
   'sbx.activite.aucunCode': 'Ningún código de rechazo en el período',
 }

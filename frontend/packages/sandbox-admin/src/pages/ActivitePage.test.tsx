@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import ActivitePage from './ActivitePage'
 import { ADMIN, rendre, simules } from '../test/rendu'
 import { PERMISSION_LIAISON } from '../activite/modele'
@@ -27,7 +27,8 @@ describe('ActivitePage', () => {
       expect((await screen.findAllByText(titre)).length).toBeGreaterThan(0)
     }
     expect(await screen.findByText('Favorables')).toBeTruthy()
-    expect(await screen.findByText(/Source indisponible/)).toBeTruthy()
+    expect(await screen.findByText('RC09 · ISO 20022')).toBeTruthy()
+    expect(screen.queryByText(/Source indisponible/)).toBeNull()
     expect(await screen.findAllByRole('link', { name: 'Ouvrir le dossier' })).not.toHaveLength(0)
     expect((await screen.findAllByText('CMP-99001-CARTE')).length).toBeGreaterThan(0)
     expect(await screen.findAllByText(/Ouverte depuis/)).not.toHaveLength(0)
@@ -54,9 +55,13 @@ describe('ActivitePage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /Retirer|Supprimer|×/ })[0])
     await waitFor(() => expect(screen.queryByText('Participant : 99004')).toBeNull())
     fireEvent.change(screen.getByLabelText('Période'), { target: { value: '7' } })
-    fireEvent.change(screen.getByRole('searchbox'), { target: { value: '99001' } })
+    // La période est toujours choisie : pas d'option « Tous » ; aucune recherche libre ni vue enregistrée inerte.
+    expect(Array.from((screen.getByLabelText('Période') as HTMLSelectElement).options).map((o) => o.value)).toEqual(['7', '30', '90', '365'])
+    expect(screen.queryByRole('searchbox')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Enregistrer/ })).toBeNull()
+    await waitFor(() => expect(Array.from((screen.getByLabelText('Participant') as HTMLSelectElement).options).some((o) => o.value === '99001')).toBe(true))
+    fireEvent.change(screen.getByLabelText('Participant'), { target: { value: '99001' } })
     expect(await screen.findByText('Participant : 99001')).toBeTruthy()
-    fireEvent.change(screen.getByRole('searchbox'), { target: { value: '9' } })
     fireEvent.click(screen.getByRole('button', { name: /Réinitialiser/ }))
     await waitFor(() => expect(screen.queryByText('Participant : 99001')).toBeNull())
   })
@@ -77,6 +82,9 @@ describe('ActivitePage', () => {
     rendre(<ActivitePage />, { route: '/des/sandbox/activite', chemin: '/des/sandbox/activite?periode=90', permissions: AVEC_LIAISONS, services })
     expect(await screen.findByText('RC09 · ISO 20022')).toBeTruthy()
     expect((await screen.findAllByText('Gelée')).length).toBeGreaterThan(0)
+    cleanup()
+    rendre(<ActivitePage />, { ...route, services: simules({ codesRetour: null }) })
+    expect(await screen.findByText(/Source indisponible/)).toBeTruthy()
   })
 
   it('affiche les listes vides et propose une nouvelle tentative après une panne', async () => {

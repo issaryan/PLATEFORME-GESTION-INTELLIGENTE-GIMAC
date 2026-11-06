@@ -66,7 +66,7 @@ export type LigneCas = { codeCas: string; codeService: string | null; interfaceT
 
 export type PageStatistiques<T> = { elements: T[]; total: number; page: number; taille: number; suivant: string | null }
 
-/** Code de retour des échanges (SBX-TRACE), branché quand exchange-captured.v1 le portera. */
+/** Code de retour des échanges (SBX-TRACE, exchange-captured.v1) : RC09, AG01, code action ISO 8583, statut mobile. */
 export type CodeRetour = { interface: string; code: string; occurrences: number; participants: number; dernierLe: string }
 
 /** Liaison de MS-HOMOLOGATION réduite à ce que montre la chaîne de certification. */
