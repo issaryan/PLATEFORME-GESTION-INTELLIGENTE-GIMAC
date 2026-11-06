@@ -151,5 +151,12 @@ class ExportProgrammeTest {
             Files.writeString(d.resolve("programme-" + l + ".json"), json.writeValueAsString(RenduPdfDocumentEssai.requete(export().document(grille(true), l, "programme-2026-W46-r2"))));
         }
         Files.writeString(d.resolve("programme-projet-fr.json"), json.writeValueAsString(RenduPdfDocumentEssai.requete(export().document(grille(false), "fr", "programme-2026-W46-r2"))));
+        // Exemples des services simulés du frontend (exploitation/src/assets), marqués « Démonstration ».
+        Map<String, String> demonstration = Map.of("fr", "Démonstration", "en", "Demonstration", "es", "Demostración");
+        for (String l : List.of("fr", "en", "es")) {
+            Document x = export().document(grille(true), l, "programme-2026-W46-r2");
+            Document demo = new Document(x.corps(), x.titre(), x.sousTitre(), x.reference(), x.classification(), x.langue(), x.edition(), demonstration.get(l), x.faits(), x.paysage());
+            Files.writeString(d.resolve("programme-demonstration-" + l + ".json"), json.writeValueAsString(RenduPdfDocumentEssai.requete(demo)));
+        }
     }
 }

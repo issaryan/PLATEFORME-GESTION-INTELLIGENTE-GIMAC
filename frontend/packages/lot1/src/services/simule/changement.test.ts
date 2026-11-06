@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { servicesSimules } from '.'
 import { magasinPouvoirs } from './pouvoirs'
 
@@ -39,9 +39,14 @@ describe('processus DEMANDE_CHANGEMENT simulé', () => {
     await expect(agent.processus.signer(d.id, 'SSI', 'DECISION_SSI', 'assertion')).rejects.toMatchObject({ status: 403 })
     const signee = await ssi.processus.signer(d.id, 'SSI', 'DECISION_SSI', 'assertion')
     expect(signee.etat).toBe('CLOSE')
-    const pdf = await ssi.processus.telechargerPdf(d.id)
+    // D-139 : exemple de démonstration rendu par la chaîne réelle, dans la langue demandée ; illisible : 503.
+    const exemple = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('%PDF-1.7 démonstration', { status: 200 }))
+    const pdf = await ssi.processus.telechargerPdf(d.id, 'en')
     expect(pdf.type).toBe('application/pdf')
-    expect(await pdf.text()).toContain(d.reference)
-    expect(await pdf.text()).toContain('DECISION_SSI')
+    expect(await pdf.text()).toContain('%PDF-1.7')
+    expect(String(exemple.mock.calls[0][0])).toContain('instance-demonstration-en.pdf')
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('', { status: 500 }))
+    await expect(ssi.processus.telechargerPdf(d.id)).rejects.toMatchObject({ status: 503, code: 'PIL_PDF_INDISPONIBLE' })
+    await expect(ssi.processus.telechargerPdf('inconnue')).rejects.toMatchObject({ status: 404 })
   })
 })

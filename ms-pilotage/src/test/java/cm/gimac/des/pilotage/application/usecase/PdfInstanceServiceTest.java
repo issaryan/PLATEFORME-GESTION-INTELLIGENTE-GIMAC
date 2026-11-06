@@ -151,7 +151,12 @@ class PdfInstanceServiceTest {
         InstanceProcessus i = demande("Consultation des journaux de compensation par l'équipe de rapprochement.");
         var json = new com.fasterxml.jackson.databind.ObjectMapper();
         for (String l : List.of("fr", "en", "es")) {
-            Files.writeString(dossier.resolve("instance-" + l + ".json"), json.writeValueAsString(cm.gimac.des.pilotage.infrastructure.client.RenduPdfEssai.requete(rendu(i, l))));
+            Object requete = cm.gimac.des.pilotage.infrastructure.client.RenduPdfEssai.requete(rendu(i, l));
+            Files.writeString(dossier.resolve("instance-" + l + ".json"), json.writeValueAsString(requete));
+            // Exemple des services simulés du frontend (lot1/src/assets), marqué « Démonstration ».
+            var demo = json.valueToTree(requete);
+            ((com.fasterxml.jackson.databind.node.ObjectNode) demo.get("gabarit")).put("filigrane", Map.of("fr", "Démonstration", "en", "Demonstration", "es", "Demostración").get(l));
+            Files.writeString(dossier.resolve("instance-demonstration-" + l + ".json"), json.writeValueAsString(demo));
         }
     }
 }

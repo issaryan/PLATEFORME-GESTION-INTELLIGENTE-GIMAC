@@ -53,7 +53,8 @@ final class StylesGabarit {
         ".code{font-size:7.8pt}.empreinte{font-size:6.8pt;color:var(--second);word-break:break-all}" +
         // Filigrane répété sur chaque page (position fixe à l'impression).
         ".filigrane{position:fixed;top:42%;left:0;right:0;text-align:center;font-family:'Ubuntu',sans-serif;font-size:72pt;font-weight:700;" +
-        "letter-spacing:.2em;text-transform:uppercase;color:rgba(21,86,158,.07);transform:rotate(-14deg);z-index:10;pointer-events:none}";
+        "letter-spacing:.2em;text-transform:uppercase;color:rgba(21,86,158,.07);transform:rotate(-14deg);z-index:10;pointer-events:none}" +
+        ".etroit .filigrane{font-size:46pt;letter-spacing:.14em}";
 
     /** Pied de page, dans la marge basse ; police de repli (le moteur n'embarque pas les polices du document). */
     static final String PIED =
