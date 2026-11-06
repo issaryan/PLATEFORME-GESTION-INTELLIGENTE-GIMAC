@@ -10,6 +10,8 @@ import cm.gimac.des.pilotage.domain.exception.PilotageException;
 import cm.gimac.des.pilotage.domain.processus.ActionProcessus;
 import cm.gimac.des.pilotage.domain.processus.Anomalie;
 import cm.gimac.des.pilotage.domain.processus.ChampFormulaire;
+import cm.gimac.des.pilotage.domain.processus.CodeProcessus;
+import cm.gimac.des.pilotage.domain.processus.CodesEtapes;
 import cm.gimac.des.pilotage.domain.processus.Etape;
 import cm.gimac.des.pilotage.domain.processus.EtatProcessus;
 import cm.gimac.des.pilotage.domain.processus.Formulaire;
@@ -30,6 +32,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -169,7 +172,7 @@ public class ProcessusService implements ProcessusUseCase {
         if (s == null) {
             throw PilotageException.champ("code", "Corps de la requête absent");
         }
-        String code = SaisieProcessus.codeProcessus(s.code());
+        // Le code est généré par le système, jamais saisi : un code envoyé par le client est ignoré.
         String unite = SaisieProcessus.unite("unite", s.unite());
         if (!acces.definit(appelant, unite)) {
             throw AccesProcessus.interdit("Définir les processus de l'unité " + unite + " exige PROCESSUS_DEFINIR couvrant l'unité ou REF_METIER_ADMIN");
@@ -177,9 +180,7 @@ public class ProcessusService implements ProcessusUseCase {
         if (equipes.membresUnite(unite, null).isEmpty()) {
             throw PilotageException.regle("PIL_PROCESSUS_UNITE_INCONNUE", "Unité inconnue", Map.of("unite", unite));
         }
-        if (processus.existsByCode(code)) {
-            throw PilotageException.conflit("PIL_PROCESSUS_CODE_PRIS", "Ce code de processus est déjà pris", Map.of("code", code));
-        }
+        String code = CodeProcessus.suivant(unite, processus.prochainNumeroCode());
         Instant le = horloge.instant();
         Processus p = Processus.brouillon(code, unite, appelant.id(), le);
         decrire(p, s, appelant, le);
@@ -558,7 +559,11 @@ public class ProcessusService implements ProcessusUseCase {
         String categorie = ReglesActivite.texteFacultatif("categorie", s.categorie(), SaisieProcessus.CATEGORIE_MAX);
         Integer delai = SaisieProcessus.delaiCible(s.delaiCibleJours());
         Integer delaiMax = SaisieProcessus.delaiMax("delaiMaxJours", s.delaiMaxJours(), delai);
-        List<Etape> etapes = SaisieProcessus.etapes(s.etapes());
+        // D-136 : clés provisoires des étapes nouvelles réécrites en codes générés ; codes connus de la famille gardés.
+        Set<String> connus = new HashSet<>();
+        p.getEtapes().forEach(e -> connus.add(e.code()));
+        processus.findByCodeOrderByVersionDesc(p.getCode()).forEach(v -> v.getEtapes().forEach(e -> connus.add(e.code())));
+        List<Etape> etapes = CodesEtapes.reecrire(p.getCode(), SaisieProcessus.etapes(s.etapes()), connus);
         // D-98 : initiateurs et formulaire de lancement ; absents d'une modification, ceux de la définition sont gardés.
         Initiateurs initiateurs = s.initiateurs() == null ? p.getInitiateurs() : SaisieProcessus.initiateurs(s.initiateurs());
         Formulaire formulaire = s.formulaire() == null ? p.getFormulaire() : SaisieProcessus.formulaire(s.formulaire());

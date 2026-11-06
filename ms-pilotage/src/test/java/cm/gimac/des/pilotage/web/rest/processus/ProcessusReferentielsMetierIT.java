@@ -62,6 +62,7 @@ class ProcessusReferentielsMetierIT extends AbstractProcessusIT {
         // Création, modification, contrôle, publication avec levée motivée.
         ObjectNode d = definition(code);
         JsonNode cree = lire(mvc.perform(json(post(BASE).with(qui), d)).andExpect(status().isCreated()).andReturn());
+        relever(d, cree);
         String v1 = cree.get("id").asText();
         assertThat(cree.at("/droits/modifier").asBoolean()).isTrue();
         assertThat(cree.at("/droits/supprimer").asBoolean()).isTrue();
@@ -108,7 +109,7 @@ class ProcessusReferentielsMetierIT extends AbstractProcessusIT {
         assertThat(etape(i, "DEMANDE").at("/moi/reaffecter").asBoolean()).isTrue();
         mvc.perform(get(INSTANCES).param("vue", "unite").with(qui)).andExpect(jsonPath("$.contenu[*].id", Matchers.hasItem(id)));
         mvc
-            .perform(json(post(INSTANCES + "/" + id + "/etapes/DEMANDE/reaffectation").with(qui), Map.of("personneId", INGENIEUR_RESEAU, "motif", "Absence")))
+            .perform(json(post(urlEtape(id, "DEMANDE", "reaffectation")).with(qui), Map.of("personneId", INGENIEUR_RESEAU, "motif", "Absence")))
             .andExpect(status().isOk());
         mvc.perform(json(post(INSTANCES + "/" + id + "/suspension").with(qui), Map.of("motif", "Gel des changements"))).andExpect(status().isOk()).andExpect(jsonPath("$.etat").value("SUSPENDUE"));
         mvc.perform(json(post(INSTANCES + "/" + id + "/reprise").with(qui), Map.of())).andExpect(status().isOk()).andExpect(jsonPath("$.etat").value("EN_COURS"));
@@ -155,8 +156,8 @@ class ProcessusReferentielsMetierIT extends AbstractProcessusIT {
         mvc
             .perform(get(BASE).with(referentiels(AGENT)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[*].code", Matchers.containsInAnyOrder("FLUX_RESEAU", "FLUX_DDRM", "FLUX_SSI")));
-        mvc.perform(get(BASE).param("unite", "DDRM").with(referentiels(AGENT))).andExpect(jsonPath("$[*].code", Matchers.contains("FLUX_DDRM")));
+            .andExpect(jsonPath("$[*].code", Matchers.containsInAnyOrder(code("FLUX_RESEAU"), code("FLUX_DDRM"), code("FLUX_SSI"))));
+        mvc.perform(get(BASE).param("unite", "DDRM").with(referentiels(AGENT))).andExpect(jsonPath("$[*].code", Matchers.contains(code("FLUX_DDRM"))));
         mvc.perform(get(BASE + "/" + brouillonDdrm).with(referentiels(AGENT))).andExpect(status().isOk()).andExpect(jsonPath("$.droits.modifier").value(true));
         mvc
             .perform(get(BASE + "/portee").with(referentiels(SUPER_ADMIN)))
@@ -171,7 +172,7 @@ class ProcessusReferentielsMetierIT extends AbstractProcessusIT {
         mvc.perform(json(post(BASE).with(referentiels(AGENT)), inconnue)).andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value("PIL_PROCESSUS_UNITE_INCONNUE"));
 
         // Chef : ses unités seulement, portée MES_UNITES ; refus 403 hors de ses unités.
-        mvc.perform(get(BASE).with(chef(CHEF_RESEAU))).andExpect(jsonPath("$[*].code", Matchers.contains("FLUX_RESEAU")));
+        mvc.perform(get(BASE).with(chef(CHEF_RESEAU))).andExpect(jsonPath("$[*].code", Matchers.contains(code("FLUX_RESEAU"))));
         mvc
             .perform(get(BASE + "/portee").with(chef(CHEF_RESEAU)))
             .andExpect(jsonPath("$.portee").value("MES_UNITES"))

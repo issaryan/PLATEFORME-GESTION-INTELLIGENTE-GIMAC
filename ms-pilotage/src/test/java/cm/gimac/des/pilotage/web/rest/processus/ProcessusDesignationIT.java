@@ -75,7 +75,7 @@ class ProcessusDesignationIT extends AbstractProcessusIT {
     }
 
     private String url(String instance, String etape, String acte) {
-        return INSTANCES + "/" + instance + "/etapes/" + etape + "/" + acte;
+        return urlEtape(instance, etape, acte);
     }
 
     @Test
@@ -122,7 +122,7 @@ class ProcessusDesignationIT extends AbstractProcessusIT {
         JsonNode i = lire(
             mvc.perform(json(post(BASE + "/" + processus + "/instances").with(agent(TECHNICIEN_RESEAU)), lancement(AGENT))).andExpect(status().isCreated()).andReturn()
         );
-        assertThat(i.at("/designations/MISE_EN_OEUVRE/id").asText()).isEqualTo(AGENT);
+        assertThat(i.at("/designations/" + etapeDe(processus, "MISE_EN_OEUVRE") + "/id").asText()).isEqualTo(AGENT);
         JsonNode traitement = etape(i, "TRAITEMENT");
         assertThat(traitement.get("etat").asText()).isEqualTo("ACTIVE");
         assertThat(traitement.at("/executant/id").asText()).isEqualTo(AGENT);

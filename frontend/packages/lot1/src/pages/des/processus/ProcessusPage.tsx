@@ -39,12 +39,11 @@ export function unitesEnArbre(unites: Unite[], retenir: (u: Unite) => boolean = 
 function DialogueNouveau({ unites, onFermer, onCree }: { unites: { code: string; libelle: string }[]; onFermer: () => void; onCree: (id: string) => void }) {
   const { t } = useTranslation()
   const erreur = useErreurProcessus()
-  const creer = useEcritureProcessus((s, v: { code: string; unite: string; libelle: string; description: string; categorie: string; delaiCibleJours: number | null }) => s.processus.creer({ ...v, etapes: [] }))
-  const [v, setV] = useState({ code: '', unite: unites[0]?.code ?? '', libelle: '', description: '', categorie: '', delai: '' })
+  const creer = useEcritureProcessus((s, v: { unite: string; libelle: string; description: string; categorie: string; delaiCibleJours: number | null }) => s.processus.creer({ ...v, etapes: [] }))
+  const [v, setV] = useState({ unite: unites[0]?.code ?? '', libelle: '', description: '', categorie: '', delai: '' })
   const [tente, setTente] = useState(false)
   const delai = v.delai.trim() === '' ? null : Number(v.delai)
   const erreurs = {
-    code: !LIMITES_PROCESSUS.code.test(v.code) ? t('proc.erreur.code') : undefined,
     unite: !v.unite ? t('proc.erreur.unite') : undefined,
     libelle: !v.libelle.trim() ? t('proc.erreur.libelle') : undefined,
     delai: delai !== null && !(delai >= 0 && delai <= LIMITES_PROCESSUS.delai) ? t('proc.erreur.delai') : undefined,
@@ -53,16 +52,13 @@ function DialogueNouveau({ unites, onFermer, onCree }: { unites: { code: string;
   const refus = erreur(creer.error)
   return (
     <CrudDialog context="create" size="md" id="gm-dlg-nouveau-processus" title={t('proc.nouveau.titre')} description={t('proc.nouveau.texte')} onClose={onFermer}
-      submitLabel={t('proc.nouveau.creer')} submitting={creer.isPending} dirty={!!(v.code || v.libelle)} error={refus ? { title: refus.titre, correlationId: refus.correlationId } : undefined}
+      submitLabel={t('proc.nouveau.creer')} submitting={creer.isPending} dirty={!!v.libelle} error={refus ? { title: refus.titre, correlationId: refus.correlationId } : undefined}
       onSubmit={() => {
         setTente(true)
         if (Object.values(erreurs).some(Boolean)) return
-        creer.mutate({ code: v.code, unite: v.unite, libelle: v.libelle.trim(), description: v.description.trim(), categorie: v.categorie.trim(), delaiCibleJours: delai }, { onSuccess: (p) => onCree(p.id) })
+        creer.mutate({ unite: v.unite, libelle: v.libelle.trim(), description: v.description.trim(), categorie: v.categorie.trim(), delaiCibleJours: delai }, { onSuccess: (p) => onCree(p.id) })
       }}>
       <div className="gm-form-grid">
-        <div className="gm-form-field">
-          <TextField name="code" label={t('proc.champ.code')} help={t('proc.aide.code')} required mono maxLength={40} value={v.code} onChange={(x) => champ('code')(x.toUpperCase())} error={tente ? erreurs.code : undefined} />
-        </div>
         <div className="gm-form-field">
           <Select name="unite" label={t('proc.champ.unite')} required value={v.unite} onChange={champ('unite')} error={tente ? erreurs.unite : undefined}
             options={[{ value: '', label: t('proc.choisirUnite') }, ...unites.map((u) => ({ value: u.code, label: u.libelle }))]} />
@@ -81,6 +77,7 @@ function DialogueNouveau({ unites, onFermer, onCree }: { unites: { code: string;
         </div>
       </div>
       {/* D-100 : le public par défaut est annoncé dès la création, avec l'invitation à le régler dans le modélisateur. */}
+      <Note>{t('proc.aide.codeGenere')}</Note>
       <Note>{t('dem.creation.note', { unite: unites.find((u) => u.code === v.unite)?.libelle.trim() || t('dem.creation.uniteChoisie') })}</Note>
     </CrudDialog>
   )

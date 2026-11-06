@@ -96,6 +96,7 @@ Copié et adapté (paquet `cm.gimac.des.pilotage`) ; chaque bean est inactif tan
 | 2026-11-04 | D-127 | Référence de la demande de changement au format de la fiche, `CHG-{AAAA}-{N}` (par exemple CHG-2026-412) : gabarit à `{AAAA}` et séquence `{N}` ou `{NNNNNN}`, `{CODE}`, `{MM}` et `{JJ}` facultatifs ; contrat `ReferenceFicheChangementContratTest` contre `ApprobationPolicy` de MS-CERTIFICATION ; gabarit daté conservé par les versions déjà publiées de la recette ; registre des écarts : signataire de l'étape SSI |
 | 2026-11-04 | D-130 | Étape `SSI` et signature `DECISION_SSI` de la demande de changement confiées à `ROLE_RSSI` seul ; l'agent SSI est refusé (`ProcessusChangementIT`, simulation du frontend) |
 | 2026-11-04 | D-131 | Provisionnement au démarrage : une version publiée de `DEMANDE_CHANGEMENT` encore au gabarit daté du modèle système est remplacée par une nouvelle version publiée (`CHG-{AAAA}-{N}`, RSSI à l'étape SSI), la précédente retirée et consignée ; brouillon en cours ou gabarit personnalisé laissés tels quels (`DemandeChangementConfigurationTest`) |
+| 2026-11-05 | D-136 | Codes générés : processus `{UNITE}-PRC-{N}` (séquence `processus_code_seq`, changeset `20261105100000`), code envoyé ignoré ; clés provisoires des étapes nouvelles réécrites en `{CODE}-E{N}` avec leurs prédécesseurs, codes connus de la famille gardés (`CodeProcessus`, `CodesEtapes`, `ProcessusCodeIT` en concurrence) |
 <!-- GIMAC:FIN -->
 
 # pilotage

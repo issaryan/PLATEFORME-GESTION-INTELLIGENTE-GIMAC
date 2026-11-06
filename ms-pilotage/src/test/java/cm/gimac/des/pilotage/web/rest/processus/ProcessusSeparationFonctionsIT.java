@@ -81,7 +81,7 @@ class ProcessusSeparationFonctionsIT extends AbstractProcessusIT {
     }
 
     private String url(String instance, String etape, String acte) {
-        return INSTANCES + "/" + instance + "/etapes/" + etape + "/" + acte;
+        return urlEtape(instance, etape, acte);
     }
 
     @Test

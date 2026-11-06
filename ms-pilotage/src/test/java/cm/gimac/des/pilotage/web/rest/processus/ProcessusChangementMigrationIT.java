@@ -1,17 +1,23 @@
 package cm.gimac.des.pilotage.web.rest.processus;
 
 import static cm.gimac.des.pilotage.infrastructure.client.OrganisationStubAdapter.AGENT;
-import static cm.gimac.des.pilotage.infrastructure.client.OrganisationStubAdapter.SUPER_ADMIN;
 import static cm.gimac.des.pilotage.web.rest.processus.ProcessusChangementIT.lancement;
-import static cm.gimac.des.pilotage.web.rest.processus.ProcessusChangementIT.url;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import cm.gimac.des.pilotage.infrastructure.client.OrganisationStubAdapter.Compte;
+import cm.gimac.des.pilotage.domain.processus.Etape;
+import cm.gimac.des.pilotage.domain.processus.Initiateurs;
+import cm.gimac.des.pilotage.domain.processus.Intervenant;
+import cm.gimac.des.pilotage.domain.processus.ModeIntervenant;
+import cm.gimac.des.pilotage.domain.processus.Processus;
+import cm.gimac.des.pilotage.domain.processus.RegleInitiateur;
+import cm.gimac.des.pilotage.domain.processus.SignatureRequise;
 import cm.gimac.des.pilotage.infrastructure.config.DemandeChangementConfiguration;
+import cm.gimac.des.pilotage.repository.ProcessusRepository;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,21 +59,31 @@ class ProcessusChangementMigrationIT extends AbstractProcessusIT {
         });
     }
 
-    /** Modèle système tel que publié du 28/10 au 04/11/2026 : gabarit daté, agent SSI à l'étape SSI. */
-    private ObjectNode modeleDate() throws Exception {
-        ObjectNode d = json.createObjectNode();
-        d.put("code", DemandeChangementConfiguration.CODE);
-        d.put("unite", DemandeChangementConfiguration.UNITE);
-        d.put("libelle", "Demande de changement");
-        d.put("description", "Fiche RFC");
-        d.put("categorie", "Exploitation");
-        d.put("delaiCibleJours", 10);
-        d.put("referenceModele", "CHG-{AAAA}-{MM}-{JJ}-{NNNNNN}");
-        d.set("etapes", json.readTree(json.writeValueAsString(DemandeChangementConfiguration.etapes()).replace("\"ROLE_RSSI\"", "\"ROLE_AGENT_SSI\"")));
-        d.set("formulaire", json.valueToTree(DemandeChangementConfiguration.formulaire()));
-        d.putObject("initiateurs").putArray("regles").add("TOUT_LE_GIMAC");
-        ((ObjectNode) d.at("/initiateurs")).put("initiateurIntervenant", true);
-        return d;
+    @Autowired
+    ProcessusRepository processus;
+
+    /**
+     * Modèle système tel que publié du 28/10 au 04/11/2026 (gabarit daté, agent SSI à l'étape SSI), écrit par le domaine :
+     * l'API génère désormais le code d'un processus et ne permet plus d'en choisir un.
+     */
+    private String modeleDate() {
+        Instant le = Instant.parse("2026-10-28T08:00:00Z");
+        Intervenant agent = new Intervenant(ModeIntervenant.PROFIL, "ROLE_AGENT_SSI", null, DemandeChangementConfiguration.UNITE, null);
+        List<Etape> etapes = DemandeChangementConfiguration.etapes().stream().map(e -> !"SSI".equals(e.code()) ? e : new Etape(
+            e.code(), e.libelle(), e.action(), agent, e.validateur(), e.predecesseurs(), e.delaiJours(), e.livrables(),
+            e.signatures().stream().map(x -> new SignatureRequise(x.code(), x.libelle(), agent, x.porte(), x.ordre())).toList(),
+            e.champs(), e.position(), e.delaiMaxJours())).toList();
+        Processus p = Processus.brouillon(DemandeChangementConfiguration.CODE, DemandeChangementConfiguration.UNITE, "systeme", le);
+        p.decrire("Demande de changement", "Fiche RFC", "Exploitation", 10, etapes, "systeme", le);
+        p.definirLancement(new Initiateurs(List.of(RegleInitiateur.TOUT_LE_GIMAC), List.of(), List.of(), List.of(), List.of(), true), DemandeChangementConfiguration.formulaire(), "systeme", le);
+        p.definirReference("CHG-{AAAA}-{MM}-{JJ}-{NNNNNN}");
+        p.publier("systeme", "Modèle initial de la fiche RFC", false, le);
+        return processus.saveAndFlush(p).getId().toString();
+    }
+
+    /** Modèles provisionnés par le système : codes d'étape fixes, aucune traduction. */
+    private static String url(String instance, String etape, String acte) {
+        return INSTANCES + "/" + instance + "/etapes/" + etape + "/" + acte;
     }
 
     private static Map<String, Object> champsSsi() {
@@ -98,8 +114,7 @@ class ProcessusChangementMigrationIT extends AbstractProcessusIT {
 
     @Test
     void instanceOuverteGardeSaVersionNouvellesInstancesSurLaSuivante() throws Exception {
-        String v1 = creer(administration(SUPER_ADMIN), modeleDate());
-        publier(administration(SUPER_ADMIN), v1);
+        String v1 = modeleDate();
         JsonNode ouverte = lire(mvc.perform(json(post(BASE + "/" + v1 + "/instances").with(agent(AGENT)), lancement())).andExpect(status().isCreated()).andReturn());
         String ancienne = ouverte.get("id").asText();
         String reference = ouverte.get("reference").asText();

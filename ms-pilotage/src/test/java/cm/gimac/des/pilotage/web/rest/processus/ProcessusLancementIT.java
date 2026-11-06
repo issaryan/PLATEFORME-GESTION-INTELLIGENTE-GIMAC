@@ -66,7 +66,7 @@ class ProcessusLancementIT extends AbstractProcessusIT {
     }
 
     private String url(String instance, String etape, String acte) {
-        return INSTANCES + "/" + instance + "/etapes/" + etape + "/" + acte;
+        return urlEtape(instance, etape, acte);
     }
 
     private JsonNode instance(String id, String qui) throws Exception {
@@ -139,13 +139,13 @@ class ProcessusLancementIT extends AbstractProcessusIT {
         // « Processus que je peux lancer » : la demande ouverte à tout le GIMAC, pas le processus réservé au pôle.
         JsonNode l = lire(mvc.perform(get(BASE + "/lancables").with(agent(AGENT))).andExpect(status().isOk()).andReturn());
         assertThat(l.at("/groupes/0/unite").asText()).isEqualTo("POLE_RESEAU");
-        assertThat(l.at("/groupes/0/processus").findValuesAsText("code")).containsExactly("DEMANDE_IP");
+        assertThat(l.at("/groupes/0/processus").findValuesAsText("code")).containsExactly(code("DEMANDE_IP"));
         assertThat(l.at("/groupes/0/processus/0/droits/lancer").asBoolean()).isTrue();
         assertThat(l.at("/groupes/0/processus/0/nombreChampsFormulaire").asInt()).isEqualTo(5);
         assertThat(textes(l.at("/groupes/0/processus/0/initiateurs/regles"))).containsExactly("TOUT_LE_GIMAC");
         mvc.perform(get(BASE + "/lancables").param("q", "flux").with(agent(AGENT))).andExpect(jsonPath("$.groupes.length()").value(0));
         JsonNode membre = lire(mvc.perform(get(BASE + "/lancables").with(agent(TECHNICIEN_RESEAU))).andExpect(status().isOk()).andReturn());
-        assertThat(membre.at("/groupes/0/processus").findValuesAsText("code")).contains("DEMANDE_IP", "FLUX_RESEAU");
+        assertThat(membre.at("/groupes/0/processus").findValuesAsText("code")).contains(code("DEMANDE_IP"), code("FLUX_RESEAU"));
 
         // La définition publiée se lit de qui peut la lancer (formulaire), même hors de l'unité.
         mvc.perform(get(BASE + "/" + demande).with(agent(AGENT))).andExpect(status().isOk()).andExpect(jsonPath("$.droits.lancer").value(true)).andExpect(jsonPath("$.formulaire.champs.length()").value(5));
@@ -223,7 +223,7 @@ class ProcessusLancementIT extends AbstractProcessusIT {
         assertThat(charges("pilotage.process-step-activated.v1", id)).allSatisfy(x -> assertThat(x.get("lanceurId").asText()).isEqualTo(AGENT));
         // « Mes étapes » (D-98) : le résumé porte les actions de l'appelant ; l'étape attend le chef, plus l'ingénieure.
         JsonNode miennesChef = lire(mvc.perform(get(INSTANCES).param("vue", "miennes").with(chef(CHEF_RESEAU))).andExpect(status().isOk()).andReturn());
-        assertThat(miennesChef.at("/contenu/0/etapesEnCours/0/code").asText()).isEqualTo("VALIDATION");
+        assertThat(miennesChef.at("/contenu/0/etapesEnCours/0/code").asText()).isEqualTo(etapeDe(id, "VALIDATION"));
         assertThat(miennesChef.at("/contenu/0/etapesEnCours/0/attendMoi").asBoolean()).isTrue();
         assertThat(miennesChef.at("/contenu/0/etapesEnCours/0/moi/executer").asBoolean()).isTrue();
         JsonNode miennesIngenieur = lire(mvc.perform(get(INSTANCES).param("vue", "miennes").with(agent(INGENIEUR_RESEAU))).andExpect(status().isOk()).andReturn());
@@ -232,7 +232,7 @@ class ProcessusLancementIT extends AbstractProcessusIT {
         assertThat(miennesIngenieur.at("/contenu/0/etapesEnCours/0/moi/executer").asBoolean()).isFalse();
         prendreEtTerminer(id, "VALIDATION", CHEF_RESEAU, Map.of("DECISION", "Accordée"));
         JsonNode unite = lire(mvc.perform(get(INSTANCES).param("vue", "unite").with(agent(TECHNICIEN_RESEAU))).andExpect(status().isOk()).andReturn());
-        assertThat(unite.at("/contenu/0/etapesEnCours/0/code").asText()).isEqualTo("EXECUTION");
+        assertThat(unite.at("/contenu/0/etapesEnCours/0/code").asText()).isEqualTo(etapeDe(id, "EXECUTION"));
         assertThat(unite.at("/contenu/0/etapesEnCours/0/moi/prendre").asBoolean()).isTrue();
         assertThat(unite.at("/contenu/0/etapesEnCours/0/attendMoi").asBoolean()).isTrue();
         prendreEtTerminer(id, "EXECUTION", TECHNICIEN_RESEAU, Map.of("ADRESSE_ATTRIBUEE", "10.20.6.40"));

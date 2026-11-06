@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <!-- Codes de processus générés par le système ({UNITE}-PRC-{N}) : numéro d'ordre sans collision en concurrence. -->
+    <changeSet id="pil-code-processus" author="lot1">
+        <createSequence sequenceName="processus_code_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+</databaseChangeLog>

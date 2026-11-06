@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Checkbox, CheckboxGroup, ConfirmDialog, Dialog, InlineAlert, KeyValueList, NumberField, Select, Tabs, TextArea, TextField } from '@gimac/design-system'
+import { Button, Checkbox, CheckboxGroup, ConfirmDialog, Dialog, InlineAlert, KeyValueList, Note, NumberField, Select, Tabs, TextArea, TextField } from '@gimac/design-system'
 import type { ApiError } from '@gimac/socle'
 import {
   LIMITES_PROCESSUS, MODES_INTERVENANT, MODES_REMPLACEMENT, TYPES_CHAMP, intervenantNormalise, type ChampProcessus, type EtapeProcessus, type Intervenant, type LivrableProcessus,
@@ -188,8 +188,9 @@ export function ModaleEtape(p: ModaleEtapeProps) {
         <div role="tabpanel" aria-label={t(`proc.onglet.${onglet}`)} className="gm-col">
           {onglet === 'general' ? (
             <div className="gm-form-grid gm-mod-grille">
-              <TextField name="code" label={t('proc.champ.code')} help={t('proc.aide.codeEtape')} value={e.code} required mono maxLength={40} readOnly={lecture || !p.creation} error={err('code')}
-                onChange={(v) => maj({ code: v.toUpperCase() })} />
+              {/* D-136 : code d'étape attribué par le système à l'enregistrement, jamais saisi ; affiché ensuite. */}
+              {p.creation ? <Note>{t('proc.aide.codeEtapeGenere')}</Note>
+                : <TextField name="code" label={t('proc.champ.code')} value={e.code} mono readOnly />}
               <TextField name="libelle" label={t('proc.champ.libelle')} value={e.libelle} required maxLength={LIMITES_PROCESSUS.libelle} readOnly={lecture} error={err('libelle')} onChange={(v) => maj({ libelle: v })} />
               <TextArea name="action" label={t('proc.champ.action')} help={t('proc.aide.action')} value={e.action} rows={4} maxLength={LIMITES_PROCESSUS.description} readOnly={lecture} error={err('action')}
                 onChange={(v) => maj({ action: v })} className="gm-mod-large" />

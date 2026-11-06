@@ -321,9 +321,14 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
   let acteurForce: PersonneActivite | null = null
   const historiser = (h: HistoriqueProcessus[], action: string, detail: string | null = null, etape: string | null = null, acteur: PersonneActivite | null = acteurForce ?? moi()) =>
     h.push({ quand: maintenant(), acteur, action, etape, detail })
+  let numeroCode = 0
+  const codeGenere = (unite: string) => {
+    const suffixe = `-PRC-${++numeroCode}`
+    return unite.slice(0, 40 - suffixe.length) + suffixe
+  }
   const nouvelle = (s: SaisieProcessus, auteur: string, o: Partial<Processus> = {}): Processus => {
     const p: Processus = {
-      id: id('PRC'), code: s.code, version: 1, etat: 'BROUILLON', unite: s.unite, libelle: s.libelle, description: s.description, categorie: s.categorie, delaiCibleJours: s.delaiCibleJours,
+      id: id('PRC'), code: s.code ?? codeGenere(s.unite), version: 1, etat: 'BROUILLON', unite: s.unite, libelle: s.libelle, description: s.description, categorie: s.categorie, delaiCibleJours: s.delaiCibleJours,
       delaiMaxJours: s.delaiMaxJours ?? null, etapes: s.etapes.map(normaliserEtape), creeLe: maintenant(), creePar: personne(auteur), modifieLe: null, modifiePar: null, publieeLe: null, publieePar: null, motifPublication: null,
       avertissementsLeves: false, retireeLe: null, retireePar: null, motifRetrait: null, droits: { modifier: false, publier: false, lancer: false, retirer: false }, versions: [],
       avertissements: [], personnes: {}, historique: [{ quand: maintenant(), acteur: personne(auteur), action: 'CREE', etape: null, detail: null }],
@@ -342,6 +347,22 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
   const normaliserFormulaire = (f: Formulaire | undefined): Formulaire => ({
     champs: (f?.champs ?? []).map((c) => ({ ...c, code: c.code.trim(), libelle: c.libelle.trim(), obligatoire: !!c.obligatoire, aide: c.aide?.trim() || null, choix: c.type === 'LISTE' ? c.choix ?? [] : [], typesPieces: c.type === 'PIECE_JOINTE' ? c.typesPieces ?? [] : [] })),
   })
+  /**
+   * D-136, comme CodesEtapes de MS-PILOTAGE : la clé d'une étape nouvelle n'est que provisoire et devient
+   * {CODE}-E{N} (prédécesseurs suivis) ; un code déjà connu de la famille est gardé ; une clé en double est refusée.
+   */
+  const reecrireEtapes = (code: string, etapes: EtapeProcessus[], connus: Set<string>): EtapeProcessus[] => {
+    const motif = new RegExp(`^${code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-E(\\d+)$`)
+    let n = Math.max(0, ...[...connus, ...etapes.map((e) => e.code)].map((c) => Number(motif.exec(c)?.[1] ?? 0)))
+    const nouveaux = new Map<string, string>()
+    etapes.forEach((e, i) => {
+      if (connus.has(e.code)) return
+      if (nouveaux.has(e.code)) throw refus(400, 'PIL_REQUETE_INVALIDE', `Clé d’étape en double : ${e.code}`, { champ: `etapes[${i}].code` })
+      const suffixe = `-E${++n}`
+      nouveaux.set(e.code, code.slice(0, 40 - suffixe.length) + suffixe)
+    })
+    return etapes.map((e) => ({ ...e, code: nouveaux.get(e.code) ?? e.code, predecesseurs: e.predecesseurs.map((x) => nouveaux.get(x) ?? x) }))
+  }
   const normaliserEtape = (e: EtapeProcessus): EtapeProcessus => ({
     ...e, code: e.code.trim(), libelle: e.libelle.trim(), action: e.action ?? '', intervenant: intervenantNormalise(e.intervenant), validateur: e.validateur ? intervenantNormalise(e.validateur) : null,
     livrables: e.livrables.map((l) => ({ ...l, obligatoire: l.obligatoire ?? true, modele: l.modele || null })), signatures: e.signatures.map((s) => ({ ...s, signataire: intervenantNormalise(s.signataire), ordre: s.ordre || 1 })),
@@ -390,7 +411,6 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
   }
   const verifierSaisie = (s: SaisieProcessus) => {
     const champ = (c: string, m: string) => refus(400, 'PIL_REQUETE_INVALIDE', m, { champ: c })
-    if (!LIMITES_PROCESSUS.code.test(s.code ?? '')) throw champ('code', 'Code invalide.')
     if (!s.libelle?.trim() || s.libelle.length > LIMITES_PROCESSUS.libelle) throw champ('libelle', 'Libellé obligatoire, 200 caractères au plus.')
     if ((s.description ?? '').length > LIMITES_PROCESSUS.description) throw champ('description', 'Description de 4000 caractères au plus.')
     if (s.delaiCibleJours !== null && (s.delaiCibleJours < 0 || s.delaiCibleJours > LIMITES_PROCESSUS.delai)) throw champ('delaiCibleJours', 'Délai de 0 à 365 jours.')
@@ -1048,15 +1068,16 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     creer: (s) => attendre(() => {
       verifierSaisie(s)
       exigerDefinir(s.unite)
-      if (definitions.some((p) => p.code === s.code)) throw refus(409, 'PIL_PROCESSUS_CODE_PRIS', 'Un processus porte déjà ce code.')
-      return vue(nouvelle(s, moiId))
+      // Code généré comme MS-PILOTAGE ({UNITE}-PRC-{N}, CodeProcessus) : celui de la saisie est ignoré.
+      const code = codeGenere(s.unite)
+      return vue(nouvelle({ ...s, code, etapes: reecrireEtapes(code, s.etapes.map(normaliserEtape), new Set()) }, moiId))
     }),
     modifier: (pid, s) => attendre(() => {
       const p = trouver(pid)
       exigerDefinir(p.unite)
       if (p.etat !== 'BROUILLON') throw refus(409, 'PIL_PROCESSUS_ETAT', 'Seul un brouillon se modifie.')
       verifierSaisie({ ...s, code: p.code, unite: p.unite })
-      Object.assign(p, { libelle: s.libelle.trim(), description: s.description ?? '', categorie: s.categorie ?? '', delaiCibleJours: s.delaiCibleJours, delaiMaxJours: s.delaiMaxJours ?? null, etapes: s.etapes.map(normaliserEtape), modifieLe: maintenant(), modifiePar: moi() })
+      Object.assign(p, { libelle: s.libelle.trim(), description: s.description ?? '', categorie: s.categorie ?? '', delaiCibleJours: s.delaiCibleJours, delaiMaxJours: s.delaiMaxJours ?? null, etapes: reecrireEtapes(p.code, s.etapes.map(normaliserEtape), new Set(definitions.filter((d) => d.code === p.code).flatMap((d) => d.etapes.map((e) => e.code)))), modifieLe: maintenant(), modifiePar: moi() })
       // D-98 : absents d'une modification, initiateurs et formulaire de la définition sont gardés (comme MS-PILOTAGE).
       if (s.initiateurs) p.initiateurs = normaliserInitiateurs(s.initiateurs)
       if (s.formulaire) p.formulaire = normaliserFormulaire(s.formulaire)

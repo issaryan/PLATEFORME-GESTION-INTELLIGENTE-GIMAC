@@ -80,11 +80,11 @@ class ProcessusPublicIT extends AbstractProcessusIT {
             .andExpect(jsonPath("$.droits.retirer").value(true));
         mvc
             .perform(get(BASE).param("etat", "PUBLIEE").with(chef(CHEF_RESEAU)))
-            .andExpect(jsonPath("$[?(@.code == 'FLUX_RESERVE')].initiateurs.personnesDetail[0].nomAffiche", Matchers.contains("Clarisse Bilong")));
+            .andExpect(jsonPath("$[?(@.code == \'" + code("FLUX_RESERVE") + "\')].initiateurs.personnesDetail[0].nomAffiche", Matchers.contains("Clarisse Bilong")));
 
         // Super administrateur (REF_METIER_ADMIN) : ni dans « Lancer une demande », ni lançable ; il lit et retire toujours.
         RequestPostProcessor admin = administration(SUPER_ADMIN);
-        assertThat(lancables(admin)).doesNotContain("FLUX_RESERVE", "FLUX_OUVERT");
+        assertThat(lancables(admin)).doesNotContain(code("FLUX_RESERVE"), code("FLUX_OUVERT"));
         mvc.perform(get(BASE + "/" + reserve).with(admin)).andExpect(status().isOk()).andExpect(jsonPath("$.droits.lancer").value(false)).andExpect(jsonPath("$.droits.retirer").value(true));
         mvc
             .perform(json(post(BASE + "/" + reserve + "/instances").with(admin), lancement()))
@@ -100,12 +100,12 @@ class ProcessusPublicIT extends AbstractProcessusIT {
         mvc.perform(json(post(BASE + "/" + ouvert + "/instances").with(agent(AGENT)), lancement())).andExpect(status().isForbidden());
 
         // Membres et chef du pôle : hors du public de ce processus (le leur reste ouvert).
-        assertThat(lancables(agent(TECHNICIEN_RESEAU))).contains("FLUX_OUVERT").doesNotContain("FLUX_RESERVE");
+        assertThat(lancables(agent(TECHNICIEN_RESEAU))).contains(code("FLUX_OUVERT")).doesNotContain(code("FLUX_RESERVE"));
         mvc.perform(json(post(BASE + "/" + reserve + "/instances").with(agent(TECHNICIEN_RESEAU)), lancement())).andExpect(status().isForbidden());
         mvc.perform(json(post(BASE + "/" + reserve + "/instances").with(chef(CHEF_RESEAU)), lancement())).andExpect(status().isForbidden());
 
         // La personne désignée, d'un autre service : le voit, lit la définition publiée et le lance.
-        assertThat(lancables(agent(AGENT_BIS))).containsExactly("FLUX_RESERVE");
+        assertThat(lancables(agent(AGENT_BIS))).containsExactly(code("FLUX_RESERVE"));
         // D-106 : au seul titre du public, la version publiée seulement, sans historique de la définition ni contrôle.
         mvc
             .perform(get(BASE + "/" + reserve).with(agent(AGENT_BIS)))
@@ -133,10 +133,10 @@ class ProcessusPublicIT extends AbstractProcessusIT {
     void profils() throws Exception {
         String id = creer(chef(CHEF_RESEAU), avecPublic("FLUX_CONFORMITE", Map.of("regles", List.of("PROFILS"), "profils", List.of("ROLE_CONFORMITE"))));
         publier(chef(CHEF_RESEAU), id);
-        assertThat(lancables(administration(SUPER_ADMIN))).doesNotContain("FLUX_CONFORMITE");
-        assertThat(lancables(agent(AGENT_BIS))).doesNotContain("FLUX_CONFORMITE");
+        assertThat(lancables(administration(SUPER_ADMIN))).doesNotContain(code("FLUX_CONFORMITE"));
+        assertThat(lancables(agent(AGENT_BIS))).doesNotContain(code("FLUX_CONFORMITE"));
         organisation.attribuerProfils(AGENT_BIS, "ROLE_CONFORMITE");
-        assertThat(lancables(agent(AGENT_BIS))).containsExactly("FLUX_CONFORMITE");
+        assertThat(lancables(agent(AGENT_BIS))).containsExactly(code("FLUX_CONFORMITE"));
         mvc.perform(json(post(BASE + "/" + id + "/instances").with(agent(AGENT_BIS)), lancement())).andExpect(status().isCreated());
     }
 
@@ -146,10 +146,10 @@ class ProcessusPublicIT extends AbstractProcessusIT {
         String id = publie("FLUX_UNITE", CHEF_RESEAU);
         mvc.perform(get(BASE + "/" + id).with(chef(CHEF_RESEAU))).andExpect(jsonPath("$.initiateurs.regles", Matchers.contains("MEMBRES_UNITE"))).andExpect(jsonPath("$.initiateurs.personnes.length()").value(0));
         // Le chef du DES dirige le pôle réseau (sous-unité) sans en être membre.
-        assertThat(lancables(chef(CHEF_DES))).contains("FLUX_UNITE");
+        assertThat(lancables(chef(CHEF_DES))).contains(code("FLUX_UNITE"));
         mvc.perform(json(post(BASE + "/" + id + "/instances").with(chef(CHEF_DES)), lancement())).andExpect(status().isCreated());
         mvc.perform(json(post(BASE + "/" + id + "/instances").with(agent(TECHNICIEN_RESEAU)), lancement())).andExpect(status().isCreated());
-        assertThat(lancables(chef(CHEF_DDRM))).doesNotContain("FLUX_UNITE");
+        assertThat(lancables(chef(CHEF_DDRM))).doesNotContain(code("FLUX_UNITE"));
         mvc
             .perform(json(post(BASE + "/" + id + "/instances").with(chef(CHEF_DDRM)), lancement()))
             .andExpect(status().isForbidden())

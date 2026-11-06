@@ -10,14 +10,18 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.ConnectionCallback;
+import org.springframework.mock.web.MockServletContext;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
@@ -69,7 +73,86 @@ abstract class AbstractProcessusIT extends AbstractPilotageIT {
     }
 
     MockHttpServletRequestBuilder json(MockHttpServletRequestBuilder r, Object corps) throws Exception {
-        return r.contentType(MediaType.APPLICATION_JSON).content(corps(corps));
+        return r.contentType(MediaType.APPLICATION_JSON).content(corps(traduire(r.buildRequest(new MockServletContext()).getRequestURI(), corps)));
+    }
+
+    /*
+     * D-136 : le service génère les codes d'étape d'un modèle saisi ({CODE}-E{N}) ; les scénarios gardent leurs clés
+     * lisibles (ANALYSE, MISE_EN_OEUVRE…), traduites ici en codes générés dans les URL d'étape, les étapes et les
+     * prédécesseurs d'une modification, et les désignations d'un lancement. Clé inconnue : rendue telle quelle (modèles
+     * provisionnés par le système, codes fixes).
+     */
+
+    /** Code généré de chaque étape, par code de famille de processus puis clé provisoire envoyée. */
+    private final Map<String, Map<String, String>> etapesGenerees = new HashMap<>();
+
+    private static final Pattern MODIFICATION = Pattern.compile("^" + BASE + "/([0-9a-f-]{36})$");
+    private static final Pattern LANCEMENT = Pattern.compile("^" + BASE + "/([0-9a-f-]{36})/instances$");
+
+    void relever(JsonNode envoye, JsonNode recu) {
+        if (envoye == null || recu == null || !envoye.has("etapes") || !recu.has("etapes") || !recu.hasNonNull("code")) {
+            return;
+        }
+        Map<String, String> m = etapesGenerees.computeIfAbsent(recu.get("code").asText(), k -> new HashMap<>());
+        for (int i = 0; i < Math.min(envoye.get("etapes").size(), recu.get("etapes").size()); i++) {
+            m.put(envoye.get("etapes").get(i).get("code").asText(), recu.get("etapes").get(i).get("code").asText());
+        }
+    }
+
+    /** Code de famille du processus ou de l'instance {@code id}. */
+    String famille(String id) {
+        List<String> l = jdbc.queryForList(
+            "select code from processus where cast(id as varchar) = ? union all select p.code from processus_instance i join processus p on p.id = i.processus_id where cast(i.id as varchar) = ?",
+            String.class, id, id
+        );
+        return l.isEmpty() ? id : l.get(0);
+    }
+
+    /** Code généré de l'étape {@code cle} du processus ou de l'instance {@code id}. */
+    String etapeDe(String id, String cle) {
+        return etapesGenerees.getOrDefault(famille(id), Map.of()).getOrDefault(cle, cle);
+    }
+
+    String urlEtape(String instance, String cle, String acte) {
+        return INSTANCES + "/" + instance + "/etapes/" + etapeDe(instance, cle) + "/" + acte;
+    }
+
+    private Object traduire(String uri, Object corps) {
+        Matcher mod = MODIFICATION.matcher(uri);
+        Matcher lan = LANCEMENT.matcher(uri);
+        if (corps == null || !(mod.matches() || lan.matches())) {
+            return corps;
+        }
+        String famille = famille(mod.matches() ? mod.group(1) : lan.group(1));
+        Map<String, String> m = etapesGenerees.getOrDefault(famille, Map.of());
+        JsonNode copie = json.valueToTree(corps);
+        if (!(copie instanceof ObjectNode o)) {
+            return corps;
+        }
+        // Modification : le code provisoire d'origine devient le code généré de la famille (un changement est refusé).
+        if (mod.matches() && o.hasNonNull("code")) {
+            o.put("code", famille);
+        }
+        if (mod.matches() && o.get("etapes") instanceof com.fasterxml.jackson.databind.node.ArrayNode etapes) {
+            for (JsonNode e : etapes) {
+                ObjectNode etape = (ObjectNode) e;
+                etape.put("code", m.getOrDefault(etape.path("code").asText(), etape.path("code").asText()));
+                if (etape.get("predecesseurs") instanceof com.fasterxml.jackson.databind.node.ArrayNode preds) {
+                    for (int i = 0; i < preds.size(); i++) {
+                        preds.set(i, m.getOrDefault(preds.get(i).asText(), preds.get(i).asText()));
+                    }
+                }
+            }
+        }
+        if (lan.matches() && o.get("designations") instanceof ObjectNode d) {
+            ObjectNode traduites = json.createObjectNode();
+            d.properties().forEach(x -> {
+                String[] parties = x.getKey().split("\\.", 2);
+                traduites.set(m.getOrDefault(parties[0], parties[0]) + (parties.length > 1 ? "." + parties[1] : ""), x.getValue());
+            });
+            o.set("designations", traduites);
+        }
+        return o;
     }
 
     /** Définition « Ouverture d'un flux réseau » du jeu de démonstration, au format de la saisie (lanceur intervenant admis). */
@@ -88,8 +171,20 @@ abstract class AbstractProcessusIT extends AbstractPilotageIT {
         return d;
     }
 
+    /** Code généré par le système pour chaque définition créée, rangé sous le code provisoire envoyé (ignoré à la création). */
+    private final java.util.Map<String, String> codesGeneres = new java.util.HashMap<>();
+
+    String code(String provisoire) {
+        return java.util.Objects.requireNonNull(codesGeneres.get(provisoire), "aucune définition créée sous " + provisoire);
+    }
+
     String creer(RequestPostProcessor qui, Object corps) throws Exception {
-        return lire(mvc.perform(json(post(BASE).with(qui), corps)).andExpect(status().isCreated()).andReturn()).get("id").asText();
+        JsonNode cree = lire(mvc.perform(json(post(BASE).with(qui), corps)).andExpect(status().isCreated()).andReturn());
+        if (corps instanceof JsonNode d && d.hasNonNull("code")) {
+            codesGeneres.put(d.get("code").asText(), cree.get("code").asText());
+        }
+        relever(json.valueToTree(corps), cree);
+        return cree.get("id").asText();
     }
 
     void publier(RequestPostProcessor qui, String id) throws Exception {
@@ -109,8 +204,14 @@ abstract class AbstractProcessusIT extends AbstractPilotageIT {
     }
 
     JsonNode etape(JsonNode instance, String code) {
+        java.util.Set<String> candidats = new java.util.HashSet<>(List.of(code));
+        etapesGenerees.values().forEach(m -> {
+            if (m.containsKey(code)) {
+                candidats.add(m.get(code));
+            }
+        });
         for (JsonNode e : instance.get("etapes")) {
-            if (code.equals(e.get("code").asText())) {
+            if (candidats.contains(e.get("code").asText())) {
                 return e;
             }
         }
