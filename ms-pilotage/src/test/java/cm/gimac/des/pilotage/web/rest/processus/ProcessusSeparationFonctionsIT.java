@@ -133,7 +133,10 @@ class ProcessusSeparationFonctionsIT extends AbstractProcessusIT {
         JsonNode i = lire(
             mvc.perform(json(post(BASE + "/" + processus + "/instances").with(agent(TECHNICIEN_RESEAU)), lancement(INGENIEUR_RESEAU))).andExpect(status().isCreated()).andReturn()
         );
-        assertThat(etape(i, "TRAITEMENT").at("/executant/id").asText()).isEqualTo(INGENIEUR_RESEAU);
+        // D-138 : seule autre porteuse, l'ingénieure voit l'étape adressée au rôle, l'initiateur en reste écarté.
+        assertThat(etape(i, "TRAITEMENT").at("/executant/id").asText()).isEmpty();
+        assertThat(etape(i, "TRAITEMENT").at("/aPrendre/profil").asText()).isEqualTo(PROFIL_RESEAU);
+        assertThat(etape(lire(mvc.perform(get(INSTANCES + "/" + i.get("id").asText()).with(agent(INGENIEUR_RESEAU))).andReturn()), "TRAITEMENT").at("/moi/executer").asBoolean()).isTrue();
 
         // Le technicien perd le profil : l'ingénieure, seule porteuse, lance ; plus aucun autre porteur : le chef de l'unité.
         organisation.attribuerProfils(TECHNICIEN_RESEAU, "ROLE_COLLABORATEUR");

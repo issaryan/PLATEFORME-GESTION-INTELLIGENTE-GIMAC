@@ -136,7 +136,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         PageRequest p = PageRequest.of(ReglesActivite.page(page), ReglesActivite.taille(taille));
         org.springframework.data.domain.Page<InstanceProcessus> r;
         switch (vue == null || vue.isBlank() ? "miennes" : vue.strip()) {
-            case "miennes" -> r = instances.miennes(appelant.id(), filtre == null ? null : filtre.name(), p);
+            case "miennes" -> r = instances.miennes(appelant.id(), auMoinsUn(equipes.profilsDe(appelant.id())), auMoinsUn(equipes.unitesDe(appelant.id())), filtre == null ? null : filtre.name(), p);
             case "lancees" -> r = instances.lancees(appelant.id(), filtre, p);
             case "unite" -> {
                 boolean admin = acces.litToutes(appelant);
@@ -1379,6 +1379,12 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
             exigerSeparation(appelant.id(), c, c.def().intervenant());
             return;
         }
+        // D-138 : étape adressée à un rôle, tout porteur du rôle dans l'unité visée agit sans prise préalable ; le
+        // premier acte de fin l'emporte (version optimiste : 409 PIL_PROCESSUS_ETAPE_ETAT chez le second).
+        if (t.filter(x -> taches.porteurDuRole(x, appelant.id())).isPresent()) {
+            exigerSeparation(appelant.id(), c, c.def().intervenant());
+            return;
+        }
         if (t.map(Tache::getEtat).filter(e -> e == EtatTache.A_PRENDRE).isPresent()) {
             throw PilotageException.interdit("PIL_PROCESSUS_NON_INTERVENANT", "L'étape est à prendre : prenez d'abord sa tâche");
         }
@@ -1450,7 +1456,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
             // D-99 : l'initiateur n'exécute, ne prend, ne valide ni ne signe les étapes de sa demande (sauf LANCEUR ou autorisation).
             Etape def = p == null ? null : p.etape(ei.getCode()).orElse(null);
             boolean separeExecution = def != null && separe(appelant.id(), i, p, def.intervenant());
-            boolean executer = ei.getEtat() == EtatEtape.ACTIVE && appelant.id().equals(executant) && !separeExecution;
+            boolean executer = ei.getEtat() == EtatEtape.ACTIVE && (appelant.id().equals(executant) || taches.porteurDuRole(tache, appelant.id())) && !separeExecution;
             boolean prendre = tache != null && tache.getEtat() == EtatTache.A_PRENDRE && !separeExecution &&
                 resolution.affecte(appelant.id(), new Affectation(null, tache.getProfilRequis(), tache.getUniteCible()));
             List<String> signer = ei
@@ -1565,5 +1571,10 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
 
     private static String lien(InstanceProcessus i, String etape) {
         return LIEN + i.getId() + (etape == null ? "" : "?etape=" + etape);
+    }
+
+    /** Liste vide interdite dans « in » : un code qu'aucune unité ni aucun profil ne porte la remplace. */
+    private static List<String> auMoinsUn(java.util.Collection<String> codes) {
+        return codes.isEmpty() ? List.of("-") : List.copyOf(codes);
     }
 }

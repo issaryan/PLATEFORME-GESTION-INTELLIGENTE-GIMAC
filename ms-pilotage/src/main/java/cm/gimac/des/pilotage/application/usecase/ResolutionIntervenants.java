@@ -64,7 +64,7 @@ class ResolutionIntervenants {
         String unite = i.uniteOu(uniteProcessus);
         String sauf = i.mode() == ModeIntervenant.LANCEUR ? null : exclu;
         return switch (i.mode()) {
-            case PROFIL -> parProfil(i.profil(), unite, lanceurId, null, null, sauf);
+            case PROFIL -> pourRole(i.profil(), unite, lanceurId, sauf);
             case PERSONNE -> personne(i, unite, i.personneId(), "Personne nommée", lanceurId, sauf);
             case AU_LANCEMENT -> personne(i, unite, designations.get(cle), "Personne désignée au lancement", lanceurId, sauf);
             case CHEF_UNITE -> personne(i, unite, chef(unite), "Chef de l'unité " + unite, lanceurId, sauf);
@@ -91,6 +91,18 @@ class ResolutionIntervenants {
      * n'y a ni l'un ni l'autre). Sans profil : à prendre par tout membre de l'unité. {@code cause} : début de la note
      * (personne absente ou partie), null pour un intervenant PROFIL.
      */
+    /**
+     * D-138 : un intervenant PROFIL est adressé au rôle, jamais à une personne, dès qu'un porteur actif est dans
+     * l'unité, même seul : la tâche reste visible et faisable par tous les porteurs, y compris ceux qui reçoivent le
+     * rôle après l'activation (résolution à la lecture). Sans porteur dans l'unité : règles de {@link #parProfil}.
+     */
+    Resolution pourRole(String profil, String unite, String lanceurId, String exclu) {
+        if (profil != null && !sans(actifsDans(unite, profil), exclu).isEmpty()) {
+            return new Resolution(Affectation.profil(profil, unite), null, null);
+        }
+        return parProfil(profil, unite, lanceurId, null, null, exclu);
+    }
+
     Resolution parProfil(String profil, String unite, String lanceurId, String parti, String cause) {
         return parProfil(profil, unite, lanceurId, parti, cause, null);
     }

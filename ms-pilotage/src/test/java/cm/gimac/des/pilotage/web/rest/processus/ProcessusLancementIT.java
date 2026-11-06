@@ -199,7 +199,8 @@ class ProcessusLancementIT extends AbstractProcessusIT {
         JsonNode vueIngenieur = instance(id, INGENIEUR_RESEAU);
         assertThat(vueIngenieur.at("/formulaire/0/valeur").asText()).isEqualTo("PC-SNA-014");
         assertThat(etape(vueIngenieur, "ANALYSE").at("/moi/prendre").asBoolean()).isTrue();
-        assertThat(etape(vueIngenieur, "ANALYSE").at("/moi/executer").asBoolean()).isFalse();
+        // D-138 : porteur du rôle, elle peut aussi agir sans prendre l'étape.
+        assertThat(etape(vueIngenieur, "ANALYSE").at("/moi/executer").asBoolean()).isTrue();
 
         // « Mes demandes » de l'initiateur : étape en cours à prendre.
         JsonNode m = lire(mvc.perform(get(BASE + "/demandes").with(agent(AGENT))).andExpect(status().isOk()).andReturn());

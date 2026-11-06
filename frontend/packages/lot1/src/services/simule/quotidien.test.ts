@@ -34,9 +34,10 @@ describe('recette du travail quotidien : services simulés', () => {
     const nadege = qui('u-collab')
     const conge = await lancables(nadege, 'DEMANDE_CONGE')
     const i = await nadege.processus.lancer(conge.id, { intitule: 'Congé annuel de décembre', champs: {}, designations: {}, formulaire: { PERIODE: periode, MOTIF: 'Congé annuel.' } })
-    // Le gestionnaire RH reçoit la vérification des droits ; la demandeuse n'y a aucune action.
-    expect(i.etapes[0]).toMatchObject({ code: 'ANALYSE', executant: { id: 'u-rh' } })
-    expect(i.etapes[0].moi).toMatchObject({ executer: false, prendre: false, reaffecter: false })
+    // D-138 : la vérification des droits est adressée au rôle du gestionnaire RH ; la demandeuse n'y a aucune action.
+    expect(i.etapes[0]).toMatchObject({ code: 'ANALYSE', executant: null, aPrendre: expect.objectContaining({ unite: 'RH' }) })
+    // Aucune exécution ni prise ; étape à prendre, la demandeuse peut seulement choisir l'exécutant (lanceur, D-87).
+    expect(i.etapes[0].moi).toMatchObject({ executer: false, prendre: false })
     // Réaffectation par le DG : candidats sans la demandeuse, nommée dans « exclus » ; la lui confier est refusé.
     const dg = qui('u-dg')
     const candidats = await dg.processus.candidatsEtape(i.id, 'ANALYSE')
@@ -90,7 +91,8 @@ describe('recette du travail quotidien : services simulés', () => {
       formulaire: { EQUIPEMENT: 'PC-ACC-01', ADRESSE_ACTUELLE: '10.20.4.15', ADRESSE_DEMANDEE: '10.20.4.60', JUSTIFICATION: 'Déménagement du poste.' },
     })
     const notes = rachel.processusDemo
-    expect(notes.pour('u-res').map((n) => n.titre)).toContain('Étape à réaliser : Analyse technique')
+    // D-138 : étape adressée au rôle, notifiée à chaque porteur comme une étape à prendre.
+    expect(notes.pour('u-res').map((n) => n.titre)).toContain('Étape à prendre : Analyse technique')
     const idriss = qui('u-res').processus
     await idriss.saisirChamps(i.id, 'ANALYSE', { ADRESSE_DISPONIBLE: 'Oui' })
     await idriss.terminer(i.id, 'ANALYSE')

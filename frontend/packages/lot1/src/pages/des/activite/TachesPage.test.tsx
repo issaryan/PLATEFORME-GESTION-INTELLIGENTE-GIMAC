@@ -148,9 +148,10 @@ describe('Tâches', () => {
     fireEvent.click(await within(f).findByRole('button', { name: 'Prendre la tâche' }))
     expect(await screen.findByText('Tâche prise : vous en êtes le responsable.')).toBeTruthy()
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Vérifier la supervision des liens du participant' })).toBeNull())
-    // L'étape d'analyse du processus d'unité (D-87) est confiée d'office au seul porteur du profil « Pôle réseau » (désignation
-    // hors de l'unité) : plus rien à prendre.
-    expect(await screen.findByText(/Aucune tâche|Rien à prendre|aucune tâche/i)).toBeTruthy()
+    // D-138 : l'étape d'analyse du processus d'unité (D-87) reste adressée au rôle « Pôle réseau », même à un seul porteur :
+    // elle demeure visible, marquée « Pour le rôle », et se traite sans être prise.
+    expect(await screen.findByRole('button', { name: 'Ouverture du port 443 pour la supervision : Analyse de sécurité du flux' })).toBeTruthy()
+    expect(screen.getAllByText(/^Pour le rôle /).length).toBeGreaterThan(0)
     expect(screen.queryByText(/Profil requis :/)).toBeNull()
     cleanup()
     const CHEF = { id: 'U-001', nom: 'Paul Mbarga Atangana' }

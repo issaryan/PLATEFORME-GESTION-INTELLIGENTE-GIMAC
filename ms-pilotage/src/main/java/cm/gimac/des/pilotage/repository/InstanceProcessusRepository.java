@@ -50,14 +50,24 @@ public interface InstanceProcessusRepository extends JpaRepository<InstanceProce
         value = "select i.* from processus_instance i where (cast(:etat as varchar) is null or i.etat = cast(:etat as varchar)) and exists (" +
         "select 1 from processus_etape_instance e left join tache t on t.id = e.tache_id where e.instance_id = i.id and (" +
         "t.responsable_id = :moi or e.validateur_id = :moi or jsonb_path_exists(e.signatures, '$[*] ? (@.attendu.personneId == $m || @.signePar == $m)', jsonb_build_object('m', cast(:moi as text)))" +
+        // D-138 : étape adressée à un rôle encore ouverte, dont l'appelant porte le profil dans l'unité visée.
+        " or (t.pour_role = true and t.etat in ('A_PRENDRE', 'OUVERTE', 'EN_COURS', 'BLOQUEE') and t.profil_requis in (:profils) and (t.unite_cible is null or t.unite_cible in (:unites)))" +
         ")) order by i.lancee_le desc",
         countQuery = "select count(*) from processus_instance i where (cast(:etat as varchar) is null or i.etat = cast(:etat as varchar)) and exists (" +
         "select 1 from processus_etape_instance e left join tache t on t.id = e.tache_id where e.instance_id = i.id and (" +
         "t.responsable_id = :moi or e.validateur_id = :moi or jsonb_path_exists(e.signatures, '$[*] ? (@.attendu.personneId == $m || @.signePar == $m)', jsonb_build_object('m', cast(:moi as text)))" +
+        // D-138 : étape adressée à un rôle encore ouverte, dont l'appelant porte le profil dans l'unité visée.
+        " or (t.pour_role = true and t.etat in ('A_PRENDRE', 'OUVERTE', 'EN_COURS', 'BLOQUEE') and t.profil_requis in (:profils) and (t.unite_cible is null or t.unite_cible in (:unites)))" +
         "))",
         nativeQuery = true
     )
-    Page<InstanceProcessus> miennes(@Param("moi") String moi, @Param("etat") String etat, Pageable page);
+    Page<InstanceProcessus> miennes(
+        @Param("moi") String moi,
+        @Param("profils") Collection<String> profils,
+        @Param("unites") Collection<String> unites,
+        @Param("etat") String etat,
+        Pageable page
+    );
 
     long countByProcessusId(UUID processusId);
 

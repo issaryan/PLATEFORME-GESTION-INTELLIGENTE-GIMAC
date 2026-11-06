@@ -18,6 +18,14 @@ import org.springframework.data.repository.query.Param;
 public interface TacheRepository extends JpaRepository<Tache, UUID> {
     String TRI = " order by case when t.echeance is null then 1 else 0 end, t.echeance, t.creeLe desc";
 
+    /**
+     * À prendre, ou adressée à un rôle et encore ouverte (D-138) : une tâche pour un rôle reste dans « Mes tâches » de
+     * chaque porteur jusqu'à sa clôture, même si un porteur l'a prise (« je m'en occupe »).
+     */
+    String POUR_MOI =
+        "(t.etat = cm.gimac.des.pilotage.domain.activite.EtatTache.A_PRENDRE or (t.pourRole = true and t.etat in (cm.gimac.des.pilotage.domain.activite.EtatTache.OUVERTE, " +
+        "cm.gimac.des.pilotage.domain.activite.EtatTache.EN_COURS, cm.gimac.des.pilotage.domain.activite.EtatTache.BLOQUEE)))";
+
     /** Tâches à prendre que l'appelant peut prendre (« Mes tâches », D-93). */
     String A_PRENDRE_PAR_MOI =
         "(t.offreProfils = true and (t.uniteCible is null or t.uniteCible in :unites) and (exists (select 1 from Tache o join o.profilsRequis p where o.id = t.id and p in :profils)" +
@@ -37,8 +45,8 @@ public interface TacheRepository extends JpaRepository<Tache, UUID> {
      * de processus réservée à un profil que je porte dans l'une de mes unités, ou, sans unité visée (désignation hors de
      * l'unité, D-87), n'importe où.
      */
-    @Query(value = "select t from Tache t where (t.responsableId = :moi or (t.etat = cm.gimac.des.pilotage.domain.activite.EtatTache.A_PRENDRE and (" + A_PRENDRE_PAR_MOI + "))) and (:etat is null or t.etat = :etat)" + TRI,
-        countQuery = "select count(t) from Tache t where (t.responsableId = :moi or (t.etat = cm.gimac.des.pilotage.domain.activite.EtatTache.A_PRENDRE and (" + A_PRENDRE_PAR_MOI + "))) and (:etat is null or t.etat = :etat)")
+    @Query(value = "select t from Tache t where (t.responsableId = :moi or (" + POUR_MOI + " and (" + A_PRENDRE_PAR_MOI + "))) and (:etat is null or t.etat = :etat)" + TRI,
+        countQuery = "select count(t) from Tache t where (t.responsableId = :moi or (" + POUR_MOI + " and (" + A_PRENDRE_PAR_MOI + "))) and (:etat is null or t.etat = :etat)")
     Page<Tache> miennes(@Param("moi") String moi, @Param("unites") Collection<String> unites, @Param("profils") Collection<String> profils, @Param("permissions") Collection<String> permissions, @Param("etat") EtatTache etat, Pageable page);
 
     /** Permissions requises par les offres encore à prendre (« Mes tâches » : celles que l'appelant porte, D-94). */

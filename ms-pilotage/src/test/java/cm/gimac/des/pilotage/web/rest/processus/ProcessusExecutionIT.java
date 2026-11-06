@@ -149,8 +149,8 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
             .andExpect(jsonPath("$.code").value("PIL_PROFIL_REQUIS"));
         mvc
             .perform(post(url(id, "ANALYSE", "fin")).with(agent(INGENIEUR_RESEAU)))
-            .andExpect(status().isForbidden())
-            .andExpect(jsonPath("$.code").value("PIL_PROCESSUS_NON_INTERVENANT"));
+            // D-138 : porteur du rôle, l'ingénieure agit sans prise ; la fin est refusée faute de livrables, pas de prise.
+            .andExpect(status().isUnprocessableEntity());
         assertThat(etape(instance(id, INGENIEUR_RESEAU), "ANALYSE").at("/moi/prendre").asBoolean()).isTrue();
         mvc.perform(post("/api/v1/taches/" + tAnalyse + "/prise").with(agent(INGENIEUR_RESEAU))).andExpect(status().isOk()).andExpect(jsonPath("$.profilRequis").value("ROLE_POLE_RESEAU"));
         i = instance(id, INGENIEUR_RESEAU);

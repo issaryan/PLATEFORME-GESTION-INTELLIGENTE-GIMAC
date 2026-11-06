@@ -499,7 +499,7 @@ describe('D-87 : Mon activité', () => {
     expect(await screen.findByText('Ouverture du port 443 pour la supervision : Analyse de sécurité du flux')).toBeTruthy()
     cleanup()
     rendrePage(<TachesPage />, { chemin: '/des/taches?vue=unite', motif: '/des/taches', services: s, session: session(PERSONNES.membre) })
-    expect(await screen.findByText('Profil requis : ROLE_POLE_RESEAU')).toBeTruthy()
+    expect(await screen.findByText('Pour le rôle ROLE_POLE_RESEAU')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /Ouverture du port 443 pour la supervision : Analyse/ }))
     const f = await screen.findByRole('dialog', { name: /Ouverture du port 443/ })
     expect(within(f).getByText('Processus d’unité')).toBeTruthy()
@@ -539,8 +539,8 @@ describe('recette du travail quotidien (QUO-02, QUO-04, QUO-12)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Réaffecter l’étape' }))
     const d = await screen.findByRole('dialog', { name: /Réaffecter l’étape/ })
     const choix = within(d).getByLabelText(/^Nouvel exécutant/) as HTMLSelectElement
-    await waitFor(() => expect(within(d).getByText(/Aucun autre porteur du profil/)).toBeTruthy())
-    expect(choix.value).toBe('')
+    // D-138 : l'étape est adressée au rôle (aucun exécutant figé) ; jamais la demandeuse, jamais un faux « seul porteur ».
+    await waitFor(() => expect(choix.options.length).toBeGreaterThan(1))
     expect([...choix.options].map((o) => o.value)).not.toContain('u-collab')
   })
 })

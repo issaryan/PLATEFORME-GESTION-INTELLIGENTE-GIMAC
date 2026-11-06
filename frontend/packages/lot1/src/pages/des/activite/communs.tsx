@@ -2,7 +2,8 @@ import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, StatusBadge, Tag } from '@gimac/design-system'
 import { estApiError } from '@gimac/socle'
-import type { CategorieEvenement, EtatRapportDuJour, EtatTache, Priorite, StatutActivite, TypeRapport, Unite } from '../../../modele/pilotage'
+import type { TFunction } from 'i18next'
+import type { CategorieEvenement, EtatRapportDuJour, EtatTache, Priorite, StatutActivite, Tache, TypeRapport, Unite } from '../../../modele/pilotage'
 import { ajouterJours, aujourdhui, heureDe, jourDe, lundiDeSemaine } from '../../../modele/jours'
 import { useUnites } from '../../../hooks/pilotage'
 
@@ -143,3 +144,14 @@ export function TexteRapport({ contenu }: { contenu: string }) {
   vider()
   return <div className="gm-col gm-texte-rapport" style={{ gap: 'var(--gm-space-2)' }}>{blocs}</div>
 }
+
+/** D-138 : « Pour le rôle X » d'une tâche adressée à un rôle (profil requis, ou profils d'une offre). */
+export const libelleRole = (t: TFunction, x: Pick<Tache, 'profilRequis' | 'profilsRequis'>): string =>
+  t('act.tache.pourRole', { role: [x.profilRequis, ...(x.profilsRequis ?? [])].filter((p): p is string => !!p).map((p) => t(`compte.profil.${p}`, { defaultValue: p })).join(', ') })
+
+/** D-138 : badge « Pour le rôle X », sans action de prise exigée. */
+export function BadgeRole({ tache }: { tache: Pick<Tache, 'profilRequis' | 'profilsRequis'> }) {
+  const { t } = useTranslation()
+  return <StatusBadge status="info" icon="users" label={libelleRole(t, tache)} />
+}
+

@@ -97,6 +97,7 @@ Copié et adapté (paquet `cm.gimac.des.pilotage`) ; chaque bean est inactif tan
 | 2026-11-04 | D-130 | Étape `SSI` et signature `DECISION_SSI` de la demande de changement confiées à `ROLE_RSSI` seul ; l'agent SSI est refusé (`ProcessusChangementIT`, simulation du frontend) |
 | 2026-11-04 | D-131 | Provisionnement au démarrage : une version publiée de `DEMANDE_CHANGEMENT` encore au gabarit daté du modèle système est remplacée par une nouvelle version publiée (`CHG-{AAAA}-{N}`, RSSI à l'étape SSI), la précédente retirée et consignée ; brouillon en cours ou gabarit personnalisé laissés tels quels (`DemandeChangementConfigurationTest`) |
 | 2026-11-05 | D-136 | Codes générés : processus `{UNITE}-PRC-{N}` (séquence `processus_code_seq`, changeset `20261105100000`), code envoyé ignoré ; clés provisoires des étapes nouvelles réécrites en `{CODE}-E{N}` avec leurs prédécesseurs, codes connus de la famille gardés (`CodeProcessus`, `CodesEtapes`, `ProcessusCodeIT` en concurrence) |
+| 2026-11-05 | D-138 | Tâche pour un rôle : `pour_role` (changeset `20261105130000`, sans migration rétroactive des tâches déjà nominatives), étape PROFIL jamais figée sur un seul porteur, « Mes tâches » de chaque porteur jusqu'à la clôture, exécution sans prise par tout porteur (`TacheService.porteurDuRole`), « Mes étapes » (`miennes`) des porteurs, premier acte de clôture gagnant, 409 au second ; `ProcessusRoleIT` (deux porteurs, nouveau porteur, fins simultanées, même version en deux transactions) |
 <!-- GIMAC:FIN -->
 
 # pilotage

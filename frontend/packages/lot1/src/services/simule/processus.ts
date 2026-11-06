@@ -639,7 +639,8 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     const actif = (pid: string | null | undefined) => (pid && pid !== sauf && membre(pid)?.actif !== false ? personne(pid) : null)
     const parRemplacement = (p: PersonneActivite | null): Attendu => (p ? { personne: p, profil: null, unite } : parProfil(inst, i.remplacement ?? null, unite, sauf))
     switch (i.mode) {
-      case 'PROFIL': return parProfil(inst, i.profil ?? null, unite, sauf)
+      // D-138 : adressée au rôle dès qu'un porteur est dans l'unité, même seul (jamais figée sur la personne).
+      case 'PROFIL': return i.profil && porteursDans(unite, i.profil).some((m) => m.id !== sauf) ? { personne: null, profil: i.profil, unite } : parProfil(inst, i.profil ?? null, unite, sauf)
       case 'PERSONNE': return parRemplacement(actif(i.personneId))
       case 'AU_LANCEMENT': return parRemplacement(actif(inst.designations[cle]?.id))
       case 'CHEF_UNITE': return parRemplacement(actif(chefDe(unite)))
@@ -647,6 +648,8 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       default: return parRemplacement(actif(membre(inst.lanceur.id)?.responsableId))
     }
   }
+  // D-138 : étape à prendre par un rôle, tout porteur agit sans la prendre (comme MS-PILOTAGE).
+  const porteurDuRole = (e: Pick<EtapeSim, 'executant' | 'aPrendre'>) => !e.executant && !!e.aPrendre?.profil && peutAgir({ personne: null, ...e.aPrendre })
   const peutAgir = (a: Attendu | null) => !!a && (a.personne ? a.personne.id === moiId : !!a.profil && profils(moiId).includes(a.profil) && (a.unite ? membreDe(moiId, a.unite) : portePartout(moiId, a.profil)))
   /** Le lanceur choisit l'exécutant d'une étape à prendre, ou de celle qui lui est revenue faute de porteur. */
   const lanceurDesigne = (inst: InstanceSim, e: EtapeSim) => inst.lanceur.id === moiId && (!e.executant || e.executant.id === moiId)
@@ -705,7 +708,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
         return {
           ...e,
           moi: {
-            executer: encours && e.etat === 'ACTIVE' && e.executant?.id === moiId && !separeExecution,
+            executer: encours && e.etat === 'ACTIVE' && (e.executant?.id === moiId || porteurDuRole(e)) && !separeExecution,
             prendre: encours && e.etat === 'ACTIVE' && !e.executant && !separeExecution && peutAgir(e.aPrendre ? { personne: null, ...e.aPrendre } : null),
             signer: encours && e.etat === 'A_SIGNER' ? e.signatures.filter((s) => s.etat === 'ATTENDUE' && s.ordre === minOrdre && peutAgir(s.attendu)
               && !separe(inst, moiId, def.signatures.find((x) => x.code === s.code)?.signataire)).map((s) => s.code) : [],
@@ -741,7 +744,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     if (e.etat !== attendu) throw refus(409, 'PIL_PROCESSUS_ETAPE_ETAT', 'L’étape n’est pas dans l’état attendu.', { etat: e.etat, attendu })
   }
   const exigerExecutant = (inst: InstanceSim, e: EtapeSim) => {
-    if (e.executant?.id !== moiId) throw refus(403, 'PIL_PROCESSUS_NON_INTERVENANT', 'Seul l’exécutant de l’étape agit sur elle.')
+    if (e.executant?.id !== moiId && !porteurDuRole(e)) throw refus(403, 'PIL_PROCESSUS_NON_INTERVENANT', 'Seul l’exécutant de l’étape agit sur elle.')
     if (separe(inst, moiId, e.def.intervenant)) throw separation(403, { lanceurId: inst.lanceur.id })
   }
   const motifObligatoire = (m: string | undefined) => {
@@ -1258,6 +1261,12 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       if (livrables.length) throw refus(422, 'PIL_PROCESSUS_LIVRABLES_MANQUANTS', 'Des livrables obligatoires manquent.', { livrables })
       const champs = e.champs.filter((c) => c.obligatoire && (c.valeur === null || c.valeur === '')).map((c) => c.code)
       if (champs.length) throw refus(422, 'PIL_PROCESSUS_CHAMPS_MANQUANTS', 'Des champs obligatoires manquent.', { champs })
+      // D-138 : étape du rôle achevée sans prise, son auteur en devient l'exécutant (comme la tâche sur MS-PILOTAGE).
+      if (!e.executant) {
+        e.executant = personne(moiId)
+        e.aPrendre = null
+        if (e.tacheId) pont?.affecter(e.tacheId, moiId)
+      }
       e.soumiseLe = maintenant()
       historiser(inst.historique, 'ETAPE_SOUMISE', null, e.code)
       apresSoumission(inst, e)
