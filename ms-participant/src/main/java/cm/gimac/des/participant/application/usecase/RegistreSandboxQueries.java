@@ -42,6 +42,9 @@ public class RegistreSandboxQueries {
      */
     public record Correspondance(java.util.UUID institutionId, String codeParticipant) {}
 
+    /** Page des membres du registre (D-140). */
+    public record PageMembres(List<RegistreLecture.Membre> elements, long total, int page, int taille) {}
+
     /** Page de la nomenclature des services. */
     public record PageServices(List<Service> contenu, long total, int page, int taille) {}
 
@@ -73,8 +76,27 @@ public class RegistreSandboxQueries {
         return new Correspondance(i.id(), i.codeParticipant());
     }
 
-    /** Nomenclature des services souscrits, triée par code ; taille de 1 à 100. */
-    public PageServices nomenclature(int page, int taille) {
+    /**
+     * Institutions dotées d'un code participant (D-140, provision des comptes de test de SBX-DONNEES), triées par code,
+     * filtrées par statut ; taille de 1 à 100, statut inconnu : 422 PAR_STATUT_INVALIDE.
+     */
+    public PageMembres membres(java.util.Collection<String> statuts, int page, int taille) {
+        verifierPage(page, taille);
+        java.util.Set<String> filtre = new java.util.TreeSet<>();
+        for (String s : statuts == null ? java.util.List.<String>of() : statuts) {
+            if (s == null || s.isBlank()) {
+                continue;
+            }
+            String v = s.strip();
+            if (java.util.Arrays.stream(cm.gimac.des.participant.domain.enumeration.InstitutionStatus.values()).noneMatch(x -> x.name().equals(v))) {
+                throw ParticipantException.unprocessable("PAR_STATUT_INVALIDE", "Statut inconnu", Map.of("statut", v));
+            }
+            filtre.add(v);
+        }
+        return new PageMembres(registre.membres(filtre, page, taille), registre.nombreMembres(filtre), page, taille);
+    }
+
+    private static void verifierPage(int page, int taille) {
         if (page < 0 || taille < 1 || taille > TAILLE_MAX) {
             throw ParticipantException.unprocessable(
                 "PAR_PAGINATION_INVALIDE",
@@ -82,6 +104,11 @@ public class RegistreSandboxQueries {
                 Map.of("page", page, "taille", taille, "tailleMax", TAILLE_MAX)
             );
         }
+    }
+
+    /** Nomenclature des services souscrits, triée par code ; taille de 1 à 100. */
+    public PageServices nomenclature(int page, int taille) {
+        verifierPage(page, taille);
         return new PageServices(registre.services(page, taille), registre.nombreServices(), page, taille);
     }
 }

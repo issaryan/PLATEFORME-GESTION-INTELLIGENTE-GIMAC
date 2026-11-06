@@ -51,6 +51,19 @@ class RegistreSandboxQueriesTest {
             return tous.subList(Math.min(page * taille, tous.size()), Math.min((page + 1) * taille, tous.size()));
         }
 
+        final List<java.util.Set<String>> filtres = new ArrayList<>();
+
+        @Override
+        public List<Membre> membres(java.util.Set<String> statuts, int page, int taille) {
+            filtres.add(statuts);
+            return List.of(new Membre("99001", "ACTIF"));
+        }
+
+        @Override
+        public long nombreMembres(java.util.Set<String> statuts) {
+            return 1;
+        }
+
         @Override
         public long nombreServices() {
             return 3;
@@ -76,6 +89,23 @@ class RegistreSandboxQueriesTest {
         assertThatThrownBy(() -> queries.correspondance(UUID.randomUUID())).isInstanceOf(ParticipantException.class);
         assertThatThrownBy(() -> queries.correspondance("99999")).isInstanceOf(ParticipantException.class);
         assertThatThrownBy(() -> queries.correspondance((String) null)).isInstanceOf(ParticipantException.class);
+    }
+
+    @Test
+    @DisplayName("D-140 : membres du registre paginés, filtre de statut multiple et contrôlé, taille bornée à 100")
+    void membres() {
+        var p = queries.membres(List.of("ACTIF", " ADHERENT ", ""), 0, 100);
+        assertThat(p.elements()).containsExactly(new RegistreLecture.Membre("99001", "ACTIF"));
+        assertThat(p.total()).isEqualTo(1);
+        assertThat(p.taille()).isEqualTo(100);
+        assertThat(queries.membres(null, 2, 10).page()).isEqualTo(2);
+        java.util.List<String> avecNul = new ArrayList<>();
+        avecNul.add(null);
+        queries.membres(avecNul, 0, 1);
+        assertThatThrownBy(() -> queries.membres(List.of("FERME"), 0, 10))
+            .isInstanceOfSatisfying(ParticipantException.class, e -> assertThat(e.code()).isEqualTo("PAR_STATUT_INVALIDE"));
+        assertThatThrownBy(() -> queries.membres(List.of(), 0, 101)).isInstanceOf(ParticipantException.class);
+        assertThatThrownBy(() -> queries.membres(List.of(), -1, 10)).isInstanceOf(ParticipantException.class);
     }
 
     @Test

@@ -55,3 +55,4 @@ Le rattachement des jetons de service au certificat client (RFC 8705) reste une 
 | 2026-11-05 | D-119 | `ROLE_SBX_DEVELOPPEUR` porte `SBX_CER_EXECUTION` et `SBX_CER_CONSULTATION` (CA-SBX-GIMAC-02 UC-CER-04), comme `MatriceRoles` de la sandbox ; domaines régénérés |
 | 2026-11-05 | D-119 | `SBX_REF_CONSULTATION` pour les rôles d'institution qui raccordent, exécutent ou consultent (portail du référentiel), pas pour l'administrateur de l'institution ; assertion et test |
 | 2026-11-05 | D-135 | `SBX_SUP_CONSULTATION` donnée à ROLE_CHEF_DES, ROLE_ADMIN_SYSTEME et ROLE_SUPER_ADMIN seuls (décision de l'utilisateur), assertion et test ; realm, realm de production et domaine régénérés |
+| 2026-11-06 | D-140 | `sbx-donnees` reçoit `INTERNAL_PARTICIPANT_READ` (liste paginée des membres de MS-PARTICIPANT), inscrite au tableau `APPELS_SBX` |

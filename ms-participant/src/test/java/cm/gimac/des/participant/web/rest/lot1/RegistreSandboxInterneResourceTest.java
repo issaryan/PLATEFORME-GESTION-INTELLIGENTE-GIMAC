@@ -30,5 +30,8 @@ class RegistreSandboxInterneResourceTest {
         when(queries.correspondance("99001")).thenReturn(c);
         assertThat(r.correspondance(c.institutionId())).isSameAs(c);
         assertThat(r.correspondanceParCode("99001")).isSameAs(c);
+        var membres = new RegistreSandboxQueries.PageMembres(List.of(), 0, 0, 50);
+        when(queries.membres(List.of("ACTIF"), 0, 50)).thenReturn(membres);
+        assertThat(r.membres(List.of("ACTIF"), 0, 50)).isSameAs(membres);
     }
 }

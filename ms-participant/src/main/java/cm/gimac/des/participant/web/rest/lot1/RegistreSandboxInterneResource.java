@@ -42,6 +42,16 @@ public class RegistreSandboxInterneResource {
         return queries.correspondance(code);
     }
 
+    /** Institutions dotées d'un code participant, filtrées par statut (paramètre répétable), triées par code (D-140). */
+    @GetMapping(path = "/institutions", params = "!codeParticipant")
+    public RegistreSandboxQueries.PageMembres membres(
+        @RequestParam(name = "statut", required = false) java.util.List<String> statuts,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "50") int taille
+    ) {
+        return queries.membres(statuts, page, taille);
+    }
+
     /** Nomenclature des services souscrits (abonnements actifs), triée par code, paginée. */
     @GetMapping("/nomenclature/services")
     public PageServices services(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "50") int taille) {
