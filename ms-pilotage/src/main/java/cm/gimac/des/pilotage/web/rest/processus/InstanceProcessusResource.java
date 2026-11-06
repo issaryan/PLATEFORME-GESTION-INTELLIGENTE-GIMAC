@@ -74,11 +74,11 @@ public class InstanceProcessusResource {
         return InstanceVue.de(instances.instance(appelant(auth), id));
     }
 
-    /** PDF de la demande initiée et de ses signatures, avec les droits de lecture de l'instance. */
+    /** PDF de la demande initiée et de ses signatures, avec les droits de lecture de l'instance ; langue fr, en ou es. */
     @GetMapping("/{id}/pdf")
     @PreAuthorize(Jetons.ACTIVITE)
-    public ResponseEntity<byte[]> pdf(@PathVariable UUID id, Authentication auth) {
-        PdfInstanceService.PdfInstance document = pdf.telecharger(appelant(auth), id);
+    public ResponseEntity<byte[]> pdf(@PathVariable UUID id, @RequestParam(required = false) String langue, Authentication auth) {
+        PdfInstanceService.PdfInstance document = pdf.telecharger(appelant(auth), id, langue);
         return ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_PDF)
             .header(HttpHeaders.CACHE_CONTROL, "no-store")

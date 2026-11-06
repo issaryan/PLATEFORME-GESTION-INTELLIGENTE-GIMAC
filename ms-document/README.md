@@ -130,6 +130,7 @@ Copié et adapté (paquet `cm.gimac.des.document`) ; chaque bean est inactif tan
 | 2026-10-22 | D-120 | US-EXI-08 : `POST /api/v1/interne/pieces-sandbox`, `GET /api/v1/interne/documents/empreintes/{sha256}`, `/api/v1/sandbox/types-pieces` et `/quarantaines`, tables `sbx_type_piece`, `sbx_piece`, outbox `sbx_evenement_sortant`, règle JaCoCo à 98 % |
 | 2026-10-29 | — | Supervision : registre `micrometer-registry-prometheus` aligné sur Spring Boot 4 ; `/actuator/prometheus` vérifié en 200 avec CA et certificat client mTLS ; autres endpoints Actuator toujours réservés à `ROLE_ADMIN` |
 | 2026-11-02 | — | Profil `prod` : `spring.docker.compose.enabled: false`, aucune tentative de démarrer `postgresql.yml` dans le conteneur ; image reconstruite avec la consultation par empreinte de D-120 (`GET /api/v1/interne/documents/empreintes/{sha256}`) |
+| 2026-11-06 | D-139 | Gabarit commun des PDF : champ facultatif `gabarit` de `POST /api/v1/interne/rendus/pdf` (titre, surtitre, sous-titre, référence, classification PUBLIC, INTERNE ou CONFIDENTIEL, langue fr, en, es, date d'édition, filigrane, données clés, style), `GabaritMoabi` (en-tête et pied de l'organigramme, ressources de la charte sous `resources/gabarit/`), métadonnées du PDF (champ `metadata` de Gotenberg) ; requêtes sans gabarit inchangées. |
 <!-- GIMAC:FIN -->
 
 # document

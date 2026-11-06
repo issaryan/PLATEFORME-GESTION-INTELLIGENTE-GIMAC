@@ -7,7 +7,7 @@ afterEach(() => vi.restoreAllMocks())
 
 describe('PDF de processus', () => {
   it('appelle la route PDF et déclenche le téléchargement avec la référence', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('%PDF-1.4', { status: 200, headers: { 'Content-Type': 'application/pdf' } }))
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('%PDF-1.4', { status: 200, headers: { 'Content-Type': 'application/pdf' } }))
     const blob = await telechargerProcessusPdf('I/1')
     expect(blob.type).toBe('application/pdf')
     expect(new URL(String(fetchMock.mock.calls[0][0])).pathname).toBe('/bff/des/pilotage/processus/instances/I%2F1/pdf')
@@ -20,9 +20,14 @@ describe('PDF de processus', () => {
     expect(revocation).toHaveBeenCalledWith('blob:test')
     const a = clic.mock.instances[0] as HTMLAnchorElement
     expect(a.download).toBe('CHG-2026-10-28-000001.pdf')
-    await telechargerPdfInstance(service, { id: 'I2', reference: null })
+    await telechargerPdfInstance(service, { id: 'I2', reference: null }, 'en')
     expect((clic.mock.instances[1] as HTMLAnchorElement).download).toBe('I2.pdf')
+    expect(service.telechargerPdf).toHaveBeenNthCalledWith(1, 'I1')
+    expect(service.telechargerPdf).toHaveBeenNthCalledWith(2, 'I2', 'en')
     expect(creation).toHaveBeenCalledTimes(2)
+    // Langue de l'interface transmise à MS-PILOTAGE (D-139).
+    await telechargerProcessusPdf('I1', 'es')
+    expect(new URL(String(fetchMock.mock.calls[1][0])).search).toBe('?langue=es')
   })
 
   it('ne fabrique pas d’URL si le service refuse', async () => {

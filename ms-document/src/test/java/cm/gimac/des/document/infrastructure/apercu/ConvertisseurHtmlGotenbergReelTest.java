@@ -52,4 +52,28 @@ class ConvertisseurHtmlGotenbergReelTest {
             Files.write(d.resolve("organigramme-demonstration.pdf"), pdf);
         }
     }
+
+    /**
+     * Gabarit commun (D-139) : chaque requête {@code *.json} du dossier GIMAC_PDF_ESSAI_DOSSIER (corps exact de la route
+     * interne, écrit par les tests de MS-MONITORING et de MS-PILOTAGE) est imprimée en {@code *.pdf} à côté.
+     */
+    @Test
+    @EnabledIfEnvironmentVariable(named = "GIMAC_PDF_ESSAI_DOSSIER", matches = ".+")
+    @DisplayName("Requêtes au gabarit commun des services imprimées")
+    @org.junit.jupiter.api.Timeout(value = 5, unit = java.util.concurrent.TimeUnit.MINUTES)
+    void gabarit() throws IOException {
+        Path d = Path.of(System.getenv("GIMAC_PDF_ESSAI_DOSSIER"));
+        var json = new com.fasterxml.jackson.databind.ObjectMapper().configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        try (var fichiers = Files.list(d)) {
+            for (Path f : fichiers.filter(x -> x.toString().endsWith(".json")).sorted().toList()) {
+                var r = json.readValue(f.toFile(), cm.gimac.des.document.web.rest.v1.RenduInterneResource.RenduRequest.class);
+                byte[] pdf = service().rendre(
+                    new RenduPdfUseCase.Demande(r.html(), r.piedDePage(), RenduPdfUseCase.Format.valueOf(r.format()), "PAYSAGE".equals(r.orientation()), cm.gimac.des.document.web.rest.v1.RenduInterneResource.gabarit(r.gabarit())),
+                    "essai"
+                );
+                assertThat(new String(pdf, 0, 5, StandardCharsets.US_ASCII)).isEqualTo("%PDF-");
+                Files.write(d.resolve(f.getFileName().toString().replace(".json", ".pdf")), pdf);
+            }
+        }
+    }
 }

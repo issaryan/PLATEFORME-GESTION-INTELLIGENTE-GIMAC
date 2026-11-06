@@ -1,5 +1,6 @@
 package cm.gimac.des.document.web.rest.v1;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -89,5 +90,30 @@ class RenduInterneResourceTest {
             .perform(post(ROUTE).with(service("iam-service", "INTERNAL_DOCUMENT_RENDER")).contentType(MediaType.APPLICATION_JSON).content(CORPS.replace(",\"orientation\":\"PAYSAGE\"", "")))
             .andExpect(status().isServiceUnavailable())
             .andExpect(jsonPath("$.code").value("DOC_RENDU_INDISPONIBLE"));
+    }
+
+    static final String GABARIT =
+        "{\"html\":\"<h2>x</h2>\",\"format\":\"A4\",\"orientation\":\"PORTRAIT\",\"gabarit\":{\"titre\":\"Demande\",\"reference\":\"CHG-1\"," +
+        "\"classification\":\"confidentiel\",\"langue\":\"es\",\"edition\":\"2026-11-06T10:30:00+01:00\",\"faits\":[{\"libelle\":\"État\",\"valeur\":\"En cours\"},null]}}";
+
+    @Test
+    @DisplayName("Gabarit commun (D-139) : classification, langue, date et données clés transmises ; classification ou date invalides : 400")
+    void gabarit() throws Exception {
+        when(useCase.rendre(any(), any())).thenReturn(PDF);
+        mvc.perform(post(ROUTE).with(service("pilotage-service", "INTERNAL_DOCUMENT_RENDER")).contentType(MediaType.APPLICATION_JSON).content(GABARIT)).andExpect(status().isOk());
+        var g = new RenduPdfUseCase.Gabarit(
+            "Demande", null, null, "CHG-1", RenduPdfUseCase.Classification.CONFIDENTIEL, "es", java.time.OffsetDateTime.parse("2026-11-06T10:30:00+01:00"), null,
+            java.util.List.of(new RenduPdfUseCase.Fait("État", "En cours")), null
+        );
+        verify(useCase).rendre(eq(new RenduPdfUseCase.Demande("<h2>x</h2>", null, RenduPdfUseCase.Format.A4, false, g)), eq("pilotage-service"));
+        for (String faux : java.util.List.of(GABARIT.replace("confidentiel", "secret"), GABARIT.replace("2026-11-06T10:30:00+01:00", "hier"))) {
+            mvc
+                .perform(post(ROUTE).with(service("pilotage-service", "INTERNAL_DOCUMENT_RENDER")).contentType(MediaType.APPLICATION_JSON).content(faux))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("DOC_RENDU_INVALIDE"));
+        }
+        assertThat(RenduInterneResource.gabarit(new RenduInterneResource.GabaritRequest("T", null, null, null, " ", null, " ", null, null, null)))
+            .isEqualTo(new RenduPdfUseCase.Gabarit("T", null, null, null, null, null, null, null, java.util.List.of(), null));
+        assertThat(RenduInterneResource.gabarit(null)).isNull();
     }
 }

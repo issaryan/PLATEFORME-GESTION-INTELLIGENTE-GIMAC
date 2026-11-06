@@ -16,8 +16,10 @@ import org.springframework.stereotype.Component;
 public class RenduPdfStub implements RenduPdfPort {
 
     @Override
-    public byte[] rendre(String html, String piedDePage, boolean paysage) {
-        String texte = html.replaceAll("(?s)<style.*?</style>", "").replaceAll("<(br|/tr|/h1|/h2|/p|/li)[^>]*>", "\n").replaceAll("<[^>]+>", " ");
+    public byte[] rendre(Document d) {
+        boolean paysage = d.paysage();
+        String html = "<h1>" + d.titre() + "</h1>" + (d.sousTitre() == null ? "" : "<p>" + d.sousTitre() + "</p>") + d.corps();
+        String texte = html.replaceAll("(?s)<style.*?</style>", "").replaceAll("<(br|/tr|/h1|/h2|/h3|/p|/li)[^>]*>", "\n").replaceAll("<[^>]+>", " ");
         List<String> lignes = new ArrayList<>();
         lignes.add("Exemple de démonstration (mise en page simulée)");
         for (String l : texte.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&#39;", "'").replace("&quot;", "\"").split("\n")) {

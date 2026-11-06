@@ -96,6 +96,7 @@ Copié et adapté (paquet `cm.gimac.des.pilotage`) ; chaque bean est inactif tan
 | 2026-11-04 | D-127 | Référence de la demande de changement au format de la fiche, `CHG-{AAAA}-{N}` (par exemple CHG-2026-412) : gabarit à `{AAAA}` et séquence `{N}` ou `{NNNNNN}`, `{CODE}`, `{MM}` et `{JJ}` facultatifs ; contrat `ReferenceFicheChangementContratTest` contre `ApprobationPolicy` de MS-CERTIFICATION ; gabarit daté conservé par les versions déjà publiées de la recette ; registre des écarts : signataire de l'étape SSI |
 | 2026-11-04 | D-130 | Étape `SSI` et signature `DECISION_SSI` de la demande de changement confiées à `ROLE_RSSI` seul ; l'agent SSI est refusé (`ProcessusChangementIT`, simulation du frontend) |
 | 2026-11-04 | D-131 | Provisionnement au démarrage : une version publiée de `DEMANDE_CHANGEMENT` encore au gabarit daté du modèle système est remplacée par une nouvelle version publiée (`CHG-{AAAA}-{N}`, RSSI à l'étape SSI), la précédente retirée et consignée ; brouillon en cours ou gabarit personnalisé laissés tels quels (`DemandeChangementConfigurationTest`) |
+| 2026-11-06 | D-139 | PDF des instances de processus (dont la demande de changement) au gabarit commun de MS-DOCUMENT : cartouche (référence, état, demandeur, date), états des étapes et des signatures en badges, dates à l'heure de Douala, libellés fr, en ou es (`GET …/instances/{id}/pdf?langue=`) ; `RenduPdfPort.Document`. |
 <!-- GIMAC:FIN -->
 
 # pilotage

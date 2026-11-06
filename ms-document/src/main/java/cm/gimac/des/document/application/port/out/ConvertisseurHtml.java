@@ -20,4 +20,12 @@ public interface ConvertisseurHtml {
      * @throws ConvertisseurApercu.MoteurIndisponible moteur injoignable, saturé ou délai dépassé
      */
     byte[] imprimer(String html, String piedDePage, Papier papier);
+
+    /**
+     * PDF du document, avec ses métadonnées (Title, Subject, Author, Creator, Keywords) quand le moteur les écrit ; par
+     * défaut, sans métadonnées autres que le titre du document HTML.
+     */
+    default byte[] imprimer(String html, String piedDePage, Papier papier, java.util.Map<String, String> metadonnees) {
+        return imprimer(html, piedDePage, papier);
+    }
 }

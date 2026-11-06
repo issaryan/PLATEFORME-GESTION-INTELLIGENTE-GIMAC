@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "gimac.adaptateurs.rendu-pdf", havingValue = "stub", matchIfMissing = true)
 public class RenduPdfStubAdapter implements RenduPdfPort {
     @Override
-    public byte[] rendre(String html, String piedDePage) {
+    public byte[] rendre(Document document) {
         String texte = "BT /F1 11 Tf 36 800 Td (Moabi - demande de processus) Tj ET";
         String pdf = "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
             + "3 0 obj<</Type/Page/Parent 2 0 R/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>endobj\n"
