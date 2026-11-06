@@ -3,6 +3,8 @@ import { Card, CoverageBar, DataTable, InlineAlert, ProgressRing, StatusBadge, T
 import type { CoverageValue } from '../../../../modele/commun'
 import type { DossierLiaison, EtatServicePerimetre, ServicePerimetre } from '../../../../modele/parcours'
 import { Jour, tonService } from '../communs'
+import { GestionPerimetre } from '../../liaisons/perimetre'
+import { decrire } from '../../../../dictionnaires/services-perimetre'
 
 // Onglet « Périmètre », écran principal du dossier (CR §7.2.2) : l'état du périmètre contractualisé,
 // service par service, avec les deux couvertures calculées par le service (certification, mise en
@@ -22,7 +24,8 @@ function Anneau({ libelle, valeur, detail }: { libelle: string; valeur: Coverage
 }
 
 export function OngletPerimetre({ dossier }: { dossier: DossierLiaison }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const nom = (s: ServicePerimetre) => (decrire(s.serviceCode, dossier.typeProjet, i18n.language).connu ? decrire(s.serviceCode, dossier.typeProjet, i18n.language).libelle : s.libelle)
   const mobile = dossier.perimetre.some((s) => s.avancementSimulateur !== null)
   const inclus = dossier.perimetre.filter((s) => s.inclus)
   const c = dossier.couvertureCertification
@@ -31,10 +34,8 @@ export function OngletPerimetre({ dossier }: { dossier: DossierLiaison }) {
     {
       key: 'libelle', header: t('parcoursPerimetre.service'),
       render: (s) => (
-        <span className="gm-col" style={{ gap: 0 }}>
-          <span>{s.libelle}</span>
-          <span className="gm-field-help gm-mono">{s.serviceCode}</span>
-        </span>
+        // D-133 : nom usuel en clair, code technique en infobulle seulement.
+        <span title={t('perimetreProjet.code', { code: s.serviceCode })}>{nom(s)}</span>
       ),
     },
     { key: 'inclus', header: t('parcoursPerimetre.inclusion'), render: (s) => <StatusBadge status={s.inclus ? 'info' : 'neutral'} icon={null} label={t(s.inclus ? 'parcoursPerimetre.inclus' : 'parcoursPerimetre.exclu')} /> },
@@ -59,6 +60,7 @@ export function OngletPerimetre({ dossier }: { dossier: DossierLiaison }) {
   ]
   return (
     <div className="gm-col">
+      <GestionPerimetre liaison={{ id: dossier.id, typeProjet: dossier.typeProjet, institutionNom: dossier.institutionNom, intituleProjet: dossier.intituleProjet }} />
       <Card title={t('parcoursPerimetre.couvertures')}>
         <div className="gm-row" style={{ gap: 'var(--gm-space-6)', alignItems: 'flex-start' }}>
           {dossier.avancement ? <Anneau libelle={t('parcoursListe.avancement')} valeur={dossier.avancement} detail={t('parcoursPerimetre.detailAvancement')} /> : null}
@@ -66,7 +68,7 @@ export function OngletPerimetre({ dossier }: { dossier: DossierLiaison }) {
           <Anneau libelle={t('parcoursListe.couvertureMiseEnService')} valeur={m} detail={t('parcoursPerimetre.detailMiseEnService', { n: m.numerateur, d: m.denominateur })} />
           <div className="gm-col" style={{ gap: 'var(--gm-space-2)', flex: '2 1 280px', minWidth: 0 }}>
             {inclus.map((s) => (
-              <CoverageBar key={s.serviceCode} service={s.libelle} level={NIVEAU[s.etat]} />
+              <CoverageBar key={s.serviceCode} service={nom(s)} level={NIVEAU[s.etat]} />
             ))}
           </div>
         </div>

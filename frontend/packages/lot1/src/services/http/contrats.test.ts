@@ -206,3 +206,18 @@ describe('portailHttp et servicesHttp', () => {
     expect(typeof s.reauth.assertion).toBe('function')
   })
 })
+
+describe('homologationHttp : périmètre du projet (D-133)', () => {
+  it('lecture, modification motivée et historique paginé', async () => {
+    brancher({ version: 1 }, { version: 2 }, { contenu: [], total: 0 })
+    await homologationHttp.perimetreLiaison('LIA-1')
+    await homologationHttp.modifierPerimetre('LIA-1', ['PAIEMENT'], 'Lot 1')
+    await homologationHttp.historiquePerimetre('LIA-1', 2, 10)
+    expect([0, 1, 2].map(ligne)).toEqual([
+      'GET /bff/des/homologation/liaisons/LIA-1/perimetre',
+      'PUT /bff/des/homologation/liaisons/LIA-1/perimetre',
+      'GET /bff/des/homologation/liaisons/LIA-1/perimetre/historique?page=2&taille=10',
+    ])
+    expect(corps(1)).toEqual({ services: ['PAIEMENT'], motif: 'Lot 1' })
+  })
+})

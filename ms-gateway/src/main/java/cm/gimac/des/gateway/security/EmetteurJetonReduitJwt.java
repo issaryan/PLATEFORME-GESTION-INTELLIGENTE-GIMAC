@@ -40,6 +40,9 @@ public class EmetteurJetonReduitJwt implements EmetteurJetonReduit {
         if (!j.institutionPropre().isBlank() && !j.institutionPropre().equals(j.institution())) {
             claims.claim("institution_propre", j.institutionPropre());
         }
+        if (j.contexte() != null) {
+            claims.claim("contexte", j.contexte());
+        }
         try {
             return Optional.of(emetteur.emettre(claims));
         } catch (JOSEException | RuntimeException e) {

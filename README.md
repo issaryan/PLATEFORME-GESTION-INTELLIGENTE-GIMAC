@@ -216,6 +216,7 @@ Validations réellement exécutées et conservées dans les rapports du 27/10 :
 | 2026-11-05 | D-135 | Supervision de la sandbox depuis le DES (`SBX_SUP_CONSULTATION`) attribuée au chef du DES, à l'administrateur système et au super administrateur ; générateur du realm et domaine régénérés |
 | 2026-11-05 | - | Barre latérale de l'application du DES en sections repliables (accordéons intégrés, section courante ouverte, état mémorisé, aria-expanded, pastille d'écran courant) ; section « Processus et demandes », institutions dans « Homologation » (changeset MS-IAM 20261105120000, groupe changé par un administrateur conservé) ; captures avant et après |
 | 2026-11-05 | D-134 | `institution_id` : identifiant au registre côté plateforme, code participant côté sandbox, traduit une seule fois par MS-IAM (correspondance lue dans MS-PARTICIPANT) ; la passerelle ne relaie plus le jeton original |
+| 2026-11-05 | D-133 | Compléments : écran du périmètre groupé par interface et par famille (table versionnée `services-perimetre.json`), référence d'origine publiée pour rattacher les campagnes reprises, contexte d'action du double rôle administrateur et intégrateur dans MS-GATEWAY. |
 
 ### Mise a jour du 02/11/2026 : Releve Sandbox GIMAC et integration documentaire
 - MS-HOMOLOGATION : correction de DocumentRestAdapter pour transmettre service-account-homologation-service en cas de deposantId nul, securisation du scheduler de releve periodique par capture des exceptions, suppression du poller KafkaProducer parasite.

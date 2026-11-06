@@ -14,6 +14,7 @@
     "statutPrecedent": { "type": ["string", "null"], "enum": ["OUVERTE", "GELEE", "CLOSE", null] },
     "etatLiaison": { "type": "string", "enum": ["OUVERTE", "EN_HOMOLOGATION", "GELEE", "APTE_CERTIFICATION", "MISE_EN_SERVICE_AUTORISEE", "CERTIFIEE", "CLOSE"] },
     "versionEtat": { "type": "integer", "minimum": 1 },
-    "survenuLe": { "type": "string", "format": "date-time" }
+    "survenuLe": { "type": "string", "format": "date-time" },
+    "referenceOrigine": { "type": ["string", "null"], "maxLength": 50, "description": "Référence du projet dans l'outil d'origine (D-104, normalisée par la reprise D-107), ajoutée par D-133 : rattachement des campagnes reprises dans SBX-CAMPAGNE. Facultative." }
   }
 }

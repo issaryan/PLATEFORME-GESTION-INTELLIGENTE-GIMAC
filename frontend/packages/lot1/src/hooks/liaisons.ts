@@ -12,6 +12,12 @@ export const useLiaison = (id: string) => useLecture(cles.liaison(id), (s) => s.
 export const useHistoriqueLiaison = (id: string) => useLecture(cles.liaison(id, 'historique'), (s) => s.homologation.historiqueLiaison(id))
 export const useGrapheLiaison = (id: string) => useLecture(cles.liaison(id, 'graphe'), (s) => s.homologation.grapheLiaison(id))
 export const useCouverturesLiaison = (id: string) => useLecture(cles.liaison(id, 'couvertures'), (s) => s.homologation.couverturesLiaison(id))
+/** D-133 : périmètre du projet de certification et son historique paginé. */
+export const usePerimetreLiaison = (id: string) => useLecture(cles.liaison(id, 'perimetre'), (s) => s.homologation.perimetreLiaison(id))
+export const useHistoriquePerimetre = (id: string, page: number, taille: number) =>
+  useLecture(cles.liaison(id, `perimetre-historique-${page}-${taille}`), (s) => s.homologation.historiquePerimetre(id, page, taille))
+export const useModifierPerimetre = () =>
+  useEffet((s, v: { id: string; services: string[]; motif: string }) => s.homologation.modifierPerimetre(v.id, v.services, v.motif), [cles.homologation])
 export const useDernierExportPreuves = (id: string) => useLecture(cles.liaison(id, 'export'), (s) => s.homologation.dernierExportPreuves(id))
 export const useEtatReprise = () => useLecture(cles.reprise(), (s) => s.homologation.etatReprise())
 

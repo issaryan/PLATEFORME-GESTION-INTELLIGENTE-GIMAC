@@ -95,6 +95,9 @@ class AdaptateursSandboxTest {
         assertThat(c.getAudience()).containsExactly("sbx-simulation");
         assertThat(c.getStringClaim("institution_id")).isEqualTo("99002");
         assertThat(c.getStringClaim("institution_propre")).isEqualTo("99010");
+        assertThat(c.getClaim("contexte")).isNull();
+        String avecContexte = e.emettre(new JetonReduit("u-1", "99001", "99001", List.of("SBX_SIM_SIMULATION"), "2", "sbx-simulation", "INTEGRATION")).orElseThrow();
+        assertThat(com.nimbusds.jwt.SignedJWT.parse(avecContexte).getJWTClaimsSet().getStringClaim("contexte")).isEqualTo("INTEGRATION");
         assertThat(c.getStringListClaim("roles")).containsExactly("SBX_SIM_SIMULATION");
         assertThat(c.getStringClaim("acr")).isEqualTo("2");
         assertThat(c.getJWTID()).isNotBlank();

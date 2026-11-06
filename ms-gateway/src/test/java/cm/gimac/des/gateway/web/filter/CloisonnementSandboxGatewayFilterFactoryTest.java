@@ -113,6 +113,15 @@ class CloisonnementSandboxGatewayFilterFactoryTest {
     }
 
     @Test
+    @DisplayName("D-133 : en-tête de contexte d'action lu puis retiré avant le service")
+    void contexteRetire() {
+        portee.set(new Portee(true, "u-1", "99001", List.of("SBX_SIM_SIMULATION"), "COMPTE"));
+        MockServerWebExchange ex = echange(MockServerHttpRequest.post("/bff/portail/sbx-simulation/essais").header(cm.gimac.des.gateway.domain.sandbox.ContexteAction.ENTETE, "ADMINISTRATION"));
+        executer(ex, jwt("99001", "SBX_SIM_SIMULATION")).block();
+        assertThat(relaye.get().getRequest().getHeaders().containsHeader(cm.gimac.des.gateway.domain.sandbox.ContexteAction.ENTETE)).isFalse();
+    }
+
+    @Test
     @DisplayName("Mandat échu ou suspension : 404 RFC 9457 identique, rien n'est relayé")
     void introspectionRefusee() {
         portee.set(Portee.refusee());

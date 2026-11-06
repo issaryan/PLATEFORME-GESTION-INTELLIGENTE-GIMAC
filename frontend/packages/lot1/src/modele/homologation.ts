@@ -176,6 +176,17 @@ export type Graphe = { noeuds: OperationNodeData[]; aretes: { from: string; to: 
 export type ServiceCouvert = {
   serviceCode: string; serviceLibelle: string; etatPerimetre: string; certification: CoverageValue; miseEnService: CoverageValue
 }
+/** Service du périmètre du projet de certification (D-133). */
+export type ServicePerimetre = { code: string; libelle: string; etat: string; inclus: boolean }
+/** Périmètre du projet : version, gestionnaire, services, services proposables et droit de modification de l'utilisateur. */
+export type PerimetreProjet = {
+  liaisonId: string; version: number; gestionnaireId: string | null; gestionnaireNom: string | null
+  services: ServicePerimetre[]; proposables: string[]; modifiable: boolean
+}
+/** Modification tracée du périmètre : auteur, permission utilisée, avant, après, motif et horodatage. */
+export type ModificationPerimetre = {
+  version: number; auteurId: string; auteurNom: string | null; permissionUtilisee: string; avant: string[]; apres: string[]; motif: string; modifieLe: string
+}
 export type ExportPreuves = { id: string; etat: string; dateExport: string; empreinteManifeste: string }
 
 export type OperationInstance = Permitted & {

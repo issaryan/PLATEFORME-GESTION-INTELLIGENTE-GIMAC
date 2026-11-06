@@ -275,6 +275,7 @@ Tests : `AppareilsDomaineTest`, `SuiviEtServiceAppareilsTest`, `FermetureAutresS
 | 2026-11-05 | - | D-121 : route des-sbx-lecture, cinq lectures exactes des statistiques de SBX-LECTURE (GET, OpaAuthorize, CloisonnementSandbox), réécrites en /api/v1/console/statistiques ; ni le contrat L04 ni la gouvernance |
 | 2026-11-05 | D-121, complément | Route `des-sbx-trace` étendue à `services` et `statistiques/codes-retour`, toujours en GET sous OPA `SBX_SUP_CONSULTATION`, aucun chemin voisin ; `RoutesSandboxTest` 5/5 |
 | 2026-11-05 | D-134 | Jeton réduit : codes participants rendus par MS-IAM (`institution_id`, `institution_propre`, `code_participant`) ; plus aucun relais du jeton original vers la sandbox |
+| 2026-11-05 | D-133 | Contexte d'action d'un compte d'institution à double rôle : en-tête `X-Contexte-Sandbox` (ADMINISTRATION ou INTEGRATION, Intégration par défaut), jeton réduit aux droits du contexte avec le claim `contexte`, contexte inconnu refusé (`CONTEXTE_INVALIDE`), double rôle sans jeton réduit refusé, en-tête retiré avant le service. |
 <!-- GIMAC:FIN -->
 
 # gateway

@@ -12,6 +12,9 @@ export const PERM = {
   liaisonLire: 'HOM_LIAISON_READ',
   liaisonOuvrir: 'HOM_LIAISON_OPEN',
   projetDesigner: 'HOM_PROJECT_DESIGNATE',
+  /** Périmètre du projet de certification (D-133) : par son gestionnaire seul, ou sur tout projet. */
+  perimetreModifier: 'HOM_PERIMETRE_EDIT',
+  perimetreModifierTous: 'HOM_PERIMETRE_EDIT_TOUS',
   pilotageLire: 'HOM_DASHBOARD_READ',
   operationAttribuer: 'HOM_OPERATION_ASSIGN',
   preuveDeposer: 'HOM_EVIDENCE_SUBMIT',

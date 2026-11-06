@@ -5,6 +5,7 @@ import type { Liaison, OperationInstance } from '../../../modele/homologation'
 import {
   useCampagnesLiaison, useCouverturesLiaison, useDernierExportPreuves, useGrapheLiaison, useOperationsLiaison, useOptionsCollaborateurs, useScenariosInconnus,
 } from '../../../hooks/liaisons'
+import { GestionPerimetre } from './perimetre'
 import { grapheVersDagView, servicesVersCoverage, taux } from '../../../adaptateurs/liaison'
 import { useDescripteurDS } from '../../../ressources/descripteur'
 import { creerOperationDescriptor } from '../../../ressources/operation'
@@ -31,7 +32,7 @@ export function OngletPerimetre({ liaison }: { liaison: Liaison }) {
   const nonCalculables = [liaison.couvertureCertification, liaison.couvertureMiseEnService].filter((c) => !c.calculable)
   return (
     <div className="gm-col">
-      <InlineAlert level="info">{t('perimetre.lectureSeule')}</InlineAlert>
+      <GestionPerimetre liaison={liaison} />
       {nonCalculables.map((c, i) => (
         <InlineAlert key={i} level="warn">{t('couverture.nonCalculable', { motif: c.motifNonCalculable ?? '' })}</InlineAlert>
       ))}

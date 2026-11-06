@@ -142,7 +142,8 @@ public class PublicationEtatsLiaison {
                 avant == null ? null : avant.name(),
                 l.getEtat().name(),
                 e.getVersionEtat(),
-                e.getPublieLe()
+                e.getPublieLe(),
+                l.getReferenceOrigine()
             ),
             l.getInstitutionId().toString()
         );
