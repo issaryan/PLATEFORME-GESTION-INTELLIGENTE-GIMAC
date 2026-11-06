@@ -1,21 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import SupervisionPage, { modules } from './SupervisionPage'
+import { dateMesures } from '../composants/ServicesSupervision'
 import { rendre, simules } from '../test/rendu'
-import { ALERTES_DEMO, DISPONIBILITES_DEMO, SANTE_DEMO, SERVICES_DEMO } from '../services/supervisionSimulee'
+import { ALERTES_DEMO, DISPONIBILITES_DEMO, ELEMENTS_DEMO, SANTE_DEMO, SERVICES_DEMO } from '../services/supervisionSimulee'
 
 describe('SupervisionPage', () => {
   it('affiche la santé détaillée, les éléments, les alertes et les disponibilités', async () => {
     rendre(<SupervisionPage />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Supervision de la sandbox' })).toBeTruthy()
     expect((await screen.findAllByText('Dégradé')).length).toBeGreaterThan(0)
-    expect(screen.getByLabelText('Détail des états par module').textContent).toContain('carte')
-    expect(screen.getByText('Cause externe: Non')).toBeTruthy()
+    expect(screen.getByLabelText('Détail des états par module').textContent).toContain('Carte')
+    expect(screen.getByText(/^Cause externe\s:\snon$/)).toBeTruthy()
     expect(screen.getByText('Délai dépassé sur la liaison de test')).toBeTruthy()
     expect(screen.getByText('Levée')).toBeTruthy()
     expect(screen.getByText('Close')).toBeTruthy()
-    expect(screen.getByText('99.50 %')).toBeTruthy()
-    expect(screen.getAllByText('100.00 %').length).toBeGreaterThan(1)
+    expect(screen.getByText(/^99,50\s%$/)).toBeTruthy()
+    expect(screen.getAllByText(/^100,00\s%$/).length).toBeGreaterThan(1)
     expect(screen.getAllByText('Tous').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Oui').length).toBeGreaterThan(0)
   })
@@ -49,7 +50,7 @@ describe('SupervisionPage', () => {
     expect(screen.getByText('Aucune alerte')).toBeTruthy()
     expect(screen.getByText('Aucune disponibilité')).toBeTruthy()
     expect(screen.getByText('En maintenance')).toBeTruthy()
-    expect(screen.getByText('Cause externe: Oui')).toBeTruthy()
+    expect(screen.getByText(/^Cause externe\s:\soui$/)).toBeTruthy()
     expect(screen.getAllByText('Page 1 sur 1 · 0 éléments')).toHaveLength(3)
   })
 
@@ -70,7 +71,7 @@ describe('SupervisionPage', () => {
     boutons.forEach((b) => fireEvent.click(b))
     expect((await screen.findAllByText('Dégradé')).length).toBeGreaterThan(0)
     expect(await screen.findByText('Délai dépassé sur la liaison de test')).toBeTruthy()
-    expect(await screen.findByText('99.50 %')).toBeTruthy()
+    expect(await screen.findByText(/^99,50\s%$/)).toBeTruthy()
     expect(await screen.findByText('sbx-trace')).toBeTruthy()
   })
 
@@ -79,10 +80,13 @@ describe('SupervisionPage', () => {
     expect(await screen.findByRole('heading', { name: 'Services de la sandbox' })).toBeTruthy()
     expect(await screen.findByText('Page 1 sur 1 · 11 éléments')).toBeTruthy()
     for (const s of SERVICES_DEMO) expect(screen.getByText(s.service)).toBeTruthy()
-    expect(screen.getByText('98.75 %')).toBeTruthy()
-    expect(screen.getAllByText('100.00 %').length).toBeGreaterThan(9)
-    expect(screen.getByText(`${SERVICES_DEMO[0].latenceMoyenneMs} ms / 180 ms`)).toBeTruthy()
-    expect(screen.getByRole('img', { name: /Latence moyenne de sbx-carte/ })).toBeTruthy()
+    expect(screen.getByText(/^98,75\s%$/)).toBeTruthy()
+    expect(screen.getAllByText(/^100,00\s%$/).length).toBeGreaterThan(9)
+    expect(screen.getByText(`${SERVICES_DEMO[0].latenceMoyenneMs} / 180 ms`)).toBeTruthy()
+    expect(screen.getByText('Campagnes de test')).toBeTruthy()
+    expect(screen.getByText('Mesures du 22/10/2026 à 8 h 55 UTC')).toBeTruthy()
+    expect(screen.getAllByText('Portail').length).toBeGreaterThan(1)
+    expect(screen.getByRole('img', { name: /Latence moyenne de Carte/ })).toBeTruthy()
     expect(screen.getAllByText('Dégradé').length).toBeGreaterThan(1)
   })
 
@@ -92,7 +96,7 @@ describe('SupervisionPage', () => {
     rendre(<SupervisionPage />, { services: simules({ servicesSupervises: [vide, injoignable] }) })
     expect(await screen.findByText('Non mesuré')).toBeTruthy()
     expect(screen.getByText('Injoignable')).toBeTruthy()
-    expect(screen.getByText('— / —')).toBeTruthy()
+    expect(screen.getByText('— / — ms')).toBeTruthy()
     expect(screen.getAllByText('—').length).toBeGreaterThan(3)
     expect(modules('pas du json')).toEqual([])
     expect(modules('[1]')).toEqual([])
@@ -102,7 +106,21 @@ describe('SupervisionPage', () => {
 
   it('montre un module au niveau inconnu sans couleur', async () => {
     rendre(<SupervisionPage />, { services: simules({ sante: { ...SANTE_DEMO, etatsModules: JSON.stringify({ carte: 'INCONNU' }) } }) })
-    expect((await screen.findByLabelText('Détail des états par module')).textContent).toContain('carte')
+    expect((await screen.findByLabelText('Détail des états par module')).textContent).toContain('Carte')
+  })
+
+  it('marque un service sans activité et omet la tendance d’un point isolé', async () => {
+    const calme = { ...SERVICES_DEMO[2], service: 'sbx-inconnu', latenceMoyenneMs: null, latenceMaxMs: null, debitParMinute: 0, serie: [SERVICES_DEMO[2].serie[0]] }
+    rendre(<SupervisionPage />, { services: simules({ servicesSupervises: [calme], disponibilitesSandbox: [{ ...DISPONIBILITES_DEMO[0], module: null }], elementsSupervises: [{ ...ELEMENTS_DEMO[0], nature: 'AUTRE' }] }) })
+    expect(await screen.findByText('Aucune activité')).toBeTruthy()
+    expect(screen.getAllByText('sbx-inconnu').length).toBeGreaterThan(0)
+    expect(screen.queryByRole('img', { name: /Latence moyenne de/ })).toBeNull()
+    expect(await screen.findByText('AUTRE')).toBeTruthy()
+  })
+
+  it('date des mesures dans chaque langue', () => {
+    expect(dateMesures('2026-11-05T19:46:00Z', 'fr')).toEqual({ date: '05/11/2026', heure: '19 h 46 UTC' })
+    expect(dateMesures('2026-11-05T19:46:00Z', 'en').heure).toMatch(/07:46 PM UTC|19:46 UTC/)
   })
 
   it('signale l’absence de mesure', async () => {
