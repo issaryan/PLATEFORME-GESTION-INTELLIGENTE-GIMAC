@@ -68,7 +68,7 @@ class ProcessusOrganisationIT extends AbstractProcessusIT {
     }
 
     private String url(String instance, String acte) {
-        return INSTANCES + "/" + instance + "/etapes/UNIQUE/" + acte;
+        return urlEtape(instance, "UNIQUE", acte);
     }
 
     @Test
@@ -82,13 +82,13 @@ class ProcessusOrganisationIT extends AbstractProcessusIT {
             organisation.attribuerProfils(autre, PROFIL_RESEAU);
         }
         String id = lancer(publieEtapeUnique("ORGA_PROFIL"));
-        String tacheEtape = tache(id + "/UNIQUE").get("id").toString();
+        String tacheEtape = tache(id + "/" + etapeDe(id, "UNIQUE")).get("id").toString();
         mvc.perform(post("/api/v1/taches/" + tacheEtape + "/prise").with(agent(INGENIEUR_RESEAU))).andExpect(status().isOk());
 
         // Retrait du profil : plus exécutante, étape à prendre.
         organisation.attribuerProfils(INGENIEUR_RESEAU, "ROLE_COLLABORATEUR");
         assertThat(processus.traiterChangementCompte(INGENIEUR_RESEAU, "PROFIL_RETIRE", "admin-1")).isEqualTo(1);
-        assertThat(tache(id + "/UNIQUE")).containsEntry("etat", "A_PRENDRE").containsEntry("profil_requis", PROFIL_RESEAU).containsEntry("unite_cible", "POLE_RESEAU");
+        assertThat(tache(id + "/" + etapeDe(id, "UNIQUE"))).containsEntry("etat", "A_PRENDRE").containsEntry("profil_requis", PROFIL_RESEAU).containsEntry("unite_cible", "POLE_RESEAU");
         JsonNode i = instance(id, CHEF_RESEAU);
         assertThat(etape(i, "UNIQUE").get("executant").isNull()).isTrue();
         assertThat(i.get("historique").findValuesAsText("action")).contains("ORGANISATION");
@@ -104,7 +104,7 @@ class ProcessusOrganisationIT extends AbstractProcessusIT {
         mvc.perform(post("/api/v1/taches/" + tacheEtape + "/prise").with(agent(TECHNICIEN_RESEAU))).andExpect(status().isOk());
         organisation.enregistrer(new Compte(TECHNICIEN_RESEAU, "Yves Ateba", "Technicien", "SNA", CHEF_DES, true, true));
         assertThat(processus.traiterChangementCompte(TECHNICIEN_RESEAU, "CHANGEMENT_UNITE", null)).isEqualTo(1);
-        assertThat(tache(id + "/UNIQUE")).containsEntry("etat", "A_PRENDRE").containsEntry("responsable_id", null);
+        assertThat(tache(id + "/" + etapeDe(id, "UNIQUE"))).containsEntry("etat", "A_PRENDRE").containsEntry("responsable_id", null);
         assertThat(charge("pilotage.process-step-reassigned.v1", id).get("cause").asText()).isEqualTo("CHANGEMENT_UNITE");
     }
 
@@ -112,14 +112,14 @@ class ProcessusOrganisationIT extends AbstractProcessusIT {
     @DisplayName("Signature et validation : tâches aux signataires et au validateur, prise, nouveau chef d'unité, clôture")
     void tachesDAttenteEtNouveauChef() throws Exception {
         String id = lancer(publieEtapeUnique("ORGA_ATTENTE"));
-        String tacheEtape = tache(id + "/UNIQUE").get("id").toString();
+        String tacheEtape = tache(id + "/" + etapeDe(id, "UNIQUE")).get("id").toString();
         mvc.perform(post("/api/v1/taches/" + tacheEtape + "/prise").with(agent(INGENIEUR_RESEAU))).andExpect(status().isOk());
         String doc = deposer(id, INGENIEUR_RESEAU, "doc.pdf", "application/pdf");
         mvc.perform(json(post(url(id, "livrables")).with(agent(INGENIEUR_RESEAU)), Map.of("livrable", "DOC", "documentId", doc))).andExpect(status().isOk());
         mvc.perform(post(url(id, "fin")).with(agent(INGENIEUR_RESEAU))).andExpect(status().isOk()).andExpect(jsonPath("$.etapes[0].etat").value("A_SIGNER"));
 
         // Signature attendue d'un profil : tâche à prendre, visible des porteurs dans « Mes tâches ».
-        String refVisa = id + "/UNIQUE/SIGNATURE/VISA";
+        String refVisa = id + "/" + etapeDe(id, "UNIQUE") + "/SIGNATURE/VISA";
         Map<String, Object> visa = tache(refVisa);
         assertThat(visa).containsEntry("etat", "A_PRENDRE").containsEntry("profil_requis", PROFIL_RESEAU).containsEntry("unite_cible", "POLE_RESEAU");
         String tVisa = visa.get("id").toString();
@@ -143,7 +143,7 @@ class ProcessusOrganisationIT extends AbstractProcessusIT {
         assertThat(tache(refVisa)).containsEntry("etat", "TERMINEE").containsEntry("responsable_id", TECHNICIEN_RESEAU);
 
         // Validation par le chef d'unité : tâche à lui ; nouveau chef : la tâche et la validation le suivent.
-        String refValidation = id + "/UNIQUE/VALIDATION";
+        String refValidation = id + "/" + etapeDe(id, "UNIQUE") + "/VALIDATION";
         assertThat(tache(refValidation)).containsEntry("etat", "OUVERTE").containsEntry("responsable_id", CHEF_RESEAU);
         organisation.enregistrer(new Compte(CHEF_BIS, "Nadia Fouda", "Cheffe du pôle réseau", "POLE_RESEAU", CHEF_DES, true, true));
         organisation.attribuerProfils(CHEF_BIS, "ROLE_RESPONSABLE_SERVICE");
@@ -167,13 +167,13 @@ class ProcessusOrganisationIT extends AbstractProcessusIT {
     @DisplayName("Annulation de l'instance : tâches d'attente annulées")
     void annulationDesAttentes() throws Exception {
         String id = lancer(publieEtapeUnique("ORGA_ANNULEE"));
-        String tacheEtape = tache(id + "/UNIQUE").get("id").toString();
+        String tacheEtape = tache(id + "/" + etapeDe(id, "UNIQUE")).get("id").toString();
         mvc.perform(post("/api/v1/taches/" + tacheEtape + "/prise").with(agent(INGENIEUR_RESEAU))).andExpect(status().isOk());
         String doc = deposer(id, INGENIEUR_RESEAU, "doc.pdf", "application/pdf");
         mvc.perform(json(post(url(id, "livrables")).with(agent(INGENIEUR_RESEAU)), Map.of("livrable", "DOC", "documentId", doc))).andExpect(status().isOk());
         mvc.perform(post(url(id, "fin")).with(agent(INGENIEUR_RESEAU))).andExpect(status().isOk());
         mvc.perform(json(post(INSTANCES + "/" + id + "/annulation").with(chef(CHEF_RESEAU)), Map.of("motif", "Abandon"))).andExpect(status().isOk());
-        assertThat(tache(id + "/UNIQUE/SIGNATURE/VISA")).containsEntry("etat", "ANNULEE");
-        assertThat(tache(id + "/UNIQUE")).containsEntry("etat", "ANNULEE");
+        assertThat(tache(id + "/" + etapeDe(id, "UNIQUE") + "/SIGNATURE/VISA")).containsEntry("etat", "ANNULEE");
+        assertThat(tache(id + "/" + etapeDe(id, "UNIQUE"))).containsEntry("etat", "ANNULEE");
     }
 }

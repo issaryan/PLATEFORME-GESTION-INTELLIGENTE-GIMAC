@@ -70,8 +70,8 @@ class ProcessusPublicModifiableIT extends AbstractProcessusIT {
     void versionPubliee() throws Exception {
         String id = creer(chef(CHEF_RESEAU), avecPublic("FLUX_PUBLIC", Map.of("regles", List.of("PERSONNES"), "personnes", List.of(AGENT_BIS))));
         publier(chef(CHEF_RESEAU), id);
-        assertThat(lancables(agent(AGENT_BIS))).containsExactly("FLUX_PUBLIC");
-        assertThat(lancables(agent(AGENT))).doesNotContain("FLUX_PUBLIC");
+        assertThat(lancables(agent(AGENT_BIS))).containsExactly(code("FLUX_PUBLIC"));
+        assertThat(lancables(agent(AGENT))).doesNotContain(code("FLUX_PUBLIC"));
         JsonNode instance = lire(mvc.perform(json(post(BASE + "/" + id + "/instances").with(agent(AGENT_BIS)), lancement())).andExpect(status().isCreated()).andReturn());
 
         // Droits : modifierPublic pour qui définit, sur une version publiée ; rien d'autre ne change de sens.
@@ -101,11 +101,11 @@ class ProcessusPublicModifiableIT extends AbstractProcessusIT {
                     "Public de la version 1 modifié : Ouverture à l'ingénieur d'homologation ; avant : PERSONNES (Clarisse Bilong) ; après : PERSONNES (Serge Ndzana)"
                 )
             );
-        assertThat(jdbc.queryForObject("select count(*) from processus where code = 'FLUX_PUBLIC'", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from processus where code = ?", Integer.class, code("FLUX_PUBLIC"))).isEqualTo(1);
 
         // Effet immédiat : l'agent ajouté le voit et le lance ; la personne retirée ne le voit plus et ne le lance plus.
-        assertThat(lancables(agent(AGENT))).containsExactly("FLUX_PUBLIC");
-        assertThat(lancables(agent(AGENT_BIS))).doesNotContain("FLUX_PUBLIC");
+        assertThat(lancables(agent(AGENT))).containsExactly(code("FLUX_PUBLIC"));
+        assertThat(lancables(agent(AGENT_BIS))).doesNotContain(code("FLUX_PUBLIC"));
         mvc.perform(json(post(BASE + "/" + id + "/instances").with(agent(AGENT)), lancement())).andExpect(status().isCreated());
         mvc
             .perform(json(post(BASE + "/" + id + "/instances").with(agent(AGENT_BIS)), lancement()))
@@ -130,8 +130,8 @@ class ProcessusPublicModifiableIT extends AbstractProcessusIT {
             .andExpect(jsonPath("$.initiateurs.regles", Matchers.contains("MEMBRES_UNITE")))
             .andExpect(jsonPath("$.initiateurs.personnes.length()").value(0))
             .andExpect(jsonPath("$.historique[-1].detail", Matchers.containsString("(au titre de")));
-        assertThat(lancables(agent(TECHNICIEN_RESEAU))).contains("FLUX_PUBLIC");
-        assertThat(lancables(agent(AGENT))).doesNotContain("FLUX_PUBLIC");
+        assertThat(lancables(agent(TECHNICIEN_RESEAU))).contains(code("FLUX_PUBLIC"));
+        assertThat(lancables(agent(AGENT))).doesNotContain(code("FLUX_PUBLIC"));
         assertThat(jdbc.queryForObject("select count(*) from outbox_event where aggregate_id = ? and event_type <> 'pilotage.process-published.v1' and aggregate_type = 'process'", Integer.class, id)).isZero();
     }
 
@@ -219,6 +219,6 @@ class ProcessusPublicModifiableIT extends AbstractProcessusIT {
         mvc.perform(json(put(BASE + "/" + id + "/public").with(chef(CHEF_RESEAU)), corps(List.of(AGENT), "ab"))).andExpect(status().isBadRequest());
         mvc.perform(json(put(BASE + "/" + id + "/public").with(chef(CHEF_RESEAU)), corps(List.of(AGENT), "Réservé à l'ingénieur"))).andExpect(status().isOk());
         publier(chef(CHEF_RESEAU), id);
-        assertThat(lancables(agent(AGENT))).containsExactly("FLUX_BROUILLON");
+        assertThat(lancables(agent(AGENT))).containsExactly(code("FLUX_BROUILLON"));
     }
 }

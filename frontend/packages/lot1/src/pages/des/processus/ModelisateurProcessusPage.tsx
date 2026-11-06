@@ -41,6 +41,12 @@ export const saisieDe = (p: Processus, etapes = p.etapes): SaisieProcessus => ({
  * Recette HOM-15 : message d'anomalie du contrôle (MS-PILOTAGE) rendu lisible : profils (ROLE_*) et unités nommés par leur
  * libellé, jamais par leur code. Mise en forme seulement : le service décide de l'anomalie.
  */
+/** Clé provisoire libre d'une étape nouvelle (ETAPE_n) ; le service la remplace par le code généré (D-136). */
+export const cleLibre = (etapes: { code: string }[]): number => {
+  let n = etapes.length + 1
+  while (etapes.some((e) => e.code === `ETAPE_${n}`)) n++
+  return n
+}
 const echapper = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 function useMessageLisible() {
   const libelleProfil = useLibelleProfilEquipe()
@@ -316,7 +322,7 @@ function Espace({ processus: p }: { processus: Processus }) {
       )}
       {!p.etapes.length && vue === 'canevas' ? <p className="gm-field-help" style={{ margin: 0 }}>{t('proc.etape.aucune')}</p> : null}
       {modale && (modale.creation || etape) ? (
-        <ModaleEtape key={modale.creation ? 'creation' : modale.code} etape={modale.creation ? etapeVierge(p.etapes.length + 1) : etape!} creation={modale.creation} lecture={lecture}
+        <ModaleEtape key={modale.creation ? 'creation' : modale.code} etape={modale.creation ? etapeVierge(cleLibre(p.etapes)) : etape!} creation={modale.creation} lecture={lecture}
           etapes={p.etapes} uniteProcessus={p.unite} enCours={enregistrer.isPending} erreurServeur={enregistrer.error} ongletInitial={modale.creation ? undefined : modale.onglet}
           onFermer={() => { setModale(null); enregistrer.reset() }}
           onEnregistrer={(e) => {

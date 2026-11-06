@@ -69,8 +69,8 @@ class ProcessusChangementIT extends AbstractProcessusIT {
         return l;
     }
 
-    static String url(String id, String etape, String acte) {
-        return INSTANCES + "/" + id + "/etapes/" + etape + "/" + acte;
+    String url(String id, String etape, String acte) {
+        return urlEtape(id, etape, acte);
     }
 
     @Test

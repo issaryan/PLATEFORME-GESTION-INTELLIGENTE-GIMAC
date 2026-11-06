@@ -15,6 +15,8 @@ function monde() {
   return Object.assign((id: string) => servicesSimules({ latenceMs: 0, utilisateur: { id, nom: PERSONNES[id] ?? id }, pouvoirs: magasin }), { magasin })
 }
 const saisie = (etapes: EtapeProcessus[], o: Partial<SaisieProcessus> = {}): SaisieProcessus => ({ code: 'CHANGEMENT_PAREFEU', unite: 'POLE_RESEAU', libelle: 'Changement de règle pare-feu', description: '', categorie: 'Réseau', delaiCibleJours: 5, etapes, ...o })
+/** D-136 : codes générés des étapes d'un processus créé, par clé provisoire envoyée (même ordre). */
+const codesDe = (p: { etapes: { code: string }[] }, saisies: { code: string }[]): Record<string, string> => Object.fromEntries(saisies.map((e, n) => [e.code, p.etapes[n].code]))
 const fichier = (nom: string, type = 'application/pdf') => new File(['contenu'], nom, { type })
 
 describe('D-87 : modèle', () => {
@@ -58,12 +60,15 @@ describe('D-87 : définitions', () => {
 
   it('création, modification, contrôle (Kahn, intervenants, signatures, couverture), suppression', async () => {
     const chef = monde()('U-001').processus
-    expect(await code(chef.creer(saisie([], { code: 'x' })))).toBe('400 PIL_REQUETE_INVALIDE')
     expect(await code(chef.creer(saisie([], { unite: 'INCONNUE' })))).toBe('422 PIL_PROCESSUS_UNITE_INCONNUE')
     expect(await code(chef.creer(saisie([], { unite: 'DDRM' })))).toBe('403 PIL_PROCESSUS_INTERDIT')
-    expect(await code(chef.creer(saisie([], { code: 'OUVERTURE_FLUX_RESEAU' })))).toBe('409 PIL_PROCESSUS_CODE_PRIS')
-    const p = await chef.creer(saisie([]))
-    expect(p).toMatchObject({ version: 1, etat: 'BROUILLON', droits: { modifier: true, publier: true } })
+    // D-136 : code généré ({UNITE}-PRC-{N}), celui de la saisie ignoré ; deux créations, deux codes.
+    const p = await chef.creer(saisie([], { code: 'OUVERTURE_FLUX_RESEAU' }))
+    expect(p).toMatchObject({ version: 1, etat: 'BROUILLON', droits: { modifier: true, publier: true }, code: expect.stringMatching(/^POLE_RESEAU-PRC-\d+$/) })
+    const autre = await chef.creer(saisie([], { code: 'x' }))
+    expect(autre.code).toMatch(/^POLE_RESEAU-PRC-\d+$/)
+    expect(autre.code).not.toBe(p.code)
+    await chef.supprimer(autre.id)
     expect((await chef.controler(p.id)).anomalies.map((a) => a.code)).toEqual(['AUCUNE_ETAPE'])
     const a: EtapeProcessus = { ...etapeVierge(1), code: 'A', libelle: 'A', predecesseurs: ['C'], intervenant: { mode: 'PROFIL' } }
     const b: EtapeProcessus = {
@@ -73,9 +78,14 @@ describe('D-87 : définitions', () => {
       champs: [{ code: 'C', libelle: 'C', type: 'CHOIX', choix: [], obligatoire: true }, { code: 'C', libelle: 'C', type: 'TEXTE', choix: [], obligatoire: false }],
     }
     const c: EtapeProcessus = { ...etapeVierge(3), code: 'C', libelle: 'C', predecesseurs: ['B'], livrables: [{ code: 'L', libelle: 'L', typesPieces: [], obligatoire: true, modele: null }] }
-    await chef.modifier(p.id, saisie([a, b, c, { ...c }]))
+    // Clé provisoire en double : refus, le graphe serait ambigu.
+    expect(await code(chef.modifier(p.id, saisie([a, b, c, { ...c }])))).toBe('400 PIL_REQUETE_INVALIDE')
+    const modifie = await chef.modifier(p.id, saisie([a, b, c]))
+    // Clés réécrites en {CODE}-E{N}, prédécesseurs suivis ; un prédécesseur inconnu (Z) reste signalé par le contrôle.
+    expect(modifie.etapes.map((e) => e.code)).toEqual([`${p.code}-E1`, `${p.code}-E2`, `${p.code}-E3`])
+    expect(modifie.etapes.map((e) => e.predecesseurs)).toEqual([[`${p.code}-E3`], [`${p.code}-E1`, 'Z'], [`${p.code}-E2`]])
     const codes = (await chef.controler(p.id)).anomalies.map((x) => x.code)
-    expect(codes).toEqual(expect.arrayContaining(['CODE_DUPLIQUE', 'PREDECESSEUR_INCONNU', 'AUCUNE_ETAPE_INITIALE', 'INTERVENANT_INCOMPLET', 'REMPLACEMENT_ABSENT', 'VALIDATEUR_IDENTIQUE',
+    expect(codes).toEqual(expect.arrayContaining(['PREDECESSEUR_INCONNU', 'AUCUNE_ETAPE_INITIALE', 'INTERVENANT_INCOMPLET', 'REMPLACEMENT_ABSENT', 'VALIDATEUR_IDENTIQUE',
       'LIVRABLE_CODE_DUPLIQUE', 'SIGNATURE_CODE_DUPLIQUE', 'CHAMP_CODE_DUPLIQUE', 'CHAMP_CHOIX_ABSENT', 'SIGNATURE_SANS_LIVRABLE', 'SIGNATURE_PORTEE_INVALIDE', 'COUVERTURE_PROFIL', 'CHEF_ABSENT']))
     expect(await code(chef.publier(p.id, {}))).toBe('422 PIL_PROCESSUS_ANOMALIES')
     // Cycle : toutes les étapes ont un prédécesseur sauf une, dont les suivantes bouclent.
@@ -155,19 +165,20 @@ describe('D-87 : instances', () => {
     // D-99 : ce scénario du moteur fait agir le lanceur sur les étapes de sa demande ; la définition l'autorise.
     const chefP = qui('u-resp-info').processus
     const brouillon = await chefP.creer(saisie(definitionDemo(), { code: 'FLUX_MOTEUR', initiateurs: { regles: ['MEMBRES_UNITE'], unites: [], profils: [], permissions: [], initiateurIntervenant: true } }))
+    const k = codesDe(brouillon, definitionDemo())
     const flux = await chefP.publier(brouillon.id, { leverAvertissements: true, motif: 'Essai du moteur' })
     const lanceur = membre
-    let i = await lanceur.processus.lancer(flux.id, { intitule: 'Flux B', champs: {}, designations: { MISE_EN_OEUVRE: 'u-res-bis' } })
-    expect(await code(lanceur.processus.terminer(i.id, 'DEMANDE'))).toBe('422 PIL_PROCESSUS_CHAMPS_MANQUANTS')
-    expect(await code(lanceur.processus.saisirChamps(i.id, 'DEMANDE', { PORT: 'abc' }))).toBe('422 PIL_PROCESSUS_CHAMP_INVALIDE')
-    expect(await code(lanceur.processus.saisirChamps(i.id, 'DEMANDE', { PROTOCOLE: 'ICMP' }))).toBe('422 PIL_PROCESSUS_CHAMP_INVALIDE')
-    expect(await code(lanceur.processus.saisirChamps(i.id, 'DEMANDE', { DATE_SOUHAITEE: '12/10/2026' }))).toBe('422 PIL_PROCESSUS_CHAMP_INVALIDE')
-    i = await lanceur.processus.saisirChamps(i.id, 'DEMANDE', { SOURCE: '10.0.0.1', DESTINATION: '10.0.0.2', PORT: '22', PROTOCOLE: 'TCP', DATE_SOUHAITEE: null })
+    let i = await lanceur.processus.lancer(flux.id, { intitule: 'Flux B', champs: {}, designations: { [k.MISE_EN_OEUVRE]: 'u-res-bis' } })
+    expect(await code(lanceur.processus.terminer(i.id, k.DEMANDE))).toBe('422 PIL_PROCESSUS_CHAMPS_MANQUANTS')
+    expect(await code(lanceur.processus.saisirChamps(i.id, k.DEMANDE, { PORT: 'abc' }))).toBe('422 PIL_PROCESSUS_CHAMP_INVALIDE')
+    expect(await code(lanceur.processus.saisirChamps(i.id, k.DEMANDE, { PROTOCOLE: 'ICMP' }))).toBe('422 PIL_PROCESSUS_CHAMP_INVALIDE')
+    expect(await code(lanceur.processus.saisirChamps(i.id, k.DEMANDE, { DATE_SOUHAITEE: '12/10/2026' }))).toBe('422 PIL_PROCESSUS_CHAMP_INVALIDE')
+    i = await lanceur.processus.saisirChamps(i.id, k.DEMANDE, { SOURCE: '10.0.0.1', DESTINATION: '10.0.0.2', PORT: '22', PROTOCOLE: 'TCP', DATE_SOUHAITEE: null })
     expect(i.etapes[0].champs.find((c) => c.code === 'PORT')?.valeur).toBe(22)
-    expect(await code(qui('u-collab').processus.saisirChamps(i.id, 'DEMANDE', {}))).toBe('403 PIL_PROCESSUS_NON_INTERVENANT')
-    i = await lanceur.processus.terminer(i.id, 'DEMANDE')
+    expect(await code(qui('u-collab').processus.saisirChamps(i.id, k.DEMANDE, {}))).toBe('403 PIL_PROCESSUS_NON_INTERVENANT')
+    i = await lanceur.processus.terminer(i.id, k.DEMANDE)
     expect(i.etapes.map((e) => e.etat)).toEqual(['TERMINEE', 'ACTIVE', 'EN_ATTENTE', 'EN_ATTENTE'])
-    expect(await code(lanceur.processus.terminer(i.id, 'DEMANDE'))).toBe('409 PIL_PROCESSUS_ETAPE_ETAT')
+    expect(await code(lanceur.processus.terminer(i.id, k.DEMANDE))).toBe('409 PIL_PROCESSUS_ETAPE_ETAT')
     // ANALYSE : à prendre par les porteurs de ROLE_POLE_RESEAU ; la prise de la tâche désigne l'exécutant.
     const analyse = i.etapes[1]
     expect(analyse).toMatchObject({ executant: null, aPrendre: { profil: 'ROLE_POLE_RESEAU' }, moi: { prendre: true } })
@@ -182,34 +193,34 @@ describe('D-87 : instances', () => {
     expect(i.etapes[1]).toMatchObject({ executant: { id: 'u-res' }, moi: { executer: true } })
     expect(i.historique.at(-1)?.action).toBe('ETAPE_PRISE')
     expect(await code(membre.pilotage.transition(tache.id, 'TERMINEE'))).toBe('409 PIL_TRANSITION_INTERDITE')
-    expect(await code(membre.processus.terminer(i.id, 'ANALYSE'))).toBe('422 PIL_PROCESSUS_LIVRABLES_MANQUANTS')
+    expect(await code(membre.processus.terminer(i.id, k.ANALYSE))).toBe('422 PIL_PROCESSUS_LIVRABLES_MANQUANTS')
     const texte = await membre.processus.televerserLivrable(fichier('note.txt', 'text/plain'), i.id)
-    expect(await code(membre.processus.deposerLivrable(i.id, 'ANALYSE', 'NOTE_ANALYSE', texte.documentId))).toBe('422 PIL_PROCESSUS_TYPE_PIECE')
-    expect(await code(membre.processus.deposerLivrable(i.id, 'ANALYSE', 'NOTE_ANALYSE', 'DOC-INCONNU'))).toBe('422 PIL_PROCESSUS_DOCUMENT_INVALIDE')
-    expect(await code(membre.processus.deposerLivrable(i.id, 'ANALYSE', 'INCONNU', texte.documentId))).toBe('404 PIL_PROCESSUS_LIVRABLE_INCONNU')
+    expect(await code(membre.processus.deposerLivrable(i.id, k.ANALYSE, 'NOTE_ANALYSE', texte.documentId))).toBe('422 PIL_PROCESSUS_TYPE_PIECE')
+    expect(await code(membre.processus.deposerLivrable(i.id, k.ANALYSE, 'NOTE_ANALYSE', 'DOC-INCONNU'))).toBe('422 PIL_PROCESSUS_DOCUMENT_INVALIDE')
+    expect(await code(membre.processus.deposerLivrable(i.id, k.ANALYSE, 'INCONNU', texte.documentId))).toBe('404 PIL_PROCESSUS_LIVRABLE_INCONNU')
     const progression: string[] = []
     const pdf = await membre.processus.televerserLivrable(fichier('note.pdf'), i.id, { surProgression: (p) => progression.push(p.phase) })
     expect(progression).toEqual(expect.arrayContaining(['envoi', 'verification', 'pret']))
-    i = await membre.processus.deposerLivrable(i.id, 'ANALYSE', 'NOTE_ANALYSE', pdf.documentId)
+    i = await membre.processus.deposerLivrable(i.id, k.ANALYSE, 'NOTE_ANALYSE', pdf.documentId)
     expect(i.etapes[1].livrables[0].depot).toMatchObject({ nomFichier: 'note.pdf', sha256: pdf.sha256 })
-    i = await membre.processus.terminer(i.id, 'ANALYSE')
+    i = await membre.processus.terminer(i.id, k.ANALYSE)
     expect(i.etapes[1].etat).toBe('A_VALIDER')
     // Validation par le chef d'unité (responsable de l'unité parente) ; le renvoi exige un motif.
     const chef = qui('u-resp-info').processus
     expect((await chef.instance(i.id)).etapes[1].moi.valider).toBe(true)
-    expect(await code(membre.processus.valider(i.id, 'ANALYSE', 'VALIDER'))).toBe('403 PIL_PROCESSUS_NON_VALIDATEUR')
-    expect(await code(chef.valider(i.id, 'ANALYSE', 'RENVOYER'))).toBe('400 PIL_REQUETE_INVALIDE')
-    i = await chef.valider(i.id, 'ANALYSE', 'RENVOYER', 'Préciser la règle de retour')
+    expect(await code(membre.processus.valider(i.id, k.ANALYSE, 'VALIDER'))).toBe('403 PIL_PROCESSUS_NON_VALIDATEUR')
+    expect(await code(chef.valider(i.id, k.ANALYSE, 'RENVOYER'))).toBe('400 PIL_REQUETE_INVALIDE')
+    i = await chef.valider(i.id, k.ANALYSE, 'RENVOYER', 'Préciser la règle de retour')
     expect(i.etapes[1]).toMatchObject({ etat: 'ACTIVE', renvois: 1 })
-    await membre.processus.terminer(i.id, 'ANALYSE')
-    i = await chef.valider(i.id, 'ANALYSE', 'VALIDER')
+    await membre.processus.terminer(i.id, k.ANALYSE)
+    i = await chef.valider(i.id, k.ANALYSE, 'VALIDER')
     expect(i.etapes.map((e) => e.etat)).toEqual(['TERMINEE', 'TERMINEE', 'ACTIVE', 'EN_ATTENTE'])
     expect(i.etapes[2].executant?.id).toBe('u-res-bis')
     // Réaffectation par le chef, refusée au membre.
-    expect(await code(membre.processus.reaffecter(i.id, 'MISE_EN_OEUVRE', 'u-res', 'Absence'))).toBe('403 PIL_PROCESSUS_INTERDIT')
-    expect(await code(chef.reaffecter(i.id, 'MISE_EN_OEUVRE', 'inconnu', 'Absence'))).toBe('422 PIL_PROCESSUS_PERSONNE_INVALIDE')
-    expect(await code(chef.reaffecter(i.id, 'DEMANDE', 'u-res', 'Absence'))).toBe('409 PIL_PROCESSUS_ETAPE_ETAT')
-    i = await chef.reaffecter(i.id, 'MISE_EN_OEUVRE', 'u-res', 'Absence d’Armel')
+    expect(await code(membre.processus.reaffecter(i.id, k.MISE_EN_OEUVRE, 'u-res', 'Absence'))).toBe('403 PIL_PROCESSUS_INTERDIT')
+    expect(await code(chef.reaffecter(i.id, k.MISE_EN_OEUVRE, 'inconnu', 'Absence'))).toBe('422 PIL_PROCESSUS_PERSONNE_INVALIDE')
+    expect(await code(chef.reaffecter(i.id, k.DEMANDE, 'u-res', 'Absence'))).toBe('409 PIL_PROCESSUS_ETAPE_ETAT')
+    i = await chef.reaffecter(i.id, k.MISE_EN_OEUVRE, 'u-res', 'Absence d’Armel')
     expect(i.etapes[2].executant?.id).toBe('u-res')
     expect((await membre.pilotage.taches({ vue: 'moi' })).contenu.some((t) => t.id === i.etapes[2].tacheId)).toBe(true)
   })
@@ -220,6 +231,7 @@ describe('D-87 : instances', () => {
     const etape = (profil: string): EtapeProcessus => ({ ...etapeVierge(1), code: 'TRAITEMENT', libelle: 'Traitement', intervenant: { mode: 'PROFIL', profil } })
     // ROLE_SNA : porté par une seule personne, au service SNA, hors du pôle réseau.
     const p = await chef.processus.creer(saisie([etape('ROLE_SNA')], { code: 'AVIS_SNA' }))
+    const traitement = p.etapes[0].code
     const c = await chef.processus.controler(p.id)
     expect(c.publiable).toBe(true)
     expect(c.anomalies.map((a) => [a.code, a.gravite])).toEqual([['COUVERTURE_HORS_UNITE', 'AVERTISSEMENT']])
@@ -235,15 +247,15 @@ describe('D-87 : instances', () => {
     qui.magasin.definirProfils('U-101', ['ROLE_INGENIEUR_HOMOLOGATION', 'ROLE_SNA'])
     i = await chef.processus.lancer(p.id, { intitule: 'Avis 2', champs: {}, designations: {} })
     expect(i.etapes[0]).toMatchObject({ executant: null, aPrendre: { unite: null, profil: 'ROLE_SNA' }, moi: { reaffecter: true } })
-    expect((await chef.processus.candidatsEtape(i.id, 'TRAITEMENT')).ailleurs.map((x) => x.id)).toEqual(['U-101', 'u-sna'])
-    expect(await code(qui('u-res').processus.candidatsEtape(i.id, 'TRAITEMENT'))).toBe('403 PIL_PROCESSUS_INTERDIT')
+    expect((await chef.processus.candidatsEtape(i.id, traitement)).ailleurs.map((x) => x.id)).toEqual(['U-101', 'u-sna'])
+    expect(await code(qui('u-res').processus.candidatsEtape(i.id, traitement))).toBe('403 PIL_PROCESSUS_INTERDIT')
     const ingenieur = qui('U-101')
     expect((await ingenieur.processus.instance(i.id)).etapes[0].moi.prendre).toBe(true)
     // La tâche (à prendre sans unité) est dans l'état des tâches du lanceur : visible et prenable par un porteur.
     const tache = (await chef.pilotage.taches({ vue: 'creees' })).contenu.find((t) => t.id === i.etapes[0].tacheId)!
     expect(tache).toMatchObject({ etat: 'A_PRENDRE', uniteCible: null, profilRequis: 'ROLE_SNA' })
-    expect(await code(chef.processus.reaffecter(i.id, 'TRAITEMENT', 'u-conf', 'Essai'))).toBe('422 PIL_PROCESSUS_PERSONNE_INVALIDE')
-    i = await chef.processus.reaffecter(i.id, 'TRAITEMENT', 'u-sna', 'Dossier connu')
+    expect(await code(chef.processus.reaffecter(i.id, traitement, 'u-conf', 'Essai'))).toBe('422 PIL_PROCESSUS_PERSONNE_INVALIDE')
+    i = await chef.processus.reaffecter(i.id, traitement, 'u-sna', 'Dossier connu')
     expect(i.etapes[0].executant?.id).toBe('u-sna')
     // Personne ne porte le profil : contrôle levable ; au lancement, l'étape va au chef de l'unité pour désigner.
     const vide = await chef.processus.creer(saisie([etape('ROLE_ADMIN_SYSTEME')], { code: 'AVIS_VIDE' }))
@@ -301,20 +313,21 @@ describe('D-87 : instances', () => {
       ],
     }]
     const p = await chef.creer(saisie(etapes, { code: 'DOUBLE_SIGNATURE', unite: 'DES' }))
+    const unique = p.etapes[0].code
     await chef.publier(p.id, {})
     const lanceur = qui('u-resp-info').processus
     let i = await lanceur.lancer(p.id, { intitule: 'Essai', champs: {}, designations: {} })
     const doc = await lanceur.televerserLivrable(fichier('a.pdf'), i.id)
-    await lanceur.deposerLivrable(i.id, 'UNIQUE', 'L', doc.documentId)
-    i = await lanceur.terminer(i.id, 'UNIQUE')
+    await lanceur.deposerLivrable(i.id, unique, 'L', doc.documentId)
+    i = await lanceur.terminer(i.id, unique)
     expect(i.etapes[0]).toMatchObject({ etat: 'A_SIGNER', moi: { signer: [] } })
-    expect(await code(lanceur.signer(i.id, 'UNIQUE', 'S2', 'a'))).toBe('409 PIL_PROCESSUS_SIGNATURE_ORDRE')
+    expect(await code(lanceur.signer(i.id, unique, 'S2', 'a'))).toBe('409 PIL_PROCESSUS_SIGNATURE_ORDRE')
     expect(await code(lanceur.signer(i.id, 'INCONNUE', 'S2', 'a'))).toBe('404 PIL_PROCESSUS_ETAPE_INCONNUE')
-    i = await chef.signer(i.id, 'UNIQUE', 'S1', 'a')
-    expect(await code(chef.signer(i.id, 'UNIQUE', 'S1', 'a'))).toBe('409 PIL_PROCESSUS_DEJA_SIGNEE')
-    i = await lanceur.signer(i.id, 'UNIQUE', 'S2', 'a')
+    i = await chef.signer(i.id, unique, 'S1', 'a')
+    expect(await code(chef.signer(i.id, unique, 'S1', 'a'))).toBe('409 PIL_PROCESSUS_DEJA_SIGNEE')
+    i = await lanceur.signer(i.id, unique, 'S2', 'a')
     expect(i.etapes[0].etat).toBe('A_VALIDER')
-    i = await chef.valider(i.id, 'UNIQUE', 'VALIDER')
+    i = await chef.valider(i.id, unique, 'VALIDER')
     expect(i.etat).toBe('CLOSE')
   })
 })

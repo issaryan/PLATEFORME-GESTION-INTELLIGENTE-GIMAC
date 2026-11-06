@@ -48,7 +48,12 @@ class ProcessusDefinitionIT extends AbstractProcessusIT {
         organisation.definirPouvoirs(CHEF_RESEAU, OrganisationStubAdapter.MATRICE_RESPONSABLE);
 
         String id = creer(chef(CHEF_RESEAU), d);
-        mvc.perform(json(post(BASE).with(chef(CHEF_RESEAU)), d)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PIL_PROCESSUS_CODE_PRIS"));
+        // Code généré par le système ({UNITE}-PRC-{N}), le code envoyé est ignoré : une seconde création du même corps
+        // donne une autre famille, jamais un conflit.
+        assertThat(code("FLUX_DROITS")).matches("POLE_RESEAU-PRC-\\d+");
+        JsonNode seconde = lire(mvc.perform(json(post(BASE).with(chef(CHEF_RESEAU)), d)).andExpect(status().isCreated()).andReturn());
+        assertThat(seconde.get("code").asText()).matches("POLE_RESEAU-PRC-\\d+").isNotEqualTo(code("FLUX_DROITS"));
+        mvc.perform(delete(BASE + "/" + seconde.get("id").asText()).with(chef(CHEF_RESEAU))).andExpect(status().isNoContent());
         // Le chef du DES couvre le pôle réseau (sous-unité) ; l'administration aussi.
         mvc.perform(get(BASE + "/" + id).with(chef(CHEF_DES))).andExpect(status().isOk()).andExpect(jsonPath("$.droits.modifier").value(true));
         mvc.perform(get(BASE + "/" + id).with(administration(AGENT))).andExpect(status().isOk());
@@ -69,7 +74,7 @@ class ProcessusDefinitionIT extends AbstractProcessusIT {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.droits.lancer").value(true))
             .andExpect(jsonPath("$.droits.modifier").value(false));
-        mvc.perform(get(BASE).with(agent(TECHNICIEN_RESEAU))).andExpect(jsonPath("$[0].code").value("FLUX_DROITS")).andExpect(jsonPath("$[0].nombreEtapes").value(4));
+        mvc.perform(get(BASE).with(agent(TECHNICIEN_RESEAU))).andExpect(jsonPath("$[0].code").value(code("FLUX_DROITS"))).andExpect(jsonPath("$[0].nombreEtapes").value(4));
         mvc.perform(get(BASE + "/" + id).with(agent(AGENT))).andExpect(status().isForbidden());
         mvc.perform(get(BASE).with(agent(AGENT))).andExpect(jsonPath("$.length()").value(0));
         mvc.perform(get(BASE).param("q", "flux").param("etat", "PUBLIEE").with(administration(AGENT))).andExpect(jsonPath("$.length()").value(1));
@@ -146,8 +151,14 @@ class ProcessusDefinitionIT extends AbstractProcessusIT {
         ObjectNode g = definition("FLUX_FORMAT");
         ((ObjectNode) g.get("etapes").get(1).get("intervenant")).put("mode", "INCONNU");
         mvc.perform(json(post(BASE).with(chef(CHEF_RESEAU)), g)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.details.champ").value("etapes[1].intervenant.mode"));
+        // Code mal formé ou absent : sans effet, le système génère le code.
         ObjectNode h = definition("flux");
-        mvc.perform(json(post(BASE).with(chef(CHEF_RESEAU)), h)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.details.champ").value("code"));
+        for (int essai = 0; essai < 2; essai++) {
+            JsonNode genere = lire(mvc.perform(json(post(BASE).with(chef(CHEF_RESEAU)), h)).andExpect(status().isCreated()).andReturn());
+            assertThat(genere.get("code").asText()).matches("POLE_RESEAU-PRC-\\d+");
+            mvc.perform(delete(BASE + "/" + genere.get("id").asText()).with(chef(CHEF_RESEAU))).andExpect(status().isNoContent());
+            h.remove("code");
+        }
         ObjectNode u = definition("FLUX_UNITE");
         u.put("unite", "UNITE_FANTOME");
         mvc.perform(json(post(BASE).with(administration(AGENT)), u)).andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value("PIL_PROCESSUS_UNITE_INCONNUE"));
@@ -191,7 +202,7 @@ class ProcessusDefinitionIT extends AbstractProcessusIT {
         assertThat(v3.get("version").asInt()).isEqualTo(3);
         mvc.perform(delete(BASE + "/" + v3.get("id").asText()).with(agent(TECHNICIEN_RESEAU))).andExpect(status().isForbidden());
         mvc.perform(delete(BASE + "/" + v3.get("id").asText()).with(chef(CHEF_RESEAU))).andExpect(status().isNoContent());
-        assertThat(compter("select count(*) from processus where code = 'FLUX_VERSIONS'")).isEqualTo(2);
+        assertThat(compter("select count(*) from processus where code = ?", code("FLUX_VERSIONS"))).isEqualTo(2);
         // Brouillon lancé : refusé.
         String brouillon = creer(chef(CHEF_RESEAU), definition("FLUX_BROUILLON"));
         mvc

@@ -35,7 +35,6 @@ import java.util.regex.Pattern;
  */
 final class SaisieProcessus {
 
-    static final Pattern CODE_PROCESSUS = Pattern.compile("^[A-Z][A-Z0-9_-]{1,39}$");
     static final Pattern CODE = Pattern.compile("^[A-Z0-9][A-Z0-9_-]{0,39}$");
     static final Pattern UNITE = Pattern.compile("^[A-Z][A-Z0-9_]{1,31}$");
     static final Pattern PROFIL = Pattern.compile("^ROLE_[A-Z][A-Z0-9_]{1,60}$");
@@ -51,10 +50,6 @@ final class SaisieProcessus {
     static final int CATEGORIE_MAX = 80;
 
     private SaisieProcessus() {}
-
-    static String codeProcessus(String code) {
-        return format("code", code, CODE_PROCESSUS, "Code ^[A-Z][A-Z0-9_-]{1,39}$ attendu");
-    }
 
     static String unite(String champ, String unite) {
         return format(champ, unite, UNITE, "Code d'unité attendu (par exemple POLE_RESEAU)");

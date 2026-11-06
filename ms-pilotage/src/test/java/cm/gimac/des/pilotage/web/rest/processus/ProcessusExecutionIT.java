@@ -45,7 +45,7 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
     }
 
     private String url(String instance, String etape, String acte) {
-        return INSTANCES + "/" + instance + "/etapes/" + etape + "/" + acte;
+        return urlEtape(instance, etape, acte);
     }
 
     private JsonNode instance(String id, String qui) throws Exception {
@@ -71,7 +71,7 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
             .perform(json(post(BASE + "/" + processus + "/instances").with(agent(TECHNICIEN_RESEAU)), lancement(null)))
             .andExpect(status().isUnprocessableEntity())
             .andExpect(jsonPath("$.code").value("PIL_PROCESSUS_DESIGNATION_MANQUANTE"))
-            .andExpect(jsonPath("$.details.cles[0]").value("MISE_EN_OEUVRE"));
+            .andExpect(jsonPath("$.details.cles[0]").value(etapeDe(processus, "MISE_EN_OEUVRE")));
         mvc
             .perform(json(post(BASE + "/" + processus + "/instances").with(agent(TECHNICIEN_RESEAU)), lancement(AGENT)))
             .andExpect(status().isUnprocessableEntity())
@@ -79,13 +79,13 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
         mvc.perform(json(post(BASE + "/" + processus + "/instances").with(agent(AGENT)), lancement(INGENIEUR_RESEAU))).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("PIL_PROCESSUS_NON_INITIATEUR"));
         Map<String, Object> inconnue = lancement(INGENIEUR_RESEAU);
         inconnue.put("designations", Map.of("MISE_EN_OEUVRE", INGENIEUR_RESEAU, "ANALYSE", INGENIEUR_RESEAU));
-        mvc.perform(json(post(BASE + "/" + processus + "/instances").with(agent(TECHNICIEN_RESEAU)), inconnue)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.details.champ").value("designations.ANALYSE"));
+        mvc.perform(json(post(BASE + "/" + processus + "/instances").with(agent(TECHNICIEN_RESEAU)), inconnue)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.details.champ").value("designations." + etapeDe(processus, "ANALYSE")));
 
         JsonNode i = lancer(processus, TECHNICIEN_RESEAU, INGENIEUR_RESEAU);
         String id = i.get("id").asText();
         assertThat(i.get("etat").asText()).isEqualTo("EN_COURS");
-        assertThat(i.at("/processus/code").asText()).isEqualTo("OUVERTURE_FLUX");
-        assertThat(i.at("/designations/MISE_EN_OEUVRE/id").asText()).isEqualTo(INGENIEUR_RESEAU);
+        assertThat(i.at("/processus/code").asText()).isEqualTo(code("OUVERTURE_FLUX"));
+        assertThat(i.at("/designations/" + etapeDe(processus, "MISE_EN_OEUVRE") + "/id").asText()).isEqualTo(INGENIEUR_RESEAU);
         JsonNode demande = etape(i, "DEMANDE");
         assertThat(demande.get("etat").asText()).isEqualTo("ACTIVE");
         assertThat(demande.at("/executant/id").asText()).isEqualTo(TECHNICIEN_RESEAU);
@@ -99,8 +99,8 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
         mvc
             .perform(get("/api/v1/taches/" + tDemande).with(agent(TECHNICIEN_RESEAU)))
             .andExpect(jsonPath("$.origine.type").value("PROCESSUS"))
-            .andExpect(jsonPath("$.origine.reference").value(id + "/DEMANDE"))
-            .andExpect(jsonPath("$.origine.lien").value("/des/processus/instances/" + id + "?etape=DEMANDE"));
+            .andExpect(jsonPath("$.origine.reference").value(id + "/" + etapeDe(id, "DEMANDE")))
+            .andExpect(jsonPath("$.origine.lien").value("/des/processus/instances/" + id + "?etape=" + etapeDe(id, "DEMANDE")));
         mvc.perform(json(post("/api/v1/taches/" + tDemande + "/transition").with(agent(TECHNICIEN_RESEAU)), Map.of("etat", "EN_COURS"))).andExpect(status().isOk());
         mvc
             .perform(json(post("/api/v1/taches/" + tDemande + "/transition").with(agent(TECHNICIEN_RESEAU)), Map.of("etat", "TERMINEE")))
@@ -189,10 +189,10 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
         i = lire(mvc.perform(post(url(id, "ANALYSE", "fin")).with(agent(INGENIEUR_RESEAU))).andExpect(status().isOk()).andReturn());
         assertThat(etape(i, "ANALYSE").get("etat").asText()).isEqualTo("A_VALIDER");
         // Tâche au validateur (D-93), dans « Mes tâches » du chef d'unité.
-        assertThat(attente(id + "/ANALYSE/VALIDATION")).containsEntry("etat", "OUVERTE").containsEntry("responsable_id", CHEF_RESEAU);
+        assertThat(attente(id + "/" + etapeDe(id, "ANALYSE") + "/VALIDATION")).containsEntry("etat", "OUVERTE").containsEntry("responsable_id", CHEF_RESEAU);
         mvc
             .perform(get("/api/v1/taches").param("vue", "moi").with(chef(CHEF_RESEAU)))
-            .andExpect(jsonPath("$.contenu[*].origine.reference", Matchers.hasItem(id + "/ANALYSE/VALIDATION")));
+            .andExpect(jsonPath("$.contenu[*].origine.reference", Matchers.hasItem(id + "/" + etapeDe(id, "ANALYSE") + "/VALIDATION")));
         assertThat(charge("pilotage.process-step-submitted.v1", id).get("attente").asText()).isEqualTo("VALIDATION");
         assertThat(textes(charge("pilotage.process-step-submitted.v1", id).get("destinataires"))).containsExactly(CHEF_RESEAU);
 
@@ -210,7 +210,7 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
         );
         assertThat(etape(i, "ANALYSE").get("etat").asText()).isEqualTo("ACTIVE");
         assertThat(etape(i, "ANALYSE").get("renvois").asInt()).isEqualTo(1);
-        assertThat(attente(id + "/ANALYSE/VALIDATION")).containsEntry("etat", "TERMINEE");
+        assertThat(attente(id + "/" + etapeDe(id, "ANALYSE") + "/VALIDATION")).containsEntry("etat", "TERMINEE");
         JsonNode renvoi = charge("pilotage.process-step-activated.v1", id);
         assertThat(renvoi.get("renvoi").asBoolean()).isTrue();
         assertThat(textes(renvoi.get("destinataires"))).containsExactly(INGENIEUR_RESEAU);
@@ -239,7 +239,7 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
         assertThat(etape(i, "MISE_EN_OEUVRE").at("/executant/id").asText()).isEqualTo(TECHNICIEN_RESEAU);
         JsonNode reaffectee = charge("pilotage.process-step-reassigned.v1", id);
         assertThat(reaffectee.get("cause").asText()).isEqualTo("REAFFECTATION");
-        assertThat(reaffectee.get("etape").asText()).isEqualTo("MISE_EN_OEUVRE");
+        assertThat(reaffectee.get("etape").asText()).isEqualTo(etapeDe(id, "MISE_EN_OEUVRE"));
         assertThat(reaffectee.get("libelleEtape").asText()).isEqualTo("Mise en œuvre");
         assertThat(reaffectee.get("ancienId").asText()).isEqualTo(INGENIEUR_RESEAU);
         assertThat(textes(reaffectee.get("destinataires"))).containsExactly(TECHNICIEN_RESEAU);
@@ -277,7 +277,7 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
         JsonNode recette = etape(i, "RECETTE");
         assertThat(recette.get("etat").asText()).isEqualTo("A_SIGNER");
         assertThat(recette.at("/signatures/0/attendu/personne/id").asText()).isEqualTo(CHEF_RESEAU);
-        assertThat(attente(id + "/RECETTE/SIGNATURE/VISA_CHEF")).containsEntry("etat", "OUVERTE").containsEntry("responsable_id", CHEF_RESEAU);
+        assertThat(attente(id + "/" + etapeDe(id, "RECETTE") + "/SIGNATURE/VISA_CHEF")).containsEntry("etat", "OUVERTE").containsEntry("responsable_id", CHEF_RESEAU);
         JsonNode attente = charge("pilotage.process-step-submitted.v1", id);
         assertThat(attente.get("attente").asText()).isEqualTo("SIGNATURE");
         assertThat(textes(attente.get("destinataires"))).containsExactly(CHEF_RESEAU);
@@ -325,7 +325,7 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
         assertThat(signee.get("empreinte").asText()).isEqualTo(attendue);
         assertThat(signee.get("documents").findValuesAsText("livrable")).containsExactly("PV_RECETTE", "NOTE_ANALYSE");
         assertThat(signee.get("etatEtape").asText()).isEqualTo("TERMINEE");
-        assertThat(signee.get("etape").asText()).isEqualTo("RECETTE");
+        assertThat(signee.get("etape").asText()).isEqualTo(etapeDe(id, "RECETTE"));
         assertThat(signee.get("libelleEtape").asText()).isEqualTo("Recette");
         JsonNode close = charge("pilotage.process-instance-closed.v1", id);
         assertThat(close.get("etat").asText()).isEqualTo("CLOSE");
@@ -335,8 +335,8 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
         assertThat(compter("select count(*) from outbox_event where aggregate_type = 'process' and aggregate_id = ?", processus)).isEqualTo(1);
         assertThat(compter("select count(*) from tache where origine_type = 'PROCESSUS' and etat = 'TERMINEE' and origine_reference not like '%/VALIDATION' and origine_reference not like '%/SIGNATURE/%'")).isEqualTo(4);
         // Tâches d'attente (D-93) : une par validation (rouverte après le renvoi) et par signature, terminées au nom de l'acteur.
-        assertThat(attente(id + "/ANALYSE/VALIDATION")).containsEntry("etat", "TERMINEE").containsEntry("responsable_id", CHEF_RESEAU);
-        assertThat(attente(id + "/RECETTE/SIGNATURE/VISA_CHEF")).containsEntry("etat", "TERMINEE").containsEntry("responsable_id", CHEF_RESEAU);
+        assertThat(attente(id + "/" + etapeDe(id, "ANALYSE") + "/VALIDATION")).containsEntry("etat", "TERMINEE").containsEntry("responsable_id", CHEF_RESEAU);
+        assertThat(attente(id + "/" + etapeDe(id, "RECETTE") + "/SIGNATURE/VISA_CHEF")).containsEntry("etat", "TERMINEE").containsEntry("responsable_id", CHEF_RESEAU);
 
         // Vues : miennes (intervenant), lancées, unité ; hors unité : refus.
         mvc.perform(get(INSTANCES).param("vue", "miennes").with(agent(INGENIEUR_RESEAU))).andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.contenu[0].id").value(id));
@@ -395,7 +395,7 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
         String id = i.get("id").asText();
         JsonNode depart = charge("pilotage.process-step-reassigned.v1", id);
         assertThat(depart.get("cause").asText()).isEqualTo("DEPART");
-        assertThat(depart.get("etape").asText()).isEqualTo("UNIQUE");
+        assertThat(depart.get("etape").asText()).isEqualTo(etapeDe(id, "UNIQUE"));
         assertThat(depart.get("libelleEtape").asText()).isEqualTo("Étape nommée");
         assertThat(depart.get("ancienId").asText()).isEqualTo(INGENIEUR_RESEAU);
         assertThat(depart.get("executantId").asText()).isEqualTo(TECHNICIEN_RESEAU);

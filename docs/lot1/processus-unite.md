@@ -482,3 +482,16 @@ scénario Playwright complet en clair et sombre avec huit captures. Le 30/10/202
 vrais services la création, trois transitions, les captures et un PDF Gotenberg de deux pages (`docs/recette/demonstration/13-changement/`). Une
 assertion FIDO2 réelle, les étapes 4 et 5 et une recette de production ne sont pas prouvés ; aucun appel aux serveurs
 GIMAC n'a été fait.
+
+## 9. Codes générés par le système (D-136, 05/11/2026)
+
+Le code d'un processus n'est jamais saisi : `POST /api/v1/processus` l'attribue, `{UNITE}-PRC-{N}` (par exemple
+`SSI-PRC-12`), `N` venant de la séquence PostgreSQL `processus_code_seq` ; un `code` envoyé est ignoré. Dans un modèle
+saisi, la clé d'une étape nouvelle est provisoire : le service la remplace par `{CODE_PROCESSUS}-E{N}` et réécrit les
+prédécesseurs, si bien que le graphe ne change pas ; une clé en double est refusée (400 `PIL_REQUETE_INVALIDE`,
+`etapes[i].code`). Un code déjà connu de la famille (brouillon courant, versions antérieures) est gardé : modifier un
+brouillon ou en tirer une nouvelle version conserve les codes. Les modèles provisionnés par le système gardent leurs
+codes fixes (`DEMANDE_CHANGEMENT` : `IDENTIFICATION` à `SSI`). Le DES ne demande plus de code : le dialogue « Nouveau
+processus » et la modale d'une nouvelle étape l'annoncent attribué par le système, le code d'une étape existante
+s'affiche en lecture seule.
+

@@ -28,4 +28,8 @@ public interface ProcessusRepository extends JpaRepository<Processus, UUID> {
 
     @Query("select coalesce(max(p.version), 0) from Processus p where p.code = :code")
     int derniereVersion(@Param("code") String code);
+
+    /** Numéro d'ordre du prochain code de processus généré (séquence, sans collision en concurrence). */
+    @Query(value = "select nextval('processus_code_seq')", nativeQuery = true)
+    long prochainNumeroCode();
 }

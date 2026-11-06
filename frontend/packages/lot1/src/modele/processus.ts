@@ -169,9 +169,12 @@ export type Processus = {
   historique: HistoriqueProcessus[]
 }
 
-/** POST /processus et PUT /processus/{id} (code et unité immuables ensuite). */
+/**
+ * POST /processus et PUT /processus/{id} (unité immuable ensuite). Le code est généré par le système à la création
+ * ({UNITE}-PRC-{N}) : un code envoyé est ignoré.
+ */
 export type SaisieProcessus = {
-  code: string
+  code?: string
   unite: string
   libelle: string
   description: string
