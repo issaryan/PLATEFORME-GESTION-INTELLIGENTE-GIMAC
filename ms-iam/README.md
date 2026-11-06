@@ -222,6 +222,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | 2026-10-29 | US-INS-07 | `MatriceSandboxSagaService` et `PUT /api/v1/interne/sandbox/matrice` : publication globale idempotente par `ConfigurationAuthentificationService` et `ReglesSandbox`, permissions hors SBX et profils non concernés conservés, validation des verdicts réservée au GIMAC, audit de chaque recomposition et aucun second effet au rejeu ; route réservée à `INTERNAL_IAM_SBX_SAGA`, sans exposition dans l'administration publique |
 | 2026-11-05 | D-134 | `TraductionInstitution` : institution_id traduit en code participant pour l'introspection, les périmètres, les mandats, les sagas et l'administration déléguée ; cache de la seule correspondance ; refus `INSTITUTION_NON_TRADUITE` et `REGISTRE_INDISPONIBLE` |
 | 2026-11-06 | D-134 | `RegistreInstitutionsParticipant` : constructeur d’injection marqué `@Autowired` ; avec deux constructeurs, MS-IAM ne démarrait pas en profil prod sur le serveur 214. |
+| 2026-11-06 | D-134 | `ConstructeursInjectionTest` : tout composant à plusieurs constructeurs, adaptateurs « real » de prod compris (conditions non évaluées), en désigne un seul par `@Autowired` ; échoue sans le correctif de `RegistreInstitutionsParticipant` |
 
 # iam
 
