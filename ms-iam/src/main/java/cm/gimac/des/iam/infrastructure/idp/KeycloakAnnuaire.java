@@ -366,8 +366,23 @@ public class KeycloakAnnuaire implements Annuaire {
             u.update(rep);
             if (!actif) {
                 u.logout();
+            } else {
+                garantirRoleParDefaut(u);
             }
         });
+    }
+
+    /**
+     * Rôle composite par défaut du royaume (default-roles-&lt;royaume&gt;), qui porte l'audience des jetons : Keycloak le
+     * donne à tout compte créé par son API, pas à un compte écrit directement dans sa base (injection du 02/11/2026,
+     * comptes refusés ensuite par l'AudienceValidator de MS-IAM). Une activation le rétablit s'il manque ; sans effet
+     * sinon.
+     */
+    private void garantirRoleParDefaut(UserResource u) {
+        String nom = "default-roles-" + realm;
+        if (u.roles().realmLevel().listAll().stream().noneMatch(x -> nom.equals(x.getName()))) {
+            u.roles().realmLevel().add(List.of(r().roles().get(nom).toRepresentation()));
+        }
     }
 
     @Override

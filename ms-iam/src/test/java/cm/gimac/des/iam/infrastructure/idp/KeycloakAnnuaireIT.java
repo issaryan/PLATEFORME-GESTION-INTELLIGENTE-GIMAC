@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Timeout;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
+import org.keycloak.representations.idm.RoleRepresentation;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.MountableFile;
@@ -192,6 +193,24 @@ class KeycloakAnnuaireIT {
         assertThatThrownBy(() -> annuaire.creer(nouveau(identifiant, "ROLE_CHARGE_DDRM"), List.of())).isInstanceOfSatisfying(IamException.class, e ->
             assertThat(e.code()).isEqualTo("IAM_ACCOUNT_CONFLICT")
         );
+    }
+
+    @Test
+    @DisplayName("Rôle par défaut du royaume : donné à la création, rétabli à l'activation s'il manque, sans doublon")
+    void roleParDefautDuRoyaume() {
+        String id = annuaire.creer(nouveau(unique("defaut"), "ROLE_SBX_LECTEUR"), List.of());
+        var roles = client.realm("gimac").users().get(id).roles().realmLevel();
+        assertThat(roles.listAll()).extracting(RoleRepresentation::getName).contains("default-roles-gimac");
+        // Compte injecté sans le rôle (02/11/2026) : l'activation de la reprise le rétablit.
+        roles.remove(List.of(client.realm("gimac").roles().get("default-roles-gimac").toRepresentation()));
+        annuaire.definirActif(id, false);
+        assertThat(roles.listAll()).extracting(RoleRepresentation::getName).doesNotContain("default-roles-gimac");
+        annuaire.definirActif(id, true);
+        assertThat(roles.listAll()).extracting(RoleRepresentation::getName).containsOnlyOnce("default-roles-gimac").contains("ROLE_SBX_LECTEUR");
+        annuaire.definirActif(id, true);
+        assertThat(roles.listAll()).extracting(RoleRepresentation::getName).containsOnlyOnce("default-roles-gimac");
+        annuaire.definirProfils(id, Set.of("ROLE_SBX_DEVELOPPEUR"));
+        assertThat(roles.listAll()).extracting(RoleRepresentation::getName).contains("default-roles-gimac", "ROLE_SBX_DEVELOPPEUR").doesNotContain("ROLE_SBX_LECTEUR");
     }
 
     @Test

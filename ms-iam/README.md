@@ -227,6 +227,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | 2026-11-06 | D-134 | `RegistreInstitutionsParticipant` : constructeur d’injection marqué `@Autowired` ; avec deux constructeurs, MS-IAM ne démarrait pas en profil prod sur le serveur 214. |
 | 2026-11-06 | D-134 | `ConstructeursInjectionTest` : tout composant à plusieurs constructeurs, adaptateurs « real » de prod compris (conditions non évaluées), en désigne un seul par `@Autowired` ; échoue sans le correctif de `RegistreInstitutionsParticipant` |
 | 2026-11-06 | D-133 | `ROLE_CHARGE_IMPLEMENTATION_SNA` ajouté aux profils livrés attribuables (configuration principale et de test, sans `externes-initiaux`) et à `MatriceSandboxSagaService.PROFILS_MATRICE` : la matrice publiée par SBX-ESPACE le recompose (`SBX_CER_CONSULTATION`) ; profil inconnu toujours refusé (`MatriceSandboxSagaServiceTest`, `ComptesSandboxSagaIT`). |
+| 2026-11-06 | Migration | Activation d'un compte : le rôle composite par défaut du royaume (`default-roles-gimac`, porteur de l'audience des jetons) est rétabli s'il manque, sans doublon (`KeycloakAnnuaire.definirActif`). Les comptes injectés le 02/11/2026 directement dans la base de Keycloak ne l'avaient pas, d'où l'audience absente et le 401 sur `/bff/portail/iam/moi` ; la reprise de la migration passe par l'activation, pour les correspondants comme pour les collaborateurs. Un compte créé par l'API d'administration le reçoit d'office (`KeycloakAnnuaireIT.roleParDefautDuRoyaume`). |
 
 # iam
 
