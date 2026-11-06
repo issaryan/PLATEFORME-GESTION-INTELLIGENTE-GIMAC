@@ -272,6 +272,7 @@ Tests : `AppareilsDomaineTest`, `SuiviEtServiceAppareilsTest`, `FermetureAutresS
 | 2026-10-27 | D-121 | Route `des-sbx-trace` limitée aux quatre lectures `etat-sante/detail`, `elements-supervises`, `alertes`, `disponibilites`, OPA `SBX_SUP_CONSULTATION`, aucun autre chemin DES ; 592 tests unitaires réussis, seuils JaCoCo tenus ; 213 tests OPA réussis |
 | 2026-10-27 | - | Introspection MS-IAM sans cache dans le cloisonnement ; règles OPA des réexamens US-EXI-23 ; limites AC mTLS locale, Compose complet et serveurs réels documentées |
 | 2026-11-05 | D-134 | Jeton réduit : codes participants rendus par MS-IAM (`institution_id`, `institution_propre`, `code_participant`) ; plus aucun relais du jeton original vers la sandbox |
+| 2026-11-06 | D-134 | Mesure d'attente après la panne du 214 : jeton réduit obligatoire seulement avec l'émetteur du jeton interne (`gimac.sandbox.jeton-reduit.obligatoire`, par défaut `gimac.securite.jeton-fantome.actif`) ; sans émetteur, jeton original relayé pour un compte du GIMAC ou d'une institution, jamais pour un mandat ni un prestataire ; démarrage refusé si obligatoire sans émetteur ; `JetonReduitDeploiementTest` |
 <!-- GIMAC:FIN -->
 
 # gateway

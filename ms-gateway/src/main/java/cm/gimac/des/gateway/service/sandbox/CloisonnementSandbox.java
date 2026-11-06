@@ -28,6 +28,7 @@ public class CloisonnementSandbox {
     private final JournalDecisionsSandbox journal;
     private final Map<String, LimiteurTentatives> quotas;
     private final EmetteurJetonReduit emetteur;
+    private final boolean jetonReduitObligatoire;
 
     /**
      * @param quotas limiteur par couche (portail, console, des) ; une couche absente n'est pas limitée
@@ -39,10 +40,27 @@ public class CloisonnementSandbox {
         Map<String, LimiteurTentatives> quotas,
         EmetteurJetonReduit emetteur
     ) {
+        this(introspection, journal, quotas, emetteur, true);
+    }
+
+    /**
+     * @param jetonReduitObligatoire D-134 : sans jeton réduit, toute requête est refusée. Faux seulement en attendant
+     *     l'émetteur du jeton interne en déploiement Docker (gimac.sandbox.jeton-reduit.obligatoire, par défaut égal à
+     *     gimac.securite.jeton-fantome.actif) : le jeton original reste alors relayé pour un compte du GIMAC ou d'une
+     *     institution, jamais pour un mandat ni un prestataire, comme avant D-134.
+     */
+    public CloisonnementSandbox(
+        IntrospectionSandbox introspection,
+        JournalDecisionsSandbox journal,
+        Map<String, LimiteurTentatives> quotas,
+        EmetteurJetonReduit emetteur,
+        boolean jetonReduitObligatoire
+    ) {
         this.introspection = introspection;
         this.journal = journal;
         this.quotas = Map.copyOf(quotas);
         this.emetteur = emetteur;
+        this.jetonReduitObligatoire = jetonReduitObligatoire;
     }
 
     /** Requête reçue par la passerelle sur une route de la sandbox, après la décision d'OPA. */
@@ -106,7 +124,8 @@ public class CloisonnementSandbox {
         Optional<String> jeton = emetteur == null ? Optional.empty() : emetteur.emettre(jetonReduit(d, portee, decision));
         // D-134 : le jeton original (institution_id au registre) n'est jamais relayé à la sandbox ; sans jeton réduit,
         // portant le code participant, la requête est refusée.
-        if (jeton.isEmpty()) {
+        boolean delegue = decision.motif() == Motif.MANDAT_ACTIF || decision.motif() == Motif.PRESTATAIRE_AUTORISE;
+        if (jeton.isEmpty() && (jetonReduitObligatoire || delegue)) {
             return Mono.just(new Resultat(DecisionSandbox.de(Motif.JETON_REDUIT_INDISPONIBLE, d.institutionJeton()), 404, Optional.empty()));
         }
         LimiteurTentatives limiteur = quotas.get(d.route().couche());
