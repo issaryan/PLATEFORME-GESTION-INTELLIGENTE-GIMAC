@@ -20,6 +20,8 @@ for (const theme of ['light', 'dark'] as const) {
   test(`Scénario : le super administrateur lit l'activité des tests et la vue graphique d'un dossier (thème ${theme})`, async ({ page }) => {
     await page.clock.setFixedTime(new Date('2026-11-04T10:00:00Z'))
     await demo(page, { profil: 'ROLE_SUPER_ADMIN', theme })
+    // Le contenu défile dans l'enveloppe, pas la page : fenêtre haute pour que la capture montre tous les graphes.
+    await page.setViewportSize({ width: 1440, height: 3400 })
     await test.step('Étant donné l’activité des tests des quatre-vingt-dix derniers jours', async () => {
       await page.goto(`${ADRESSES.departement}/des/sandbox/activite?periode=90`)
       await expect(page.getByRole('heading', { level: 1, name: 'Activité des tests' })).toBeVisible()
@@ -27,6 +29,7 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(page.getByText('Verdicts par statut')).toBeVisible()
       await expect(page.getByText('Avancement de la certification par participant')).toBeVisible()
       await expect(page.locator('.gm-state-done').first()).toBeVisible()
+      await expect(page.getByText('RC09 · ISO 20022')).toBeVisible()
       await capturer(page, `01-activite-des-tests-${suffixe(theme)}`)
     })
     await test.step('Quand il restreint la vue au participant 99004 et à la carte', async () => {
@@ -35,17 +38,18 @@ for (const theme of ['light', 'dark'] as const) {
       await capturer(page, `02-activite-99004-carte-${suffixe(theme)}`)
     })
     await test.step('Alors l’écran reste lisible à 360 px', async () => {
-      await page.setViewportSize({ width: 360, height: 800 })
+      await page.setViewportSize({ width: 360, height: 5200 })
       await page.goto(`${ADRESSES.departement}/des/sandbox/activite?periode=30`)
       await expect(page.getByRole('heading', { level: 1, name: 'Activité des tests' })).toBeVisible()
       await capturer(page, `03-activite-360px-${suffixe(theme)}`)
-      await page.setViewportSize({ width: 1440, height: 900 })
+      await page.setViewportSize({ width: 1440, height: 3400 })
     })
     await test.step('Et l’onglet sandbox du dossier montre jauges, verdicts par cas et chronologie', async () => {
       await page.goto(`${ADRESSES.departement}/des/parcours/LIA-2026-022?onglet=sandbox`)
       await expect(page.getByLabel('Vue graphique de la campagne')).toBeVisible()
       await expect(page.getByText('Verdicts par cas')).toBeVisible()
       await expect(page.getByText('Chronologie des exécutions')).toBeVisible()
+      await expect(page.getByText('Exécutions par jour (Africa/Douala)')).toBeVisible()
       await capturer(page, `04-dossier-onglet-sandbox-${suffixe(theme)}`)
     })
   })

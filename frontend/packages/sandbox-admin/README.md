@@ -28,7 +28,7 @@ l'onglet « Sandbox » du dossier de liaison.
 - Règles dataviz : une seule teinte (`gm-data-1`) pour les grandeurs ; les trois interfaces en petits multiples sur la même échelle, plutôt qu'en couleurs d'identité ; les statuts portent un libellé. Le validateur de palette rejette `gm-data-3` en sombre et `gm-data-7` et `8` dans les deux thèmes (note au journal du design-system), d'où ce choix.
 - Filtres portés par l'adresse : `periode` (7, 30, 90, 365 jours ; pas du jour, de la semaine, du mois), `participant`, `interface`.
 - Liens : participant vers `/des/sandbox/espaces/{code}`, campagne et dossier vers `/des/parcours/{liaison}?onglet=sandbox` (pièces, bilan et empreintes).
-- Codes de rejet : « source indisponible » tant que `exchange-captured.v1` ne porte pas `codeRetour` jusqu'à SBX-TRACE.
+- Codes de rejet : `GET /bff/des/sbx-trace/statistiques/codes-retour` (SBX-TRACE, `exchange-captured.v1` des trois modules) ; « source indisponible » seulement si la route n'est pas servie (404).
 
 ## Services
 
@@ -62,3 +62,4 @@ sans nouvelle capture et sans démarrage du Compose complet.
 | 2026-11-04 | - | Couverture rétablie à 100 % (repli de la clé d'idempotence, troisième page des éléments supervisés) : 49 tests |
 | 2026-11-05 | - | D-121 : écran « Activité des tests » (/des/sandbox/activite, SBX_SUP_CONSULTATION) : indicateurs, exécutions par interface en petits multiples, verdicts, taux des campagnes, cas défavorables, codes de rejet (source indisponible), chaîne de certification (HOM_LIAISON_READ, mode dégradé), délais ; HTTP et simulé au contrat ; FR/EN/ES |
 | 2026-11-05 | D-121, complément | Section « Services de la sandbox » de l'écran de supervision (lecture `/bff/des/sbx-trace/services`, relue toutes les 30 s, mini-courbe des latences), états par module en badges, pagination commune ; FR/EN/ES ; 51 tests, couverture 100 % des instructions et 99,62 % des branches |
+| 2026-11-05 | - | Codes de rejet branchés sur SBX-TRACE (`/statistiques/codes-retour`, filtres participant et interface) ; filtres sans contrôle inerte (période sans « Tous », ni recherche libre ni vue enregistrée sans action) |

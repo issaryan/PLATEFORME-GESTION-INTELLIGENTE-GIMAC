@@ -27,6 +27,8 @@ export interface ChartCardProps {
   width?: number
   height?: number
   xLabel?: string
+  /** Export de la vue (CSV, image) ; le bouton n'apparaît que s'il est fourni, jamais sans effet. */
+  onExporter?: () => void
 }
 
 function niceMax(v: number): number {
@@ -203,7 +205,7 @@ export function ChartCard(p: ChartCardProps) {
         <div className="gm-row">
           {p.status ? <StatusBadge status={p.status} label={p.statusLabel || ''} /> : null}
           <Tabs items={[{ key: 'chart', label: t('graphique.graphique') }, { key: 'table', label: t('graphique.tableau') }]} value={view} onChange={setView} />
-          <IconButton variant="ghost" size="sm" icon="download" label={t('graphique.exporter')} />
+          {p.onExporter ? <IconButton variant="ghost" size="sm" icon="download" label={t('graphique.exporter')} onClick={p.onExporter} /> : null}
         </div>
       </header>
       <div className="gm-card-body" style={{ position: 'relative' }}>

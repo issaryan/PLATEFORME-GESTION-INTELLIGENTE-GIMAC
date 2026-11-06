@@ -29,7 +29,7 @@ export type OptionsActiviteSimulee = {
   campagnes?: CampagneDemo[]
   executions?: ExecutionDemo[]
   liaisons?: LiaisonCertification[]
-  /** Codes de retour de SBX-TRACE ; absents (null), le panneau affiche « source indisponible ». */
+  /** Codes de retour de SBX-TRACE ; null : route non servie, le panneau affiche « source indisponible ». */
   codesRetour?: CodeRetour[] | null
   maintenant?: () => Date
 }
@@ -93,6 +93,16 @@ export const EXECUTIONS_DEMO: ExecutionDemo[] = PLAN.flatMap(([, , debut, duree,
   }
   return lignes
 })
+
+/** Codes de retour fictifs des échanges, du plus fréquent au plus rare (ISO 20022, carte ISO 8583, mobile). */
+export const CODES_RETOUR_DEMO: CodeRetour[] = [
+  { interface: 'ISO20022', code: 'RC09', occurrences: 42, participants: 3, dernierLe: '2026-11-03T15:20:00Z' },
+  { interface: 'CARTE', code: '05', occurrences: 31, participants: 2, dernierLe: '2026-11-04T09:12:00Z' },
+  { interface: 'ISO20022', code: 'AG01', occurrences: 18, participants: 2, dernierLe: '2026-11-02T11:05:00Z' },
+  { interface: 'CARTE', code: '51', occurrences: 12, participants: 2, dernierLe: '2026-10-30T16:40:00Z' },
+  { interface: 'MOBILE', code: 'TIMEOUT', occurrences: 9, participants: 1, dernierLe: '2026-10-28T08:30:00Z' },
+  { interface: 'CARTE', code: '91', occurrences: 4, participants: 1, dernierLe: '2026-10-21T13:00:00Z' },
+]
 
 export const LIAISONS_DEMO: LiaisonCertification[] = (
   [['99001', 'CERTIFIEE'], ['99002', 'GELEE'], ['99003', 'EN_HOMOLOGATION'], ['99004', 'APTE_CERTIFICATION'], ['99005', 'MISE_EN_SERVICE_AUTORISEE']] as [string, EtatLiaison][]
@@ -210,7 +220,8 @@ export function activiteSimulee(o: OptionsActiviteSimulee): ServiceActivite {
     }),
     codesRetour: (f, p) => lire(() => {
       retenues(f)
-      return o.codesRetour ? page(o.codesRetour, p) : null
+      const codes = o.codesRetour === undefined ? CODES_RETOUR_DEMO : o.codesRetour
+      return codes ? page(codes.filter((c) => !f.interface || c.interface === f.interface), p) : null
     }),
     liaison: (id) => lire(() => {
       if (!o.permissions.includes(PERMISSION_LIAISON)) throw refus(403, 'HOM_ACCES_REFUSE')

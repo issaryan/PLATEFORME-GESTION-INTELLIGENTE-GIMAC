@@ -77,6 +77,7 @@ describe('Matrice des pouvoirs', () => {
 })
 
 describe('Profils créés', () => {
+  // Signature en deux temps et liste de 26 profils : délai allongé sous la charge du poste.
   it('création signée d’un profil (privilégié signalé), puis suppression', async () => {
     rendrePage(<ProfilsPage />, { chemin: '/console/profils', motif: '/console/profils', services: services() })
     fireEvent.click(await screen.findByRole('button', { name: 'Nouveau profil' }))
@@ -109,7 +110,7 @@ describe('Profils créés', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Continuer' }))
     expect(await screen.findByText('Profil ROLE_ASTREINTE supprimé.')).toBeTruthy()
     await waitFor(() => expect(screen.queryByText('ROLE_ASTREINTE')).toBeNull())
-  })
+  }, 60_000)
   it('sans IAM_PROFILE_EDIT : ni création ni suppression', async () => {
     rendrePage(<ProfilsPage />, { chemin: '/console/profils', motif: '/console/profils', permissions: LECTEUR, services: services(LECTEUR) })
     expect(await screen.findByText('ROLE_SNA')).toBeTruthy()

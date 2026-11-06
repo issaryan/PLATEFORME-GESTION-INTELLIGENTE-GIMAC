@@ -11,7 +11,7 @@ export interface ServiceActivite {
   participants(f: FiltreActivite, p: Pagination): Promise<PageStatistiques<LigneParticipant>>
   campagnes(f: FiltreActivite, tri: TriCampagnes, p: Pagination): Promise<PageStatistiques<LigneCampagne>>
   cas(f: FiltreActivite, p: Pagination): Promise<PageStatistiques<LigneCas>>
-  /** Codes de retour de SBX-TRACE : null tant que la source n'est pas alimentée (contrat exchange-captured.v1). */
+  /** Codes de retour de SBX-TRACE (exchange-captured.v1) : null si la route n'est pas servie (source indisponible). */
   codesRetour(f: FiltreActivite, p: Pagination): Promise<PageStatistiques<CodeRetour> | null>
   /** Liaison de MS-HOMOLOGATION (HOM_LIAISON_READ) pour la chaîne de certification. */
   liaison(id: string): Promise<LiaisonCertification>

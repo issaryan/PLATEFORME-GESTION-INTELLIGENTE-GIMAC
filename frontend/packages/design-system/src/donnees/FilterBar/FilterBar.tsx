@@ -11,6 +11,8 @@ export interface FilterDef {
   type?: 'select' | 'daterange'
   value?: string
   options?: Option[]
+  /** Option « Tous » en tête d'une liste (vrai par défaut) ; faux pour un choix toujours fait (période). */
+  tous?: boolean
 }
 
 export interface FilterBarProps {
@@ -24,6 +26,8 @@ export interface FilterBarProps {
   favorites?: string[]
   onReset?: () => void
   savedLabel?: string
+  /** Enregistrement de la vue : le bouton n'apparaît que s'il agit. */
+  onEnregistrer?: () => void
 }
 
 // Barre de filtres persistante en tête d'une liste (DS-GIMAC-01 §7.6, gabarit G2).
@@ -34,7 +38,7 @@ export function FilterBar(p: FilterBarProps) {
   return (
     <div className="gm-filterbar" role="search" aria-label={t('filtres.label')}>
       <div className="gm-filterbar-row">
-        <SearchInput label={t('commun.rechercher')} value={p.query || ''} onChange={p.onQuery} width={280} />
+        {p.onQuery ? <SearchInput label={t('commun.rechercher')} value={p.query || ''} onChange={p.onQuery} width={280} /> : null}
         {f.map((x) => {
           if (x.type === 'daterange')
             return (
@@ -51,7 +55,7 @@ export function FilterBar(p: FilterBarProps) {
             <div key={x.key} className="gm-filter">
               <span className="gm-filter-label">{x.label}</span>
               <select className="gm-input" aria-label={x.label} value={x.value || ''} onChange={(e) => p.onChange && p.onChange(x.key, e.target.value)}>
-                <option value="">{t('filtres.tous')}</option>
+                {x.tous === false ? null : <option value="">{t('filtres.tous')}</option>}
                 {(x.options || []).map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
@@ -60,8 +64,8 @@ export function FilterBar(p: FilterBarProps) {
           )
         })}
         <span style={{ flex: 1 }} />
-        <Button variant="ghost" size="sm" icon="refresh" onClick={p.onReset}>{t('filtres.reinitialiser')}</Button>
-        <Button variant="secondary" size="sm" icon="flag">{p.savedLabel || t('filtres.enregistrer')}</Button>
+        {p.onReset ? <Button variant="ghost" size="sm" icon="refresh" onClick={p.onReset}>{t('filtres.reinitialiser')}</Button> : null}
+        {p.onEnregistrer ? <Button variant="secondary" size="sm" icon="flag" onClick={p.onEnregistrer}>{p.savedLabel || t('filtres.enregistrer')}</Button> : null}
       </div>
       {p.active && n ? (
         <div className="gm-filterbar-active">

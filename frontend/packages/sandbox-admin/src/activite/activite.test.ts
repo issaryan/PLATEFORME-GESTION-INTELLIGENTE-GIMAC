@@ -21,7 +21,7 @@ describe('SBX-LECTURE par la passerelle', () => {
     await activiteHttp.campagnes(F, 'TAUX_REUSSITE', { page: 0, taille: 8 })
     await activiteHttp.cas(F, { page: 0, taille: 8 })
     await activiteHttp.liaison('l 1')
-    expect(await activiteHttp.codesRetour(F, { page: 0, taille: 8 })).toBeNull()
+    await activiteHttp.codesRetour(g, { page: 0, taille: 8 })
     const urls = spy.mock.calls.map(([u]) => { const x = new URL(String(u)); return `${x.pathname}${x.search}` })
     const p = 'du=2026-10-01T00%3A00%3A00Z&au=2026-11-01T00%3A00%3A00Z'
     expect(urls).toEqual([
@@ -31,7 +31,15 @@ describe('SBX-LECTURE par la passerelle', () => {
       `/bff/des/sbx-lecture/statistiques/campagnes?${p}&tri=TAUX_REUSSITE&page=0&taille=8`,
       `/bff/des/sbx-lecture/statistiques/cas?${p}&page=0&taille=8`,
       '/bff/des/homologation/liaisons/l%201',
+      `/bff/des/sbx-trace/statistiques/codes-retour?${p}&participant=99001&interface=CARTE&page=0&taille=8`,
     ])
+  })
+
+  it('codes de retour : route non servie (404) rendue « source indisponible », autre refus remonté', async () => {
+    const probleme = (status: number) => new Response(JSON.stringify({ status, code: 'X' }), { status, headers: { 'Content-Type': 'application/problem+json' } })
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async () => probleme(404)).mockImplementationOnce(async () => probleme(503))
+    expect(await activiteHttp.codesRetour(F, { page: 0, taille: 8 })).toBeNull()
+    await expect(activiteHttp.codesRetour(F, { page: 0, taille: 8 })).rejects.toBeInstanceOf(ApiError)
   })
 })
 
@@ -61,7 +69,9 @@ describe('statistiques simulées au contrat de SBX-LECTURE', () => {
     expect(recentes.elements.every((x) => x.interfaceTest === 'MOBILE')).toBe(true)
     expect((await s.cas({ ...F, participant: '99002' }, { page: 0, taille: 100 })).elements.every((x) => x.interfaceTest === 'MOBILE')).toBe(true)
     expect((await s.activite(F, 'MOIS')).points.every((x) => x.periode.endsWith('-01'))).toBe(true)
-    expect(await s.codesRetour(F, { page: 0, taille: 8 })).toBeNull()
+    expect((await s.codesRetour(F, { page: 0, taille: 8 }))?.elements[0]).toMatchObject({ code: 'RC09', interface: 'ISO20022' })
+    expect((await s.codesRetour({ ...F, interface: 'CARTE' }, { page: 0, taille: 8 }))?.elements.every((c) => c.interface === 'CARTE')).toBe(true)
+    expect(await activiteSimulee({ permissions: [PERMISSION_ACTIVITE], codesRetour: null }).codesRetour(F, { page: 0, taille: 8 })).toBeNull()
   })
 
   it('campagne sans exécution jugée et campagne sans dernier essai daté au tri', async () => {
