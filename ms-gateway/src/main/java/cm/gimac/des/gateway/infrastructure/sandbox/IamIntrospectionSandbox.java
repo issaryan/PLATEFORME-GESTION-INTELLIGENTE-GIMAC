@@ -60,7 +60,8 @@ public class IamIntrospectionSandbox implements IntrospectionSandbox {
             texte(corps.get("sub")),
             texte(corps.get("institution_id")),
             permissions instanceof List<?> l ? l.stream().map(String::valueOf).toList() : List.of(),
-            texte(corps.get("type"))
+            texte(corps.get("type")),
+            texte(corps.get("institution_propre"))
         );
     }
 

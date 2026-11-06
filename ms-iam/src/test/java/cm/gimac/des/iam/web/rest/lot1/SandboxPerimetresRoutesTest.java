@@ -130,9 +130,9 @@ class SandboxPerimetresRoutesTest {
         when(delegations.approuverAccesPrestataire(any(), eq("a1"))).thenReturn(acces);
         when(delegations.refuserAccesPrestataire(any(), eq("a1"), eq("Non"))).thenReturn(acces);
         when(delegations.revoquerAccesPrestataire(any(), eq("a1"), eq("Fin"))).thenReturn(acces);
-        CompteSaga compte = new CompteSaga("c1", "awa.test", "Awa Test", "awa@test.cm", "99001", true, T, List.of("ROLE_SBX_TESTEUR"), List.of("SBX_CER_EXECUTION"), false);
+        CompteSaga compte = new CompteSaga("c1", "awa.test", "Awa Test", "awa@test.cm", "99001", "99001", true, T, List.of("ROLE_SBX_TESTEUR"), List.of("SBX_CER_EXECUTION"), false);
         when(comptesSaga.ouvrir(any(), any(), eq("saga-o/1"))).thenReturn(compte);
-        when(comptesSaga.ouvrir(any(), any(), eq("saga-o/replay"))).thenReturn(new CompteSaga("c1", "awa.test", "Awa Test", "awa@test.cm", "99001", true, T, List.of("ROLE_SBX_TESTEUR"), List.of("SBX_CER_EXECUTION"), true));
+        when(comptesSaga.ouvrir(any(), any(), eq("saga-o/replay"))).thenReturn(new CompteSaga("c1", "awa.test", "Awa Test", "awa@test.cm", "99001", "99001", true, T, List.of("ROLE_SBX_TESTEUR"), List.of("SBX_CER_EXECUTION"), true));
         when(comptesSaga.lire("c1")).thenReturn(compte);
         when(comptesSaga.matrice(any(), eq("c1"), eq(Set.of("ROLE_SBX_TESTEUR")), eq("Revue"), eq("saga-m/2"))).thenReturn(compte);
         when(matriceGlobale.publier(any(), eq(7L), eq(java.util.Map.of("ROLE_SBX_LECTEUR", Set.of("SBX_ISO_SIMULATION"))), eq("saga-m/7")))

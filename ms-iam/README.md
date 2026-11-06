@@ -223,6 +223,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | 2026-11-04 | D-48 | Réexamen des accès (US-EXI-23) : requêtes déplacées dans `infrastructure/persistence/sandbox` (`RevuesAccesRepository`, `DecisionsRevueRepository`, `CollaborateursFederesRepository`), dépôts générés rétablis ; JDL et `.jhipster/AccessReviewDecision.json` reportent `EN_ATTENTE`, `decidedBy` et `decidedAt` facultatifs, `profilesSnapshot` et `permissionsSnapshot` |
 | 2026-11-05 | - | Changeset 20261105120000 : processus, lancerDemande et mesDemandes dans le groupe « processus », institutions dans « homologation », seulement si le groupe vaut encore l'ancienne valeur (NavigationSectionsIT) |
 <!-- GIMAC:FIN -->
+| 2026-11-05 | D-134 | `TraductionInstitution` : institution_id traduit en code participant pour l'introspection, les périmètres, les mandats, les sagas et l'administration déléguée ; cache de la seule correspondance ; refus `INSTITUTION_NON_TRADUITE` et `REGISTRE_INDISPONIBLE` |
 
 # iam
 

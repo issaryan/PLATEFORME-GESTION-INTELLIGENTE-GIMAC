@@ -63,7 +63,30 @@ public class PerimetresSandboxService {
     private final EtapesIdempotentes etapes;
     private final JournalSandbox journal;
     private final Clock clock;
+    private final TraductionInstitution traduction;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    public PerimetresSandboxService(
+        PerimetresSuspendus perimetres,
+        ProtectionsAdministrateur protections,
+        DelegationsSandbox delegations,
+        Annuaire annuaire,
+        EtapesIdempotentes etapes,
+        JournalSandbox journal,
+        Clock clock,
+        TraductionInstitution traduction
+    ) {
+        this.traduction = traduction;
+        this.perimetres = perimetres;
+        this.protections = protections;
+        this.delegations = delegations;
+        this.annuaire = annuaire;
+        this.etapes = etapes;
+        this.journal = journal;
+        this.clock = clock;
+    }
+
+    /** Sans registre des participants (tests). */
     public PerimetresSandboxService(
         PerimetresSuspendus perimetres,
         ProtectionsAdministrateur protections,
@@ -73,13 +96,7 @@ public class PerimetresSandboxService {
         JournalSandbox journal,
         Clock clock
     ) {
-        this.perimetres = perimetres;
-        this.protections = protections;
-        this.delegations = delegations;
-        this.annuaire = annuaire;
-        this.etapes = etapes;
-        this.journal = journal;
-        this.clock = clock;
+        this(perimetres, protections, delegations, annuaire, etapes, journal, clock, TraductionInstitution.sansRegistre(clock));
     }
 
     private boolean rejouee(String cle, String operation, String resultat, Acteur acteur) {
@@ -96,13 +113,14 @@ public class PerimetresSandboxService {
         if (!suspendu) {
             if (perimetres.lever(c)) {
                 journal.objet(acteur, "PERIMETRE_RETABLI", c, c, motif, List.of());
-                annuaire.parInstitution(c).forEach(x -> journal.compte(acteur, "PERIMETRE_RETABLI", x.id(), x.identifiant(), motif, List.of(c)));
+                traduction.comptes(annuaire, c).forEach(x -> journal.compte(acteur, "PERIMETRE_RETABLI", x.id(), x.identifiant(), motif, List.of(c)));
             }
             return etat(c, 0, false);
         }
         boolean pose = perimetres.poser(c, acteur.id(), motif, clock.instant());
         Set<String> touches = new LinkedHashSet<>();
-        List<Compte> comptes = annuaire.parInstitution(c);
+        // D-134 : comptes dont institution_id porte le code ou l'identifiant au registre de l'institution.
+        List<Compte> comptes = traduction.comptes(annuaire, c);
         comptes.forEach(x -> touches.add(x.id()));
         // Titulaires d'un mandat sur ce périmètre (US-EXI-04) : leurs sessions sont révoquées aussi.
         touches.addAll(delegations.titulaires(c, clock.instant()));

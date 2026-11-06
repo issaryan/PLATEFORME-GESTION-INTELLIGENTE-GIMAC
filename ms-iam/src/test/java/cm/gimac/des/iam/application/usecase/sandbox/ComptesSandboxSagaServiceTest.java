@@ -117,4 +117,38 @@ class ComptesSandboxSagaServiceTest {
         when(comptes.definirProfils(any(), eq("c1"), eq(Set.of("ROLE_SBX_LECTEUR")), eq("Revue"))).thenReturn(c);
         assertThat(service.matrice(SERVICE, "c1", Set.of("ROLE_SBX_LECTEUR"), "Revue", " ").rejouee()).isFalse();
     }
+
+    static final String UUID_99001 = "6f1c2a3e-8888-4a6b-9c1d-000000000001";
+    static final boolean[] PANNE = { false };
+
+    @Test
+    void identifiantAuRegistreEtCodeParticipant() {
+        ComptesSandboxSagaService traduit = new ComptesSandboxSagaService(comptes, catalogue, etapes, new TraductionInstitution(new cm.gimac.des.iam.application.port.out.sandbox.RegistreInstitutions() {
+            @Override
+            public java.util.Optional<String> codeParticipant(java.util.UUID i) {
+                if (PANNE[0]) {
+                    throw new RegistreIndisponible("injoignable", null);
+                }
+                return java.util.Optional.of("99001");
+            }
+
+            @Override
+            public java.util.Optional<java.util.UUID> identifiant(String code) {
+                if (PANNE[0]) {
+                    throw new RegistreIndisponible("injoignable", null);
+                }
+                return java.util.Optional.of(java.util.UUID.fromString(UUID_99001));
+            }
+        }, java.time.Clock.fixed(T, java.time.ZoneOffset.UTC), java.time.Duration.ZERO));
+        when(comptes.lire("c7")).thenReturn(compte("c7", UUID_99001, Set.of("ROLE_SBX_TESTEUR")));
+        ComptesSandboxSagaService.CompteSaga v = traduit.lire("c7");
+        assertThat(v.institutionId()).isEqualTo(UUID_99001);
+        assertThat(v.codeParticipant()).isEqualTo("99001");
+        PANNE[0] = true;
+        try {
+            assertThat(traduit.lire("c7").codeParticipant()).isNull();
+        } finally {
+            PANNE[0] = false;
+        }
+    }
 }

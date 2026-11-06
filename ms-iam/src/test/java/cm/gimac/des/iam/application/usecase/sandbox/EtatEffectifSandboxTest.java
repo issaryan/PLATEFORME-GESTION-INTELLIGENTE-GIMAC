@@ -25,7 +25,7 @@ class EtatEffectifSandboxTest {
     void etatEffectif() {
         Memoires.Perimetres perimetres = new Memoires.Perimetres();
         Memoires.Activite activite = new Memoires.Activite();
-        EtatEffectifSandbox etat = new EtatEffectifSandbox(perimetres, activite, new Memoires.Horloge(T));
+        EtatEffectifSandbox etat = new EtatEffectifSandbox(perimetres, activite, new TraductionInstitution(new cm.gimac.des.iam.infrastructure.client.RegistreInstitutionsSansRegistre(), new Memoires.Horloge(T), java.time.Duration.ofMinutes(5)), new Memoires.Horloge(T));
         Compte membre = compte("c1", "99001", true);
         Compte interne = compte("c2", null, true);
         Compte inactif = compte("c3", "99001", false);
@@ -46,5 +46,40 @@ class EtatEffectifSandboxTest {
         assertThat(etat.etat(membre).actif()).isTrue();
         assertThat(etat.etat(inactif).actif()).isFalse();
         assertThat(etat.etat(compte("c4", "99001", true)).actionsRequises()).doesNotContain(ActionRequise.SECOND_FACTEUR);
+    }
+
+    static final String UUID_99001 = "6f1c2a3e-8888-4a6b-9c1d-000000000001";
+    static final boolean[] PANNE = { false };
+
+    @Test
+    @DisplayName("D-134 : compte portant l'identifiant au registre, périmètre suspendu vu ; registre injoignable : connexion non bloquée")
+    void identifiantAuRegistre() {
+        Memoires.Perimetres perimetres = new Memoires.Perimetres();
+        Memoires.Horloge h = new Memoires.Horloge(T);
+        EtatEffectifSandbox etat = new EtatEffectifSandbox(perimetres, new Memoires.Activite(), new TraductionInstitution(new cm.gimac.des.iam.application.port.out.sandbox.RegistreInstitutions() {
+            @Override
+            public java.util.Optional<String> codeParticipant(java.util.UUID i) {
+                if (PANNE[0]) {
+                    throw new RegistreIndisponible("injoignable", null);
+                }
+                return java.util.Optional.of("99001");
+            }
+
+            @Override
+            public java.util.Optional<java.util.UUID> identifiant(String code) {
+                if (PANNE[0]) {
+                    throw new RegistreIndisponible("injoignable", null);
+                }
+                return java.util.Optional.of(java.util.UUID.fromString(UUID_99001));
+            }
+        }, h, java.time.Duration.ZERO), h);
+        perimetres.poser("99001", "sa", null, T);
+        assertThat(etat.etat(compte("c9", UUID_99001, true)).actif()).isFalse();
+        PANNE[0] = true;
+        try {
+            assertThat(etat.etat(compte("c9", UUID_99001, true)).actif()).isTrue();
+        } finally {
+            PANNE[0] = false;
+        }
     }
 }

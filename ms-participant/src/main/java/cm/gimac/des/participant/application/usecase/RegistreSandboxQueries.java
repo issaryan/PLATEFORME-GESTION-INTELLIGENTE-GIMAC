@@ -35,6 +35,13 @@ public class RegistreSandboxQueries {
         List<String> servicesSouscrits
     ) {}
 
+    /**
+     * Correspondance entre l'identifiant d'une institution au registre (claim institution_id de la plateforme) et son code
+     * participant (claim institution_id de la sandbox, CC-SBX-GIMAC-02), lue par MS-IAM (D-134). Code absent tant que
+     * l'institution n'en a pas reçu.
+     */
+    public record Correspondance(java.util.UUID institutionId, String codeParticipant) {}
+
     /** Page de la nomenclature des services. */
     public record PageServices(List<Service> contenu, long total, int page, int taille) {}
 
@@ -51,6 +58,19 @@ public class RegistreSandboxQueries {
         String code = codeParticipant == null ? "" : codeParticipant.trim();
         Identite i = registre.parCode(code).orElseThrow(() -> ParticipantException.notFound("PAR_INSTITUTION_NOT_FOUND", code));
         return new Fiche(i.codeParticipant(), i.raisonSociale(), i.statut(), versions.courante(i.id()), registre.correspondantsActifs(i.id()), registre.servicesSouscrits(i.id()));
+    }
+
+    /** Code participant de l'institution de cet identifiant ; 404 PAR_INSTITUTION_NOT_FOUND si l'identifiant est absent. */
+    public Correspondance correspondance(java.util.UUID institutionId) {
+        Identite i = registre.parId(institutionId).orElseThrow(() -> ParticipantException.notFound("PAR_INSTITUTION_NOT_FOUND", String.valueOf(institutionId)));
+        return new Correspondance(i.id(), i.codeParticipant());
+    }
+
+    /** Identifiant au registre de l'institution de ce code ; 404 PAR_INSTITUTION_NOT_FOUND si le code est absent. */
+    public Correspondance correspondance(String codeParticipant) {
+        String code = codeParticipant == null ? "" : codeParticipant.trim();
+        Identite i = registre.parCode(code).orElseThrow(() -> ParticipantException.notFound("PAR_INSTITUTION_NOT_FOUND", code));
+        return new Correspondance(i.id(), i.codeParticipant());
     }
 
     /** Nomenclature des services souscrits, triée par code ; taille de 1 à 100. */

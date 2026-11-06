@@ -82,7 +82,7 @@ class ConnexionServiceTest {
         LiensCourriel liens = new LiensCourriel(JetonsEnMemoire.creer(jetons), new CourrielsPlateforme(courriels), AdministrationComptesServiceTest.proprietes(), clock);
         perimetres = new Memoires.Perimetres();
         activite = new Memoires.Activite();
-        etatEffectif = new EtatEffectifSandbox(perimetres, activite, clock);
+        etatEffectif = new EtatEffectifSandbox(perimetres, activite, new cm.gimac.des.iam.application.usecase.sandbox.TraductionInstitution(new cm.gimac.des.iam.infrastructure.client.RegistreInstitutionsSansRegistre(), clock, java.time.Duration.ofMinutes(5)), clock);
         service = new ConnexionService(annuaire, liens, journal, etatEffectif);
         agent = annuaire.creer(new NouveauCompte("agent.sna", "Awa", "Mballa", "awa@gimac.test", null, null, null, Set.of("ROLE_SNA")), List.of(ActionRequise.MOT_DE_PASSE, ActionRequise.FICHE, ActionRequise.CHARTE));
     }

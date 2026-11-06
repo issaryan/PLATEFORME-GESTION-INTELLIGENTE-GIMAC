@@ -161,6 +161,24 @@ class DelegationsSandboxServiceTest {
     void controles() {
         refus(() -> service.accorderMandat(SAGA, "inconnu", "99001", List.of("SBX_CER_EXECUTION"), T, T.plusSeconds(60), null), "IAM_ACCOUNT_NOT_FOUND", 404);
         refus(() -> service.accorderMandat(SAGA, membre, "99001", List.of("SBX_CER_EXECUTION"), T, T.plusSeconds(60), null), "IAM_SBX_MANDAT_PROPRE_INSTITUTION", 422);
+        // D-134 : compte de l'institution mandante portant son identifiant au registre, refusé de même.
+        java.util.UUID id99001 = java.util.UUID.fromString("6f1c2a3e-6666-4a6b-9c1d-000000000001");
+        String membreUuid = annuaire.creer(new NouveauCompte("membre.uuid", "Ama", "N", "ama@99001.test", null, null, id99001.toString(), Set.of("ROLE_SBX_TESTEUR")), List.of());
+        var registre = new cm.gimac.des.iam.application.port.out.sandbox.RegistreInstitutions() {
+            @Override
+            public java.util.Optional<String> codeParticipant(java.util.UUID i) {
+                return id99001.equals(i) ? java.util.Optional.of("99001") : java.util.Optional.empty();
+            }
+
+            @Override
+            public java.util.Optional<java.util.UUID> identifiant(String code) {
+                return "99001".equals(code) ? java.util.Optional.of(id99001) : java.util.Optional.empty();
+            }
+        };
+        CatalogueProfils cat = new CatalogueProfils(DesactivationInactifsServiceTest.proprietes(), new DemandesEtProfilsServiceTest.ProfilsCreesEnMemoire(), annuaire);
+        DelegationsSandboxService traduit = new DelegationsSandboxService(delegations, perimetres, annuaire, cat, etapes, journal, new ProprietesSandbox(90, Duration.ofDays(90), Duration.ofHours(8)), horloge,
+            new cm.gimac.des.iam.application.usecase.sandbox.TraductionInstitution(registre, horloge, Duration.ofMinutes(5)));
+        refus(() -> traduit.accorderMandat(SAGA, membreUuid, "99001", List.of("SBX_CER_EXECUTION"), T, T.plusSeconds(60), null), "IAM_SBX_MANDAT_PROPRE_INSTITUTION", 422);
         refus(() -> service.accorderMandat(SAGA, partenaire, "99001", List.of("SBX_CER_VALIDATION"), T, T.plusSeconds(60), null), "IAM_SBX_VALIDATION_RESERVEE", 422);
         refus(() -> service.accorderMandat(SAGA, partenaire, "99001", List.of("SBX_TRA_ADMINISTRATION"), T, T.plusSeconds(60), null), "IAM_SBX_PERIMETRE_HORS_PORTEE", 403);
         refus(() -> service.accorderMandat(SAGA, partenaire, "9 9", List.of("SBX_CER_EXECUTION"), T, T.plusSeconds(60), null), "IAM_SBX_PERIMETRE_INVALIDE", 400);

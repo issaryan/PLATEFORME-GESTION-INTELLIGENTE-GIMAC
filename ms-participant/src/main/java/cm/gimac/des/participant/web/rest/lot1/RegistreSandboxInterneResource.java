@@ -30,6 +30,18 @@ public class RegistreSandboxInterneResource {
         return queries.fiche(code);
     }
 
+    /** Code participant de l'institution de cet identifiant (D-134, lu par MS-IAM). */
+    @GetMapping("/institutions/{id}/correspondance")
+    public RegistreSandboxQueries.Correspondance correspondance(@PathVariable java.util.UUID id) {
+        return queries.correspondance(id);
+    }
+
+    /** Identifiant au registre de l'institution de ce code participant (D-134, lu par MS-IAM). */
+    @GetMapping("/institutions/code/{code}/correspondance")
+    public RegistreSandboxQueries.Correspondance correspondanceParCode(@PathVariable String code) {
+        return queries.correspondance(code);
+    }
+
     /** Nomenclature des services souscrits (abonnements actifs), triée par code, paginée. */
     @GetMapping("/nomenclature/services")
     public PageServices services(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "50") int taille) {

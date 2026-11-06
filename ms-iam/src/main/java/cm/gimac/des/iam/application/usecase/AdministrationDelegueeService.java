@@ -48,7 +48,28 @@ public class AdministrationDelegueeService {
     private final JournalActes journal;
     private final EtapesIdempotentes etapes;
     private final ProtectionsAdministrateur protections;
+    private final cm.gimac.des.iam.application.usecase.sandbox.TraductionInstitution traduction;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    public AdministrationDelegueeService(
+        AdministrationComptesService comptes,
+        CatalogueProfils catalogue,
+        Annuaire annuaire,
+        JournalActes journal,
+        EtapesIdempotentes etapes,
+        ProtectionsAdministrateur protections,
+        cm.gimac.des.iam.application.usecase.sandbox.TraductionInstitution traduction
+    ) {
+        this.traduction = traduction;
+        this.comptes = comptes;
+        this.catalogue = catalogue;
+        this.annuaire = annuaire;
+        this.journal = journal;
+        this.etapes = etapes;
+        this.protections = protections;
+    }
+
+    /** Sans registre des participants (tests). */
     public AdministrationDelegueeService(
         AdministrationComptesService comptes,
         CatalogueProfils catalogue,
@@ -57,12 +78,7 @@ public class AdministrationDelegueeService {
         EtapesIdempotentes etapes,
         ProtectionsAdministrateur protections
     ) {
-        this.comptes = comptes;
-        this.catalogue = catalogue;
-        this.annuaire = annuaire;
-        this.journal = journal;
-        this.etapes = etapes;
-        this.protections = protections;
+        this(comptes, catalogue, annuaire, journal, etapes, protections, cm.gimac.des.iam.application.usecase.sandbox.TraductionInstitution.sansRegistre(java.time.Clock.systemUTC()));
     }
 
     private Set<String> delegables() {
@@ -88,10 +104,10 @@ public class AdministrationDelegueeService {
 
     private List<Compte> tous(String inst) {
         Map<String, Set<String>> parCompte = annuaire.profilsParCompte();
-        return annuaire
-            .parInstitution(inst)
+        // D-134 : l'institution de l'administrateur, par son identifiant au registre ou son code participant.
+        return traduction
+            .comptes(annuaire, inst)
             .stream()
-            .filter(c -> inst.equals(c.institutionId()))
             .map(c -> c.avecProfils(parCompte.getOrDefault(c.id(), c.profils())))
             .sorted(Comparator.comparing((Compte c) -> c.nomAffiche().toLowerCase(Locale.ROOT)).thenComparing(Compte::id))
             .toList();
@@ -101,7 +117,8 @@ public class AdministrationDelegueeService {
     @Transactional(readOnly = true)
     public Compte lire(String institutionActeur, String id) {
         String inst = ReglesAdministrationDeleguee.institution(institutionActeur);
-        return ReglesAdministrationDeleguee.dansPerimetre(annuaire.lire(id).map(c -> c.avecProfils(annuaire.profilsParCompte().getOrDefault(c.id(), c.profils()))).orElse(null), inst, id);
+        Compte compte = annuaire.lire(id).map(c -> c.avecProfils(annuaire.profilsParCompte().getOrDefault(c.id(), c.profils()))).orElse(null);
+        return ReglesAdministrationDeleguee.dansPerimetre(compte, compte != null && traduction.memeInstitution(inst, compte.institutionId()) ? compte.institutionId() : inst, id);
     }
 
     private Optional<String> rejouee(String cle, String operation) {
@@ -123,7 +140,7 @@ public class AdministrationDelegueeService {
             return new Creation(lire(inst, deja.orElseThrow()), false, true);
         }
         ReglesAdministrationDeleguee.verifierRoles(n.roles(), delegables(), true);
-        NouveauCompte nouveau = new NouveauCompte(n.identifiant(), n.prenom(), n.nom(), n.email(), n.telephone(), n.fonction(), inst, Set.copyOf(n.roles()));
+        NouveauCompte nouveau = new NouveauCompte(n.identifiant(), n.prenom(), n.nom(), n.email(), n.telephone(), n.fonction(), traduction.aEnregistrer(inst), Set.copyOf(n.roles()));
         AdministrationComptesService.Creation c = comptes.creer(acteur, nouveau, true, false);
         retenir(cle, CREATION, c.compte().id(), acteur);
         return new Creation(c.compte(), c.invitationEnvoyee(), false);

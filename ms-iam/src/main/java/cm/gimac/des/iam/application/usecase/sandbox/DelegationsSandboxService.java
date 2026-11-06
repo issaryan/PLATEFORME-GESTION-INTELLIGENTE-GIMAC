@@ -55,7 +55,32 @@ public class DelegationsSandboxService {
     private final JournalSandbox journal;
     private final ProprietesSandbox proprietes;
     private final Clock clock;
+    private final TraductionInstitution traduction;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    public DelegationsSandboxService(
+        DelegationsSandbox delegations,
+        PerimetresSuspendus perimetres,
+        Annuaire annuaire,
+        CatalogueProfils catalogue,
+        EtapesIdempotentes etapes,
+        JournalSandbox journal,
+        ProprietesSandbox proprietes,
+        Clock clock,
+        TraductionInstitution traduction
+    ) {
+        this.traduction = traduction;
+        this.delegations = delegations;
+        this.perimetres = perimetres;
+        this.annuaire = annuaire;
+        this.catalogue = catalogue;
+        this.etapes = etapes;
+        this.journal = journal;
+        this.proprietes = proprietes;
+        this.clock = clock;
+    }
+
+    /** Sans registre des participants (tests). */
     public DelegationsSandboxService(
         DelegationsSandbox delegations,
         PerimetresSuspendus perimetres,
@@ -66,14 +91,7 @@ public class DelegationsSandboxService {
         ProprietesSandbox proprietes,
         Clock clock
     ) {
-        this.delegations = delegations;
-        this.perimetres = perimetres;
-        this.annuaire = annuaire;
-        this.catalogue = catalogue;
-        this.etapes = etapes;
-        this.journal = journal;
-        this.proprietes = proprietes;
-        this.clock = clock;
+        this(delegations, perimetres, annuaire, catalogue, etapes, journal, proprietes, clock, TraductionInstitution.sansRegistre(clock));
     }
 
     Duration dureeMax(TypeDelegation type) {
@@ -108,7 +126,7 @@ public class DelegationsSandboxService {
         if (!c.actif()) {
             throw IamException.nonTraitable("IAM_SBX_COMPTE_INACTIF", "Le compte désigné est inactif", Map.of("id", compteId));
         }
-        if (inst.equals(c.institutionId())) {
+        if (traduction.memeInstitution(inst, c.institutionId())) {
             throw IamException.nonTraitable("IAM_SBX_MANDAT_PROPRE_INSTITUTION", "Un mandat désigne un intervenant extérieur à l'institution", Map.of("id", compteId));
         }
         ReglesPerimetre.verifierPerimetreOuvert(perimetres.suspendu(inst));

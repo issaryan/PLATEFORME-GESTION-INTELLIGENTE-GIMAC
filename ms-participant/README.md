@@ -115,6 +115,7 @@ JaCoCo bloque la construction sous 80 % : à `test`, chaque classe du lot en lig
 | 2026-11-01 | — | Binding `kafkaProducer-out-0` configuré avec `ByteArraySerializer` pour les octets du gabarit Cloud Stream ; l'outbox conserve `StringSerializer`. Trois essais `ParticipantKafkaResourceIT` réussis. |
 | 2026-11-05 | US-EXI-21 | Fiche interne : `servicesSouscrits` (abonnements actifs, CC-SBX-GIMAC-02 algorithme 6.7), `ContratFicheSandboxTest` ; `participant.subscription-changed.v1` publié par la reprise à chaque ajout de service (sujet `participant.subscription`, schéma `config/contrats`), `ContratSouscriptionsSandboxTest` ; charges d'exemple partagées avec la sandbox |
 | 2026-11-05 | D-132 | Reprise des correspondants : `RepriseCorrespondants`, routes interne et de console `…/reprise/correspondants` (`REF_REPRISE_IMPORT`, simulation par défaut, idempotence par institution et compte), tests unitaires et d'intégration. |
+| 2026-11-05 | D-134 | Routes internes `/institutions/{id}/correspondance` et `/institutions/code/{code}/correspondance` (identifiant au registre et code participant), lues par MS-IAM |
 <!-- GIMAC:FIN -->
 
 

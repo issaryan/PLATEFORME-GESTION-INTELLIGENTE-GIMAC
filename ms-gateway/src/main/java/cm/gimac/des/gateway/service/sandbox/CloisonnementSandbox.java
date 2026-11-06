@@ -104,7 +104,9 @@ public class CloisonnementSandbox {
 
     private Mono<Resultat> admettre(Demande d, Portee portee, DecisionSandbox decision) {
         Optional<String> jeton = emetteur == null ? Optional.empty() : emetteur.emettre(jetonReduit(d, portee, decision));
-        if ((decision.motif() == Motif.MANDAT_ACTIF || decision.motif() == Motif.PRESTATAIRE_AUTORISE) && jeton.isEmpty()) {
+        // D-134 : le jeton original (institution_id au registre) n'est jamais relayé à la sandbox ; sans jeton réduit,
+        // portant le code participant, la requête est refusée.
+        if (jeton.isEmpty()) {
             return Mono.just(new Resultat(DecisionSandbox.de(Motif.JETON_REDUIT_INDISPONIBLE, d.institutionJeton()), 404, Optional.empty()));
         }
         LimiteurTentatives limiteur = quotas.get(d.route().couche());
@@ -124,7 +126,8 @@ public class CloisonnementSandbox {
 
     static JetonReduit jetonReduit(Demande d, Portee portee, DecisionSandbox decision) {
         List<String> permissions = portee.permissions().stream().filter(p -> p.startsWith(PREFIXE_PERMISSION)).sorted().toList();
-        String propre = vide(d.institutionJeton()) ? "" : d.institutionJeton();
+        // D-134 : codes participants traduits par MS-IAM, jamais l'institution_id du jeton original (identifiant au registre).
+        String propre = !vide(portee.institutionPropre()) ? portee.institutionPropre() : "COMPTE".equals(portee.type()) && !vide(portee.institution()) ? portee.institution() : "";
         return new JetonReduit(portee.sujet(), decision.institutionEffective(), propre, permissions, d.acr(), d.route().nomService());
     }
 

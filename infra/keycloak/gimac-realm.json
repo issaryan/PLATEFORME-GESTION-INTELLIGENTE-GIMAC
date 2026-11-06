@@ -3238,7 +3238,8 @@
       "serviceAccountClientId": "iam-service",
       "realmRoles": [
         "default-roles-gimac",
-        "INTERNAL_DOCUMENT_RENDER"
+        "INTERNAL_DOCUMENT_RENDER",
+        "INTERNAL_PARTICIPANT_READ"
       ],
       "clientRoles": {
         "realm-management": [

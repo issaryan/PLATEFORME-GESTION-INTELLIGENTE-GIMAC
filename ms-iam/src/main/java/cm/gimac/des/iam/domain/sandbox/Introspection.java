@@ -18,6 +18,7 @@ import java.util.Set;
  * @param expiration fin de validité : la plus proche de la fin du jeton et de la fin de la délégation
  * @param composants composants techniques ouverts (accès de prestataire), vide sinon
  * @param motifRefus motif interne d'un refus, nul si le jeton est admis
+ * @param institutionPropre code participant de l'institution du compte (D-134), nul pour un compte du GIMAC
  */
 public record Introspection(
     boolean active,
@@ -28,9 +29,24 @@ public record Introspection(
     String delegationId,
     Instant expiration,
     Set<String> composants,
-    String motifRefus
+    String motifRefus,
+    String institutionPropre
 ) {
     public static final String COMPTE = "COMPTE";
+
+    public Introspection(
+        boolean active,
+        String sujet,
+        String institutionId,
+        Set<String> permissions,
+        String type,
+        String delegationId,
+        Instant expiration,
+        Set<String> composants,
+        String motifRefus
+    ) {
+        this(active, sujet, institutionId, permissions, type, delegationId, expiration, composants, motifRefus, null);
+    }
 
     public Introspection {
         permissions = permissions == null ? Set.of() : Set.copyOf(permissions);

@@ -20,6 +20,9 @@ public interface RegistreLecture {
 
     Optional<Identite> parCode(String codeParticipant);
 
+    /** Identité d'une institution par son identifiant au registre (D-134 : traduction de institution_id par MS-IAM). */
+    Optional<Identite> parId(UUID id);
+
     List<Correspondant> correspondantsActifs(UUID institutionId);
 
     /** Codes des services souscrits par l'institution (abonnements actifs), triés (CC-SBX-GIMAC-02 algorithme 6.7). */

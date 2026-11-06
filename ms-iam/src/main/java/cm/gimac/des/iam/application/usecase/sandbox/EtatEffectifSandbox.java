@@ -20,9 +20,11 @@ public class EtatEffectifSandbox {
 
     private final PerimetresSuspendus perimetres;
     private final ActiviteComptes activite;
+    private final TraductionInstitution traduction;
     private final Clock clock;
 
-    public EtatEffectifSandbox(PerimetresSuspendus perimetres, ActiviteComptes activite, Clock clock) {
+    public EtatEffectifSandbox(PerimetresSuspendus perimetres, ActiviteComptes activite, TraductionInstitution traduction, Clock clock) {
+        this.traduction = traduction;
         this.perimetres = perimetres;
         this.activite = activite;
         this.clock = clock;
@@ -30,10 +32,23 @@ public class EtatEffectifSandbox {
 
     @Transactional(propagation = Propagation.REQUIRED)
     public EtatConnexion etat(Compte c) {
-        boolean actif = ReglesPerimetre.actifEffectif(c.actif(), !c.interne() && perimetres.suspendu(c.institutionId()));
+        boolean actif = ReglesPerimetre.actifEffectif(c.actif(), !c.interne() && suspendu(c.institutionId()));
         if (actif) {
             activite.connexion(c.id(), clock.instant());
         }
         return new EtatConnexion(actif, c.secondFacteur(), c.etapesRestantes());
+    }
+
+    /**
+     * D-134 : le périmètre est indexé par code participant, traduit depuis institution_id. Registre injoignable : seule la
+     * valeur brute est lue, pour que la connexion à la plateforme ne dépende pas de MS-PARTICIPANT ; l'accès à la sandbox
+     * reste, lui, refusé par l'introspection (REGISTRE_INDISPONIBLE).
+     */
+    private boolean suspendu(String institutionId) {
+        try {
+            return traduction.code(institutionId).map(perimetres::suspendu).orElse(perimetres.suspendu(institutionId));
+        } catch (cm.gimac.des.iam.application.port.out.sandbox.RegistreInstitutions.RegistreIndisponible e) {
+            return perimetres.suspendu(institutionId);
+        }
     }
 }

@@ -1612,26 +1612,40 @@ sbx_services := {
 	"lecture": "LEC",
 }
 
+# Portail : dix services, SBX-LECTURE n'a que la console (CC-SBX-GIMAC-02 §6).
+sbx_portails := {s: m | some s, m in sbx_services; s != "lecture"}
+
 test_sbx_matrice_portail_console if {
-	every s, m in sbx_services {
+	every s, m in sbx_portails {
 		consultation := sprintf("SBX_%s_CONSULTATION", [m])
 		administration := sprintf("SBX_%s_ADMINISTRATION", [m])
 		portail := sprintf("/bff/portail/sbx-%s/ressources", [s])
-		console := sprintf("/bff/console/sbx-%s/ressources", [s])
 		authz.allow with input as {"method": "GET", "path": portail, "permissions": [consultation], "institution_id": "99001", "authentifie": true, "acr": "2"}
 		authz.allow with input as {"method": "POST", "path": portail, "permissions": [administration], "institution_id": "99001", "authentifie": true, "acr": "2"}
-		authz.allow with input as {"method": "GET", "path": console, "permissions": [consultation], "authentifie": true, "acr": "2"}
-		authz.allow with input as {"method": "PUT", "path": console, "permissions": [administration], "institution_id": "", "authentifie": true, "acr": "2"}
 
 		# Lecture seule : aucune écriture ; autre module : aucun accès ; sans second facteur : refus.
 		not authz.allow with input as {"method": "POST", "path": portail, "permissions": [consultation], "institution_id": "99001", "authentifie": true, "acr": "2"}
 		not authz.allow with input as {"method": "GET", "path": portail, "permissions": ["SBX_XXX_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
 		not authz.allow with input as {"method": "GET", "path": portail, "permissions": [consultation], "institution_id": "99001", "authentifie": true, "acr": "1"}
 
-		# Portail sans institution, console pour un compte d'institution : refus.
+		# Portail sans institution : refus.
 		not authz.allow with input as {"method": "GET", "path": portail, "permissions": [consultation], "institution_id": "", "authentifie": true, "acr": "2"}
+	}
+	every s, m in sbx_services {
+		consultation := sprintf("SBX_%s_CONSULTATION", [m])
+		administration := sprintf("SBX_%s_ADMINISTRATION", [m])
+		console := sprintf("/bff/console/sbx-%s/ressources", [s])
+		authz.allow with input as {"method": "GET", "path": console, "permissions": [consultation], "authentifie": true, "acr": "2"}
+		authz.allow with input as {"method": "PUT", "path": console, "permissions": [administration], "institution_id": "", "authentifie": true, "acr": "2"}
+
+		# Console pour un compte d'institution : refus.
 		not authz.allow with input as {"method": "GET", "path": console, "permissions": [consultation], "institution_id": "99001", "authentifie": true, "acr": "2"}
 	}
+}
+
+test_sbx_lecture_sans_portail if {
+	not authz.allow with input as {"method": "GET", "path": "/bff/portail/sbx-lecture/ressources", "permissions": ["SBX_LEC_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/portail/sbx-lecture/ressources", "permissions": ["SBX_LEC_ADMINISTRATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
 }
 
 test_sbx_fonctions_ecriture if {

@@ -117,6 +117,15 @@ class RegistreSandboxIT extends AbstractParticipantIT {
             .andExpect(jsonPath("$.correspondants[0].email").doesNotExist())
             .andExpect(jsonPath("$.servicesSouscrits").value(org.hamcrest.Matchers.contains("CARTE", "MOBILE")));
         mvc.perform(get("/api/v1/interne/institutions/code/99999/fiche").with(compteDeService("sbx-espace"))).andExpect(status().isNotFound());
+        // D-134 : MS-IAM traduit institution_id (identifiant au registre) en code participant, et inversement.
+        mvc.perform(get("/api/v1/interne/institutions/" + i.getId() + "/correspondance").with(compteDeService("iam-service")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.institutionId").value(i.getId().toString()))
+            .andExpect(jsonPath("$.codeParticipant").value("99001"));
+        mvc.perform(get("/api/v1/interne/institutions/code/99001/correspondance").with(compteDeService("iam-service")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.institutionId").value(i.getId().toString()));
+        mvc.perform(get("/api/v1/interne/institutions/" + UUID.randomUUID() + "/correspondance").with(compteDeService("iam-service"))).andExpect(status().isNotFound());
     }
 
     @Test

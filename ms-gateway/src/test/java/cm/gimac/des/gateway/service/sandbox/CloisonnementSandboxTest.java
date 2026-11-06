@@ -99,8 +99,9 @@ class CloisonnementSandboxTest {
     @Test
     @DisplayName("Mandat actif confirmé par IAM : institution et permissions du mandat relayées")
     void mandatActif() {
-        reponse.set(new Portee(true, "u-1", "99002", List.of("SBX_SIM_CONSULTATION"), "MANDAT"));
-        Resultat r = service().evaluer(demande("99010", "99002")).block();
+        // D-134 : l'institution propre est le code rendu par MS-IAM, jamais l'institution_id du jeton original (UUID).
+        reponse.set(new Portee(true, "u-1", "99002", List.of("SBX_SIM_CONSULTATION"), "MANDAT", "99010"));
+        Resultat r = service().evaluer(demande("6f1c2a3e-7777-4a6b-9c1d-000000000010", "99002")).block();
         assertThat(r.statut()).isEqualTo(200);
         assertThat(r.decision().motif()).isEqualTo(Motif.MANDAT_ACTIF);
         assertThat(r.jeton()).contains("jeton-reduit-99002");
@@ -151,7 +152,7 @@ class CloisonnementSandboxTest {
     }
 
     @Test
-    @DisplayName("Mandat ou prestataire sans émetteur de jeton réduit : refus par défaut ; compte propre inchangé")
+    @DisplayName("Sans émetteur de jeton réduit : refus pour tout compte (D-134, le jeton original n'est jamais relayé)")
     void jetonReduitIndisponible() {
         reponse.set(new Portee(true, "u-1", "99002", List.of(), "MANDAT"));
         assertThat(service(null, Map.of()).evaluer(demande("99010", "99002")).block().decision().motif()).isEqualTo(Motif.JETON_REDUIT_INDISPONIBLE);
@@ -159,7 +160,8 @@ class CloisonnementSandboxTest {
         assertThat(service(null, Map.of()).evaluer(demande("", null)).block().statut()).isEqualTo(404);
         reponse.set(new Portee(true, "u-1", "99001", List.of(), "COMPTE"));
         Resultat propre = service(null, Map.of()).evaluer(demande("99001", null)).block();
-        assertThat(propre.statut()).isEqualTo(200);
+        assertThat(propre.statut()).isEqualTo(404);
+        assertThat(propre.decision().motif()).isEqualTo(Motif.JETON_REDUIT_INDISPONIBLE);
         assertThat(propre.jeton()).isEmpty();
     }
 

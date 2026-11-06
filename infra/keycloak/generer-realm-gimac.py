@@ -445,7 +445,8 @@ SERVICES = {
     "notification-service": ["INTERNAL_IAM_READ", "INTERNAL_COLLABORATION_READ"],
     # MS-IAM administre le realm par l'API d'administration (D-62) : rôles de realm-management ci-dessous. Organigramme en
     # PDF (D-102) : mise en page par MS-DOCUMENT (POST /api/v1/interne/rendus/pdf).
-    "iam-service": ["INTERNAL_DOCUMENT_RENDER"],
+    # D-134 : MS-IAM traduit institution_id (identifiant au registre) en code participant pour la sandbox.
+    "iam-service": ["INTERNAL_DOCUMENT_RENDER", "INTERNAL_PARTICIPANT_READ"],
     # Connexion sur la plateforme (D-65) : la passerelle lit l'état de connexion du compte sur MS-IAM.
     "gateway-service": ["INTERNAL_IAM_READ",
                         # Introspection des jetons pour la sandbox (D-119) : décision de MS-IAM pour le jeton interne réduit.

@@ -33,7 +33,9 @@ public class EmetteurJetonReduitJwt implements EmetteurJetonReduit {
             .claim("roles", j.permissions())
             .claim("acr", j.acr());
         if (!j.institution().isBlank()) {
+            // D-134 : code participant (CC-SBX-GIMAC-02), aussi sous le nom explicite code_participant.
             claims.claim("institution_id", j.institution());
+            claims.claim("code_participant", j.institution());
         }
         if (!j.institutionPropre().isBlank() && !j.institutionPropre().equals(j.institution())) {
             claims.claim("institution_propre", j.institutionPropre());

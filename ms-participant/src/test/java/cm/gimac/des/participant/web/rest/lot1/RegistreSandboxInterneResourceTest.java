@@ -25,5 +25,10 @@ class RegistreSandboxInterneResourceTest {
         RegistreSandboxInterneResource r = new RegistreSandboxInterneResource(queries);
         assertThat(r.fiche("99001")).isSameAs(fiche);
         assertThat(r.services(0, 50)).isSameAs(page);
+        var c = new RegistreSandboxQueries.Correspondance(java.util.UUID.randomUUID(), "99001");
+        when(queries.correspondance(c.institutionId())).thenReturn(c);
+        when(queries.correspondance("99001")).thenReturn(c);
+        assertThat(r.correspondance(c.institutionId())).isSameAs(c);
+        assertThat(r.correspondanceParCode("99001")).isSameAs(c);
     }
 }
