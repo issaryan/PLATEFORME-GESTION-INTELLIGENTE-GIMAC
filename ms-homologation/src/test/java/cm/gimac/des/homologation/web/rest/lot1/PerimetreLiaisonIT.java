@@ -237,6 +237,7 @@ class PerimetreLiaisonIT extends AbstractHomologationIT {
         String id = JsonPath.read(r, "$.id");
         String charge = jdbc.queryForObject("select payload::text from outbox_event where aggregate_id = ? and event_type = 'homologation.liaison-status-changed.v1'", String.class, id);
         assertThat(JsonPath.<String>read(charge, "$.referenceOrigine")).isEqualTo("BGFI-GB-2510-01");
+        assertThat(JsonPath.<String>read(charge, "$.institutionNom")).isEqualTo("Institution 99002");
         assertThat(SchemaContrat.charger("sandbox/homologation.liaison-status-changed.v1.schema.json").ecarts(JSON.readTree(charge))).isEmpty();
     }
 

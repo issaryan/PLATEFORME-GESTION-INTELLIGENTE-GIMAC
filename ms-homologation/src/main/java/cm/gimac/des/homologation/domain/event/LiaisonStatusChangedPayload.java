@@ -11,6 +11,8 @@ import java.util.UUID;
  * à celle qu'il connaît. {@code etatLiaison} : état technique de la liaison (automate HOM-19), pour information.
  * {@code referenceOrigine} (D-133, ajouté par extension) : référence du projet dans l'outil d'origine, normalisée par la
  * reprise D-107 ; SBX-CAMPAGNE y rattache une campagne reprise de même code, jamais une liaison par défaut.
+ * {@code institutionNom} (D-133, ajouté par extension) : raison sociale de l'institution, telle que MS-PARTICIPANT l'a
+ * donnée à l'ouverture de la liaison ; SBX-CAMPAGNE la sert en nom usuel du participant de ses campagnes.
  */
 public record LiaisonStatusChangedPayload(
     UUID liaisonId,
@@ -22,7 +24,8 @@ public record LiaisonStatusChangedPayload(
     String etatLiaison,
     long versionEtat,
     Instant survenuLe,
-    String referenceOrigine
+    String referenceOrigine,
+    String institutionNom
 ) {
     public static final String TYPE = "homologation.liaison-status-changed.v1";
 
@@ -38,6 +41,6 @@ public record LiaisonStatusChangedPayload(
         long versionEtat,
         Instant survenuLe
     ) {
-        this(liaisonId, institutionId, codeParticipant, typeProjet, statut, statutPrecedent, etatLiaison, versionEtat, survenuLe, null);
+        this(liaisonId, institutionId, codeParticipant, typeProjet, statut, statutPrecedent, etatLiaison, versionEtat, survenuLe, null, null);
     }
 }
