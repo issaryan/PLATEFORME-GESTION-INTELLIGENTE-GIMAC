@@ -221,6 +221,7 @@ Validations réellement exécutées et conservées dans les rapports du 27/10 :
 | 2026-11-06 | D-140 | Liste paginée des membres du registre dans MS-PARTICIPANT pour la provision des comptes de test de SBX-DONNEES ; `INTERNAL_PARTICIPANT_READ` donnée à `sbx-donnees` |
 | 2026-11-06 | D-141 | Sandbox : quatre comptes de test par membre (deux carte, deux mobile) dans un jeu INSTITUTION dédié, visible du seul membre ; dérogation à l'invariant réel/simulé limitée à ce jeu, validation de l'utilisateur attendue (REC D-141). |
 | 2026-11-06 | D-134 | Jeton réduit de la sandbox finalisé en Docker : émetteur de la passerelle actif, clé RSA générée hors dépôt par `infra/docker-compose/scripts/generer-cle-passerelle.sh` (gimac-dev.sh, deployer-serveur.sh), JWKS ouvert aux services de la sandbox |
+| 2026-11-06 | D-133, complément | REC : route console de SBX-ESPACE de rattachement d'un compte MS-IAM existant à l'espace ouvert de son institution (profils SBX, projection, espace personnel, idempotente), appelée par la migration de l'ancienne sandbox pour les collaborateurs injectés au format ancien. |
 
 ### Mise a jour du 02/11/2026 : Releve Sandbox GIMAC et integration documentaire
 - MS-HOMOLOGATION : correction de DocumentRestAdapter pour transmettre service-account-homologation-service en cas de deposantId nul, securisation du scheduler de releve periodique par capture des exceptions, suppression du poller KafkaProducer parasite.
