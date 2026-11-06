@@ -210,6 +210,23 @@ class CloisonnementSandboxTest {
     }
 
     @Test
+    @DisplayName("Mesure d'attente (déploiement sans émetteur) : jeton original relayé pour un compte du GIMAC ou d'une institution, jamais pour un mandat ou un prestataire")
+    void jetonReduitNonObligatoire() {
+        CloisonnementSandbox attente = new CloisonnementSandbox(introspection, journal::add, Map.of(), null, false);
+        reponse.set(new Portee(true, "agent", null, List.of("SBX_CER_CONSULTATION"), "COMPTE"));
+        Resultat console = attente.evaluer(demande("", null)).block();
+        assertThat(console.statut()).isEqualTo(200);
+        assertThat(console.decision().motif()).isEqualTo(Motif.COMPTE_GIMAC);
+        assertThat(console.jeton()).isEmpty();
+        reponse.set(new Portee(true, "u-1", "99001", List.of(), "COMPTE", "99001"));
+        assertThat(attente.evaluer(demande("99001", null)).block().statut()).isEqualTo(200);
+        reponse.set(new Portee(true, "u-1", "99002", List.of(), "MANDAT", "99010"));
+        assertThat(attente.evaluer(demande("99010", "99002")).block().decision().motif()).isEqualTo(Motif.JETON_REDUIT_INDISPONIBLE);
+        reponse.set(new Portee(true, "prestataire", null, List.of(), "PRESTATAIRE"));
+        assertThat(attente.evaluer(demande("", null)).block().statut()).isEqualTo(404);
+    }
+
+    @Test
     @DisplayName("Quota dépassé après introspection admise : 429 et décision journalisée")
     void quota() {
         List<String> cles = new ArrayList<>();
