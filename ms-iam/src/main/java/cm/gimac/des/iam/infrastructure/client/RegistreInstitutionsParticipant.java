@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
@@ -28,6 +29,7 @@ public class RegistreInstitutionsParticipant implements RegistreInstitutions {
 
     private final RestClient client;
 
+    @Autowired
     public RegistreInstitutionsParticipant(RestClient.Builder builder, ServiceTokenInterceptor jeton, @Value("${gimac.services.participant.url}") String url) {
         SimpleClientHttpRequestFactory fabrique = new SimpleClientHttpRequestFactory();
         fabrique.setConnectTimeout(Duration.ofSeconds(3));

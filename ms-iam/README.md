@@ -224,6 +224,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | 2026-11-05 | - | Changeset 20261105120000 : processus, lancerDemande et mesDemandes dans le groupe « processus », institutions dans « homologation », seulement si le groupe vaut encore l'ancienne valeur (NavigationSectionsIT) |
 <!-- GIMAC:FIN -->
 | 2026-11-05 | D-134 | `TraductionInstitution` : institution_id traduit en code participant pour l'introspection, les périmètres, les mandats, les sagas et l'administration déléguée ; cache de la seule correspondance ; refus `INSTITUTION_NON_TRADUITE` et `REGISTRE_INDISPONIBLE` |
+| 2026-11-06 | D-134 | `RegistreInstitutionsParticipant` : constructeur d’injection marqué `@Autowired` ; avec deux constructeurs, MS-IAM ne démarrait pas en profil prod sur le serveur 214. |
 
 # iam
 
