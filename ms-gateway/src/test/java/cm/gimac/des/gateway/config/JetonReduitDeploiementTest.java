@@ -77,6 +77,23 @@ class JetonReduitDeploiementTest {
     }
 
     @Test
+    @DisplayName("Profil prod (application.yml puis application-prod.yml) : valeur résolue comme au démarrage, jeton réduit non obligatoire sans émetteur")
+    void profilProdResolu() throws Exception {
+        org.springframework.core.env.StandardEnvironment env = new org.springframework.core.env.StandardEnvironment();
+        org.springframework.boot.env.YamlPropertySourceLoader yaml = new org.springframework.boot.env.YamlPropertySourceLoader();
+        for (String f : new String[] { "application.yml", "application-prod.yml" }) {
+            for (var source : yaml.load(f, new org.springframework.core.io.FileSystemResource("src/main/resources/config/" + f))) {
+                env.getPropertySources().addFirst(source);
+            }
+        }
+        env.setActiveProfiles("prod");
+        boolean emetteur = Boolean.parseBoolean(env.resolvePlaceholders("${gimac.securite.jeton-fantome.actif:false}"));
+        boolean obligatoire = Boolean.parseBoolean(env.resolvePlaceholders("${gimac.sandbox.jeton-reduit.obligatoire:${gimac.securite.jeton-fantome.actif:false}}"));
+        assertThat(obligatoire).isEqualTo(emetteur);
+        assertThat(!obligatoire || emetteur).isTrue();
+    }
+
+    @Test
     @DisplayName("Démarrage refusé si le jeton réduit est obligatoire sans émetteur : la panne est vue au démarrage, pas en recette")
     void demarrageRefuse() {
         SandboxConfiguration c = new SandboxConfiguration();
