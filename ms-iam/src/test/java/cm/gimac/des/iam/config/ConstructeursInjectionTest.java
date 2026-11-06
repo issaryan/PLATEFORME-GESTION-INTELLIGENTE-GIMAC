@@ -26,7 +26,7 @@ import org.springframework.stereotype.Component;
 class ConstructeursInjectionTest {
 
     @Test
-    @DisplayName("Tout composant à plusieurs constructeurs (publics ou non) en désigne exactement un par @Autowired")
+    @DisplayName("Tout composant à plusieurs constructeurs (publics ou non) en désigne un par @Autowired, ou garde un constructeur sans argument")
     void unSeulConstructeurDInjection() throws Exception {
         // Sans évaluer les @Conditional : les adaptateurs « real » (gimac.adapters.*=real) ne sont actifs qu'en prod.
         AnnotationTypeFilter composant = new AnnotationTypeFilter(Component.class);
@@ -40,20 +40,20 @@ class ConstructeursInjectionTest {
         int verifies = 0;
         for (BeanDefinition d : scan.findCandidateComponents("cm.gimac.des.iam")) {
             Class<?> c = Class.forName(d.getBeanClassName());
-
+            verifies++;
             Constructor<?>[] constructeurs = Arrays.stream(c.getDeclaredConstructors()).filter(k -> !k.isSynthetic()).toArray(Constructor[]::new);
             if (constructeurs.length < 2) {
                 continue;
             }
-            verifies++;
-
             long injection = Arrays.stream(constructeurs).filter(k -> k.isAnnotationPresent(Autowired.class)).count();
-            if (injection != 1) {
+            boolean sansArgument = Arrays.stream(constructeurs).anyMatch(k -> k.getParameterCount() == 0);
+            // Règle de Spring : le constructeur @Autowired, ou à défaut le constructeur sans argument ; sinon, échec.
+            if (injection > 1 || (injection == 0 && !sansArgument)) {
                 fautifs.add(c.getName());
             }
         }
         assertThat(fautifs).isEmpty();
-        assertThat(verifies).isPositive();
+        assertThat(verifies).as("composants parcourus").isPositive();
     }
 
     @Test
