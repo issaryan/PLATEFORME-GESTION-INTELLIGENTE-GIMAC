@@ -3243,7 +3243,8 @@
       "serviceAccountClientId": "sbx-donnees",
       "realmRoles": [
         "default-roles-gimac",
-        "INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE"
+        "INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE",
+        "INTERNAL_PARTICIPANT_READ"
       ]
     },
     {

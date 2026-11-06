@@ -210,6 +210,7 @@ Validations réellement exécutées et conservées dans les rapports du 27/10 :
 | 2026-11-04 | D-123 | Liaison certificat et jeton vers SBX-LECTURE : jeton de `homologation-service` lié au certificat en production, demande de jeton et lecture en mTLS par paquet SSL dans MS-HOMOLOGATION, complément de D-123 au REC |
 | 2026-11-05 | D-134 | `institution_id` : identifiant au registre côté plateforme, code participant côté sandbox, traduit une seule fois par MS-IAM (correspondance lue dans MS-PARTICIPANT) ; la passerelle ne relaie plus le jeton original |
 | 2026-11-06 | D-134 | `ConstructeursInjectionTest` dans les quatorze services : tout composant Spring, adaptateurs de prod compris (conditions non évaluées), a un constructeur `@Autowired` ou un constructeur sans argument dès qu'il en déclare plusieurs ; panne de MS-IAM du 06/11 sur le 214 |
+| 2026-11-06 | D-140 | Liste paginée des membres du registre dans MS-PARTICIPANT pour la provision des comptes de test de SBX-DONNEES ; `INTERNAL_PARTICIPANT_READ` donnée à `sbx-donnees` |
 
 ### Mise a jour du 02/11/2026 : Releve Sandbox GIMAC et integration documentaire
 

@@ -284,6 +284,7 @@ Interface interne de MS-PARTICIPANT (jamais relayée par la passerelle), jeton d
 | GET | `/api/v1/interne/institutions/code/{code}/fiche` | `{ codeParticipant, raisonSociale, statut, versionStatut, correspondants: [{ id, compteId, nom, fonction }], servicesSouscrits: [code] }` ; 404 `PAR_INSTITUTION_NOT_FOUND` si le code est absent |
 | GET | `/api/v1/interne/institutions/{id}/correspondance` | `{ institutionId, codeParticipant }` (D-134, lu par MS-IAM) ; 404 `PAR_INSTITUTION_NOT_FOUND` |
 | GET | `/api/v1/interne/institutions/code/{code}/correspondance` | `{ institutionId, codeParticipant }` (D-134, sens inverse) ; 404 `PAR_INSTITUTION_NOT_FOUND` |
+| GET | `/api/v1/interne/institutions?page=0&taille=50&statut=ACTIF&statut=ADHERENT` | `{ elements: [{ codeParticipant, statut }], total, page, taille }` (D-140, lu par SBX-DONNEES) : institutions dotées d'un code participant, triées par code ; `statut` facultatif et répétable, valeur hors `InstitutionStatus` : 422 `PAR_STATUT_INVALIDE` ; taille de 1 à 100, sinon 422 `PAR_PAGINATION_INVALIDE` |
 | GET | `/api/v1/interne/nomenclature/services?page=0&taille=50` | `{ contenu: [{ code, institutions }], total, page, taille }`, codes des abonnements actifs triés ; taille de 1 à 100, sinon 422 `PAR_PAGINATION_INVALIDE` |
 
 - `versionStatut` : version de statut courante (§6.5), 0 tant qu'aucun changement n'a été publié.

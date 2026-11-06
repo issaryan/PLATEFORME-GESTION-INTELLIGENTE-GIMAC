@@ -57,6 +57,29 @@ public class RegistreLectureJdbc implements RegistreLecture {
     }
 
     @Override
+    public List<Membre> membres(java.util.Set<String> statuts, int page, int taille) {
+        String filtre = statuts.isEmpty() ? "" : " and status in (:statuts)";
+        var requete = jdbc
+            .sql("select participant_code, status from institution where participant_code is not null" + filtre + " order by participant_code limit :limite offset :decalage")
+            .param("limite", taille)
+            .param("decalage", (long) page * taille);
+        if (!statuts.isEmpty()) {
+            requete = requete.param("statuts", statuts);
+        }
+        return requete.query((rs, n) -> new Membre(rs.getString("participant_code"), rs.getString("status"))).list();
+    }
+
+    @Override
+    public long nombreMembres(java.util.Set<String> statuts) {
+        String filtre = statuts.isEmpty() ? "" : " and status in (:statuts)";
+        var requete = jdbc.sql("select count(*) from institution where participant_code is not null" + filtre);
+        if (!statuts.isEmpty()) {
+            requete = requete.param("statuts", statuts);
+        }
+        return requete.query(Long.class).single();
+    }
+
+    @Override
     public List<Service> services(int page, int taille) {
         return jdbc
             .sql(

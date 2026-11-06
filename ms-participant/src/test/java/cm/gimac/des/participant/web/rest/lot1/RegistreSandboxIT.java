@@ -152,6 +152,37 @@ class RegistreSandboxIT extends AbstractParticipantIT {
     }
 
     @Test
+    @DisplayName("D-140 : institutions dotées d'un code, triées par code, filtre de statut multiple, taille bornée, compte de service sbx-donnees")
+    void membresDuRegistre() throws Exception {
+        institution("00013", InstitutionStatus.ACTIF);
+        institution("00011", InstitutionStatus.ADHERENT);
+        institution("00012", InstitutionStatus.SUSPENDU);
+        institutions.saveAndFlush(
+            new Institution().name("Candidate sans code").country("CM").category(InstitutionCategory.BANQUE).status(InstitutionStatus.CANDIDAT)
+                .complianceState(ComplianceState.CONFORME).openLinkCount(0).openSuspenseCount(0).createdAt(Instant.parse("2026-10-22T08:00:00Z"))
+        );
+        mvc
+            .perform(get("/api/v1/interne/institutions?page=0&taille=2").with(compteDeService("sbx-donnees")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.total").value(org.hamcrest.Matchers.greaterThanOrEqualTo(3)))
+            .andExpect(jsonPath("$.taille").value(2))
+            .andExpect(jsonPath("$.elements.length()").value(2))
+            .andExpect(jsonPath("$.elements[0].codeParticipant").value("00011"))
+            .andExpect(jsonPath("$.elements[0].statut").value("ADHERENT"))
+            .andExpect(jsonPath("$.elements[1].codeParticipant").value("00012"));
+        mvc
+            .perform(get("/api/v1/interne/institutions?statut=ACTIF&statut=ADHERENT").with(compteDeService("sbx-donnees")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.elements[*].codeParticipant").value(org.hamcrest.Matchers.hasItems("00011", "00013")))
+            .andExpect(jsonPath("$.elements[*].codeParticipant").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem("00012"))))
+            .andExpect(jsonPath("$.elements[*].statut").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.in(java.util.List.of("ACTIF", "ADHERENT")))));
+        mvc.perform(get("/api/v1/interne/institutions?taille=101").with(compteDeService("sbx-donnees"))).andExpect(status().isUnprocessableEntity());
+        mvc.perform(get("/api/v1/interne/institutions?statut=FERME").with(compteDeService("sbx-donnees"))).andExpect(status().isUnprocessableEntity());
+        // Sans la permission interne : refus.
+        mvc.perform(get("/api/v1/interne/institutions").with(utilisateur(UUID.randomUUID(), "PAR_INSTITUTION_READ"))).andExpect(status().isForbidden());
+    }
+
+    @Test
     @DisplayName("Sécurité, critère 3 : le compte de service sbx-espace ne peut pas modifier le statut, refus sans effet et journalisé")
     void tentativeEcriture(CapturedOutput sortie) throws Exception {
         Institution i = institution("99001", InstitutionStatus.ACTIF);

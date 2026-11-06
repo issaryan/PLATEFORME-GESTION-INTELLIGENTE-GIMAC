@@ -28,6 +28,14 @@ public interface RegistreLecture {
     /** Codes des services souscrits par l'institution (abonnements actifs), triés (CC-SBX-GIMAC-02 algorithme 6.7). */
     List<String> servicesSouscrits(UUID institutionId);
 
+    /** Membre du registre doté d'un code participant (D-140). */
+    record Membre(String codeParticipant, String statut) {}
+
+    /** Institutions dotées d'un code participant, filtrées par statut (aucun filtre si vide), une page triée par code. */
+    List<Membre> membres(java.util.Set<String> statuts, int page, int taille);
+
+    long nombreMembres(java.util.Set<String> statuts);
+
     /** Codes de service actifs, une page triée par code. */
     List<Service> services(int page, int taille);
 

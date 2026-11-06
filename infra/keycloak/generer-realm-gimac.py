@@ -458,6 +458,8 @@ APPELS_SBX = [
     ("sbx-carte", "INTERNAL_SBX_MOBILE_COUPONS", "SBX-MOBILE : coupon de retrait sans carte"),
     ("sbx-campagne", "INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE", "SBX-RACCORDEMENT : rattachabilité d'un participant"),
     ("sbx-donnees", "INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE", "SBX-RACCORDEMENT : rattachabilité d'un participant"),
+    # D-140 : liste paginée des membres du registre, pour provisionner les comptes de test de chaque membre.
+    ("sbx-donnees", "INTERNAL_PARTICIPANT_READ", "MS-PARTICIPANT : liste paginée des institutions (code participant, statut)"),
     ("sbx-trace", "INTERNAL_SBX_CAMPAGNE_REFERENCES_TRACE", "SBX-CAMPAGNE : références de trace protégées avant purge"),
     ("sbx-campagne", "INTERNAL_DOCUMENT_DEPOSIT", "MS-DOCUMENT : dépôt du bilan (US-EXI-08)"),
     ("sbx-trace", "INTERNAL_DOCUMENT_DEPOSIT", "MS-DOCUMENT : dépôt des traces exportées (US-EXI-08)"),

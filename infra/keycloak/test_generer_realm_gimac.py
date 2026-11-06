@@ -70,6 +70,12 @@ class ProfilsCrV17(unittest.TestCase):
         iam = next(u for u in realm["users"] if u.get("serviceAccountClientId") == "iam-service")
         self.assertIn("INTERNAL_PARTICIPANT_READ", iam["realmRoles"])
 
+    def test_sbx_donnees_lit_la_liste_des_membres(self):
+        # D-140 : SBX-DONNEES lit la liste paginée des institutions de MS-PARTICIPANT.
+        realm = json.loads(G.CIBLE.read_text(encoding="utf-8"))
+        donnees = next(u for u in realm["users"] if u.get("serviceAccountClientId") == "sbx-donnees")
+        self.assertIn("INTERNAL_PARTICIPANT_READ", donnees["realmRoles"])
+
     def test_missions_selon_le_cr(self):
         m = {k: v[1] for k, v in G.PRESENTATIONS.items()}
         self.assertIn("Coordonnateur fonctionnel", m["ROLE_CHEF_DDRM"])
