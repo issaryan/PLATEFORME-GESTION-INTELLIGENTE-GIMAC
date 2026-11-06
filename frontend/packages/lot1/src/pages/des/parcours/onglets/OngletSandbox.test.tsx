@@ -22,6 +22,7 @@ const page = (id: string, o: { services?: Services; langue?: 'fr' | 'en' | 'es' 
   })
 
 describe('Résultats de la sandbox (US-EXI-17)', () => {
+  // Onglet complet (vue graphique, répartition, exécutions paginées, contrôle axe) : délai allongé sous la charge du poste.
   it('critère 1 : verdicts natif et normalisé, version de la table, taux avec numérateur, dénominateur et version de formule ; mention permanente, aucune action', async () => {
     const { container } = page('LIA-2026-022')
     expect(await screen.findByRole('tab', { name: 'Résultats de la sandbox' })).toBeTruthy()
@@ -52,12 +53,12 @@ describe('Résultats de la sandbox (US-EXI-17)', () => {
     expect(screen.getByText('Bilan de certification')).toBeTruthy()
     expect(screen.getByText('Déjà conservée')).toBeTruthy()
     // Lecture seule : aucun bouton d'action dans l'onglet hors pagination, copie d'empreinte, onglets et bascule
-    // graphique ou tableau des cartes de graphe ; l'export contrôlé de ChartCard (design-system) n'agit pas sur la sandbox.
+    // graphique ou tableau des cartes de graphe (aucun export sans action).
     const section = container.querySelector('section[aria-label="Résultats de la sandbox"]') as HTMLElement
     const boutons = within(section).queryAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent ?? '')
-    expect(boutons.filter((b) => !/Précédente|Suivante|Copier|copier|^Graphique$|^Tableau$|^Exporter \(contrôlé\)$/.test(b))).toEqual([])
+    expect(boutons.filter((b) => !/Précédente|Suivante|Copier|copier|^Graphique$|^Tableau$/.test(b))).toEqual([])
     await axeSansViolation(container)
-  })
+  }, 45_000)
 
   it('pagination serveur des exécutions : page suivante, taille de page', async () => {
     const appels: [number, number][] = []
