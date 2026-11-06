@@ -81,7 +81,7 @@ describe('D-87 : modale d’étape (règles de forme)', () => {
       signatures: [{ code: 's', libelle: '', signataire: { mode: 'PROFIL' as const }, porte: [], ordre: 0 }],
       champs: [{ code: 'C', libelle: '', type: 'CHOIX' as const, choix: [], obligatoire: false }],
     }
-    expect(Object.keys(erreursEtape(e, []))).toEqual(expect.arrayContaining(['code', 'libelle', 'action', 'delaiJours', 'intervenant.remplacement', 'validateur.personneId', 'validateur.remplacement',
+    expect(Object.keys(erreursEtape(e, []))).toEqual(expect.arrayContaining(['code', 'libelle', 'action', 'delaiJours', 'validateur.personneId', 'validateur.remplacement',
       'livrables.0.libelle', 'livrables.1.code', 'signatures.0.code', 'signatures.0.libelle', 'signatures.0.porte', 'signatures.0.ordre', 'signatures.0.signataire.profil', 'champs.0.libelle', 'champs.0.choix']))
     expect(erreursEtape({ ...etapeVierge(1), libelle: 'X' }, ['ETAPE_1'])).toEqual({ code: 'proc.erreur.codeDouble' })
     expect(['code', 'validateur.mode', 'livrables.0.code', 'predecesseurs', 'delaiJours', 'signatures.1.porte', 'champs.0.type'].map(ongletDe))
@@ -503,7 +503,8 @@ describe('D-87 : Mon activité', () => {
     fireEvent.click(screen.getByRole('button', { name: /Ouverture du port 443 pour la supervision : Analyse/ }))
     const f = await screen.findByRole('dialog', { name: /Ouverture du port 443/ })
     expect(within(f).getByText('Processus d’unité')).toBeTruthy()
-    expect(within(f).getByText('Profil requis')).toBeTruthy()
+    // D-138 : tâche pour un rôle, le destinataire est le rôle (badge), sans ligne « Profil requis » redondante.
+    expect(within(f).getByText('Destinataire')).toBeTruthy()
   })
 })
 

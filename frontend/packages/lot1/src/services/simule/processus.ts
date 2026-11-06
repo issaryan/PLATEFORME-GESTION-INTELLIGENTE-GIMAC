@@ -518,6 +518,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       if (i.mode === 'PERSONNE' && !i.personneId) ajouter('INTERVENANT_INCOMPLET', 'BLOQUANTE', e.code, element, 'Personne de l’intervenant absente.')
       if (i.mode === 'PERSONNE' && i.personneId && !membre(i.personneId)) ajouter('PERSONNE_INCONNUE', 'BLOQUANTE', e.code, element, 'Personne inconnue.')
       if (i.mode === 'PERSONNE' && i.personneId && membre(i.personneId) && !membre(i.personneId)!.actif) ajouter('PERSONNE_INACTIVE', 'BLOQUANTE', e.code, element, 'Personne désactivée.')
+      if (i.mode === 'AU_LANCEMENT' && !i.remplacement) ajouter('DESIGNATION_OUVERTE', 'LEVABLE', e.code, element, 'Désignation ouverte à toute personne interne active du GIMAC.')
       if (MODES_REMPLACEMENT.includes(i.mode) && !i.remplacement) ajouter('REMPLACEMENT_ABSENT', 'BLOQUANTE', e.code, `${element}.remplacement`, 'Profil de remplacement obligatoire.')
       const unite = i.unite || p.unite
       // Couverture : dans l'unité, sinon ailleurs dans le GIMAC (information), sinon nulle part (levable).
@@ -1176,7 +1177,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
         const pid = l.designations[d.cle]
         if (!pid) continue
         if (pid === moiId && !p.initiateurs?.initiateurIntervenant) throw separation(422, { cle: d.cle, personneId: pid })
-        const admis = membre(pid)?.actif !== false && !!membre(pid) && (pid === moiId || portePartout(pid, d.intervenant.remplacement) || magasin.couvre(moiId, 'TACHE_CONFIER', pid))
+        const admis = membre(pid)?.actif !== false && !!membre(pid) && (pid === moiId || !d.intervenant.remplacement || portePartout(pid, d.intervenant.remplacement) || magasin.couvre(moiId, 'TACHE_CONFIER', pid))
         if (!admis) throw refus(422, 'PIL_PROCESSUS_DESIGNATION_INVALIDE', 'Personne désignée inactive, ou ne portant pas le profil requis, ni dans votre portée.', { cle: d.cle, personneId: pid })
       }
       return vueInstance(lancer(p, l, moiId))

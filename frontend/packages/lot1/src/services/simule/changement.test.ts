@@ -45,4 +45,16 @@ describe('processus DEMANDE_CHANGEMENT simulé', () => {
     expect(await pdf.text()).toContain(d.reference)
     expect(await pdf.text()).toContain('DECISION_SSI')
   })
+
+  it('D-142 : la mise en œuvre peut être confiée à toute personne interne active, hors Production monétique', async () => {
+    const magasin = magasinPouvoirs()
+    const demandeur = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-collab', nom: 'David Demandeur', profils: ['ROLE_COLLABORATEUR'] }, pouvoirs: magasin })
+    const resume = (await demandeur.processus.lancables({})).groupes.flatMap((g) => g.processus).find((p) => p.code === 'DEMANDE_CHANGEMENT')!
+    const modele = await demandeur.processus.lire(resume.id)
+    expect(modele.etapes[3].intervenant).toMatchObject({ mode: 'AU_LANCEMENT', remplacement: null })
+    // L'ingénieur du pôle réseau, sans le profil Production monétique, est désigné : la demande se lance.
+    const d = await demandeur.processus.lancer(modele.id, { intitule: 'Accès lecture AMA', champs: {}, designations: { IMPLEMENTATION: 'u-res' }, formulaire })
+    expect(d.designations.IMPLEMENTATION).toMatchObject({ id: 'u-res' })
+  })
 })
+

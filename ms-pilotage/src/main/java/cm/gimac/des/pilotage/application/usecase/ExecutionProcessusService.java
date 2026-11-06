@@ -330,9 +330,11 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
                 throw separation(422, Map.of("cle", cle, "personneId", id));
             }
             String unite = intervenant.uniteOu(p.getUnite());
+            // D-142 : sans profil de remplacement, la désignation est ouverte à toute personne interne active du GIMAC.
             boolean admissible =
                 equipes.interneActif(id) &&
                 (id.equals(appelant.id()) ||
+                    intervenant.remplacement() == null ||
                     (intervenant.remplacement() != null &&
                         (equipes.porteProfilDans(id, unite, intervenant.remplacement()) || resolution.portePartout(id, intervenant.remplacement()))) ||
                     equipes.couvert(appelant, Pouvoir.TACHE_CONFIER, id).isPresent());
