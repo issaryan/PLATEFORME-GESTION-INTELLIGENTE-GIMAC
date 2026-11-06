@@ -10,7 +10,7 @@ import { depuisSaisie, versSaisie } from '../../../modele/jours'
 import {
   useAttribuer, useCreerGroupe, useCreerTache, useGroupe, useModifierTache, usePrendre, useRelancer, useTache, useTransition, useUnites,
 } from '../../../hooks/pilotage'
-import { BadgePriorite, BadgeTache, pourDialogue, useDates, useErreur, useLibelleUnite } from './communs'
+import { BadgePriorite, BadgeTache, pourDialogue, useDates, useErreur, useLibelleUnite, BadgeRole } from './communs'
 
 // Tâches (D-76 §2.3, CP PIL-04 et PIL-08 ; D-81 §6) : création pour soi ou, avec PIL_TASK_ASSIGN et selon la
 // matrice des pouvoirs (TACHE_CONFIER), pour une personne, plusieurs personnes ou une unité de sa portée ;
@@ -240,7 +240,10 @@ export function DetailTache({ id, pouvoirs, onFermer, onModifier, onTransition, 
   // Tâche d'une étape de processus (D-87 §5.3) : elle suit l'étape, ni terminée ni annulée à la main.
   // DDR-28 : la tâche d'une décision (transition de statut) se clôt quand le service prononce ou refuse.
   const deProcessus = x?.origine.type === 'PROCESSUS' || x?.origine.type === 'DECISION'
-  const transitions = x ? TRANSITIONS_TACHE[x.etat].filter((v) => (responsable || (createur && v === 'ANNULEE')) && !(deProcessus && (v === 'TERMINEE' || v === 'ANNULEE'))) : []
+  // D-138 : tâche pour un rôle, le porteur agit comme le responsable, sans prise (le service vérifie le rôle).
+  const porteur = !!x?.pourRole && !responsable && !createur
+  const etatDesTransitions = x && porteur && x.etat === 'A_PRENDRE' ? 'OUVERTE' : x?.etat
+  const transitions = x && etatDesTransitions ? TRANSITIONS_TACHE[etatDesTransitions].filter((v) => (responsable || porteur || (createur && v === 'ANNULEE')) && !(porteur && v === 'ANNULEE') && !(deProcessus && (v === 'TERMINEE' || v === 'ANNULEE'))) : []
   const aPrendre = x?.etat === 'A_PRENDRE'
   // Attribution : le créateur ou le responsable de l'unité visée ; relance : le créateur ou TACHE_SUIVRE (le service décide).
   const attribuable = aPrendre && (createur || (!!x?.uniteCible && !!pouvoirs?.unitesDirigees.includes(x.uniteCible)))
@@ -258,7 +261,7 @@ export function DetailTache({ id, pouvoirs, onFermer, onModifier, onTransition, 
         <>
           {x.groupeId && onGroupe ? <Button variant="ghost" icon="users" onClick={() => onGroupe(x.groupeId!)}>{t('pvr.groupe.suivi')}</Button> : null}
           {relancable ? <Button variant="secondary" icon="bell-ring" disabled={relancer.isPending} onClick={() => relancer.mutate(x.id, { onSuccess: () => onFait?.(t('pvr.tache.relanceeA', { nom: x.responsable!.nomAffiche })) })}>{t('pvr.tache.relancer')}</Button> : null}
-          {aPrendre && !createur ? <Button variant="primary" icon="check" disabled={prendre.isPending} onClick={() => prendre.mutate(x.id, { onSuccess: () => onFait?.(t('pvr.tache.prise')) })}>{t('pvr.tache.prendre')}</Button> : null}
+          {aPrendre && !createur ? <Button variant="primary" icon="check" disabled={prendre.isPending} onClick={() => prendre.mutate(x.id, { onSuccess: () => onFait?.(t('pvr.tache.prise')) })}>{t(x.pourRole ? 'act.tache.jeMenOccupe' : 'pvr.tache.prendre')}</Button> : null}
           {attribuable && onAttribuer ? <Button variant="secondary" icon="user" onClick={() => onAttribuer(x)}>{t('pvr.tache.attribuer')}</Button> : null}
           {transitions.map((v) => (
             <Button key={v} variant={v === 'ANNULEE' ? 'danger' : 'secondary'} onClick={() => onTransition(x, v)}>{t(`act.tache.vers.${v}`)}</Button>
@@ -272,12 +275,13 @@ export function DetailTache({ id, pouvoirs, onFermer, onModifier, onTransition, 
           <KeyValueList
             items={[
               { key: t('act.tache.etat'), value: <BadgeTache etat={x.etat} enRetard={x.enRetard} /> },
+              ...(x.pourRole ? [{ key: t('act.tache.destinataire'), value: <span className="gm-col" style={{ gap: 'var(--gm-space-1)' }}><span><BadgeRole tache={x} /></span><span className="gm-field-help">{t('act.tache.pourRoleAide')}</span></span> }] : []),
               { key: t('act.tache.priorite'), value: <BadgePriorite priorite={x.priorite} /> },
               { key: t('act.tache.echeance'), value: x.echeance ? dates.jourLong(x.echeance) : t('act.tache.sansEcheance') },
               // DDR-16 : tâche offerte sans unité (décision, fonction) : « À prendre », sans deux-points orphelins.
               { key: t('act.tache.responsable'), value: x.responsable?.nomAffiche ?? (x.uniteCible ? t('pvr.tache.aPrendreUnite', { unite: libelleUnite(x.uniteCible) }) : t('pvr.tache.aPrendreSansUnite')) },
               ...(x.uniteCible ? [{ key: t('pvr.tache.unite'), value: libelleUnite(x.uniteCible) }] : []),
-              ...(x.profilRequis ? [{ key: t('proc.tache.profilRequis'), value: t(`compte.profil.${x.profilRequis}`, { defaultValue: x.profilRequis }) }] : []),
+              ...(x.profilRequis && !x.pourRole ? [{ key: t('proc.tache.profilRequis'), value: t(`compte.profil.${x.profilRequis}`, { defaultValue: x.profilRequis }) }] : []),
               ...(x.permissionsRequises?.length ? [{ key: t('pvr.tache.permissionsRequisesCle'), value: x.permissionsRequises.map((p) => t(`droits.permission.${p}`, { defaultValue: p })).join(', ') }] : []),
               ...(x.profilsRequis?.length ? [{ key: t('pvr.tache.profilsRequisCle'), value: x.profilsRequis.map((p) => t(`compte.profil.${p}`, { defaultValue: p })).join(', ') }] : []),
               { key: t('act.tache.origine'), value: (

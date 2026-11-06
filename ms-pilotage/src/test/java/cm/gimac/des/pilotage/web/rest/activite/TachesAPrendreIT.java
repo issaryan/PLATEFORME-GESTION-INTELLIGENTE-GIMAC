@@ -115,7 +115,8 @@ class TachesAPrendreIT extends AbstractPilotageIT {
         assertThat(prise.get("responsableId").asText()).isEqualTo(CHEF_DDRM);
         assertThat(prise.get("mode").asText()).isEqualTo("PRISE");
         mvc.perform(post("/api/v1/taches/" + id + "/prise").with(agent(AGENT))).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PIL_TRANSITION_INTERDITE"));
-        assertThat(mesTaches(AGENT)).doesNotContain(id);
+        // D-138 : offre adressée à des profils, la prise (« je m'en occupe ») ne la retire pas des autres porteurs.
+        assertThat(mesTaches(AGENT)).contains(id);
         assertThat(mesTaches(CHEF_DDRM)).contains(id);
         // Après la prise, la même demande rend la tâche prise.
         mvc.perform(json(post(INTERNE).with(homologation()), t)).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(id)).andExpect(jsonPath("$.responsable.id").value(CHEF_DDRM));

@@ -31,7 +31,8 @@ describe('processus DEMANDE_CHANGEMENT simulé', () => {
     await demandeur.processus.terminer(d.id, 'IMPLEMENTATION')
     const agent = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-agent-ssi', nom: 'Alain SSI', profils: ['ROLE_AGENT_SSI'] }, pouvoirs: magasin })
     const vue = await demandeur.processus.instance(d.id)
-    expect(vue.etapes[4]).toMatchObject({ etat: 'ACTIVE', executant: { id: 'u-ssi' } })
+    // D-138 : l'étape SSI est adressée au rôle RSSI (même avec un seul porteur), jamais figée sur la personne.
+    expect(vue.etapes[4]).toMatchObject({ etat: 'ACTIVE', executant: null, aPrendre: { profil: 'ROLE_RSSI' } })
     await expect(agent.processus.saisirChamps(d.id, 'SSI', { DECISION: 'ACCEPTEE' })).rejects.toMatchObject({ status: 403, code: 'PIL_PROCESSUS_NON_INTERVENANT' })
     const ssi = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-ssi', nom: 'Sara SSI', profils: ['ROLE_RSSI'] }, pouvoirs: magasin })
     await ssi.processus.saisirChamps(d.id, 'SSI', { DATE_DEPLOIEMENT: '2026-11-02', DATE_REVUE: '2026-11-03', EVALUATION: 'Conforme', DECISION: 'ACCEPTEE', DESCRIPTION: 'Favorable' })

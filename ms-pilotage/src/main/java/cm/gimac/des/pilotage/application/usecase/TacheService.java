@@ -148,6 +148,21 @@ public class TacheService implements TachesUseCase {
         return t.prenablePar(equipes.profilsDe(compteId), equipes.permissionsDe(compteId, t.getPermissionsRequises()));
     }
 
+    /**
+     * D-138 : le compte porte le rôle auquel la tâche ouverte est adressée, dans l'unité visée (sous-unités comprises ;
+     * sans unité, partout) : profil requis, ou l'un des profils et permissions d'une offre. Il la voit et l'effectue
+     * comme son responsable, sans prise préalable.
+     */
+    public boolean porteurDuRole(Tache t, String compteId) {
+        if (t == null || compteId == null || !t.isPourRole() || !t.getEtat().estOuvert()) {
+            return false;
+        }
+        if (t.getUniteCible() != null && !equipes.dansUnite(compteId, t.getUniteCible())) {
+            return false;
+        }
+        return t.isOffreProfils() ? candidat(t, compteId) : equipes.profilsDe(compteId).contains(t.getProfilRequis());
+    }
+
     /** Requis d'une offre, pour les messages : profils puis permissions. */
     private static String requis(Tache t) {
         List<String> l = new ArrayList<>(t.getProfilsRequis());
@@ -540,7 +555,8 @@ public class TacheService implements TachesUseCase {
     @Override
     public TacheLue transiter(Appelant appelant, UUID id, String etat, String motif) {
         Tache t = trouver(id);
-        if (!liee(t, appelant)) {
+        boolean role = !appelant.id().equals(t.getResponsableId()) && porteurDuRole(t, appelant.id());
+        if (!liee(t, appelant) && !role) {
             if (peutLire(t, appelant)) {
                 throw PilotageException.reservee("Seul le responsable fait les transitions ; le créateur peut annuler");
             }
@@ -560,8 +576,10 @@ public class TacheService implements TachesUseCase {
         }
         Instant le = horloge.instant();
         String m = motif == null || motif.isBlank() ? null : motif.strip();
-        EtatTache avant = t.transiter(cible, m, appelant.id(), le);
-        consigner(t, appelant.id(), ActionHistorique.TRANSITION, avant.name() + " vers " + cible.name() + (m == null ? "" : " : " + m), le);
+        EtatTache avant = t.transiter(cible, m, appelant.id(), role, le);
+        // Audit (D-138) : l'auteur réel, et le rôle au titre duquel il agit.
+        String titre = role ? " (au titre du rôle " + (t.isOffreProfils() ? requis(t) : t.getProfilRequis()) + ")" : "";
+        consigner(t, appelant.id(), ActionHistorique.TRANSITION, avant.name() + " vers " + cible.name() + titre + (m == null ? "" : " : " + m), le);
         if (cible == EtatTache.TERMINEE) {
             outbox.publish(
                 AGREGAT,

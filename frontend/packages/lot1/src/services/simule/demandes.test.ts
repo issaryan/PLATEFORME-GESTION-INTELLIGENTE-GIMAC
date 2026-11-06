@@ -83,8 +83,8 @@ describe('D-98 : formulaire de lancement', () => {
     const pdf = await sna.televerserPieceLancement(fichier('billet.pdf', 'application/pdf'), conge.id)
     const i = await sna.lancer(conge.id, { intitule: 'Congé de fin d’année', champs: {}, designations: {}, formulaire: { PERIODE: periode, MOTIF: 'Fêtes', JUSTIFICATIF: { documentId: pdf.documentId } } })
     expect(i.formulaire?.map((c) => c.valeur)).toEqual([periode, 'Fêtes', expect.objectContaining({ documentId: pdf.documentId, nomFichier: 'billet.pdf', typeMime: 'application/pdf' })])
-    // La vérification des droits revient au gestionnaire RH, seul porteur du profil dans l'unité.
-    expect(etape(i, 'ANALYSE').executant?.nomAffiche).toBe('Thierry Bekolo Ngoa')
+    // D-138 : la vérification des droits est adressée au rôle (le gestionnaire RH, seul porteur, la voit et l'effectue).
+    expect(etape(i, 'ANALYSE')).toMatchObject({ executant: null, aPrendre: expect.objectContaining({ unite: 'RH' }) })
   })
 })
 
@@ -97,12 +97,13 @@ describe('D-98 : suivi par l’initiateur', () => {
     expect(lancee.lanceur.id).toBe('u-sna')
     expect(etape(lancee, 'ANALYSE').moi.executer).toBe(false)
     let d = (await sna.demandes({})).contenu[0]
-    expect([d.intitule, d.etat, etapesEnCours(d.etapes).map((e) => [e.code, e.executant?.nomAffiche])]).toEqual(['Poste d’accueil', 'EN_COURS', [['ANALYSE', 'Idriss Mahamat Saleh']]])
+    expect([d.intitule, d.etat, etapesEnCours(d.etapes).map((e) => [e.code, e.executant?.nomAffiche ?? null])]).toEqual(['Poste d’accueil', 'EN_COURS', [['ANALYSE', null]]])
     // L'intervenant du pôle voit les valeurs fournies et les seules actions permises.
     const res = qui('u-res')
     let i = await res.instance(lancee.id)
     expect(i.formulaire?.find((c) => c.code === 'ADRESSE_DEMANDEE')?.valeur).toBe('10.20.6.40')
-    expect(etape(i, 'ANALYSE').moi).toMatchObject({ executer: true, prendre: false, valider: false })
+    // D-138 : étape du rôle, l'intervenant agit sans la prendre (la prise reste possible, « je m'en occupe »).
+    expect(etape(i, 'ANALYSE').moi).toMatchObject({ executer: true, prendre: true, valider: false })
     await res.saisirChamps(lancee.id, 'ANALYSE', { ADRESSE_DISPONIBLE: 'Oui' })
     i = await res.terminer(lancee.id, 'ANALYSE')
     d = (await sna.demandes({})).contenu[0]

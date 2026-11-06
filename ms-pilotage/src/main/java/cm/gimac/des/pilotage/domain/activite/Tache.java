@@ -110,6 +110,13 @@ public class Tache extends EntitePilotage {
     @Column(name = "offre_profils", nullable = false)
     private boolean offreProfils;
 
+    /**
+     * Tâche adressée à un rôle (D-138) : tout porteur du rôle requis, dans l'unité visée, la voit et l'effectue jusqu'à
+     * sa clôture ; une prise (« je m'en occupe ») ne la réserve pas. Une réaffectation nominative par le service l'ôte.
+     */
+    @Column(name = "pour_role", nullable = false)
+    private boolean pourRole;
+
     /** Profils dont l'un suffit pour prendre une tâche offerte par un autre service (D-93). */
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "tache_profil_requis", joinColumns = @JoinColumn(name = "tache_id"))
@@ -147,6 +154,7 @@ public class Tache extends EntitePilotage {
     public static Tache pourUniteEtProfil(String createurId, String uniteCible, String profil, Instant le) {
         Tache t = pourUnite(createurId, uniteCible, le);
         t.profilRequis = profil;
+        t.pourRole = profil != null;
         return t;
     }
 
@@ -168,6 +176,7 @@ public class Tache extends EntitePilotage {
         t.uniteCible = unite;
         t.etat = EtatTache.A_PRENDRE;
         t.offreProfils = true;
+        t.pourRole = true;
         t.profilsRequis = profils == null ? new TreeSet<>() : new TreeSet<>(profils);
         t.permissionsRequises = permissions == null ? new TreeSet<>() : new TreeSet<>(permissions);
         return t;
@@ -210,6 +219,7 @@ public class Tache extends EntitePilotage {
         this.responsableId = null;
         this.uniteCible = unite;
         this.profilRequis = profil;
+        this.pourRole = profil != null;
         this.etat = EtatTache.A_PRENDRE;
         this.modifieLe = le;
         return avant;
@@ -231,6 +241,7 @@ public class Tache extends EntitePilotage {
         if (responsable == null) {
             this.uniteCible = unite;
             this.profilRequis = profil;
+            this.pourRole = profil != null;
             this.etat = EtatTache.A_PRENDRE;
         } else {
             this.etat = EtatTache.OUVERTE;
@@ -248,6 +259,8 @@ public class Tache extends EntitePilotage {
         if (etat == EtatTache.A_PRENDRE) {
             this.etat = EtatTache.OUVERTE;
         }
+        // D-138 : confiée nommément par le service, la tâche n'est plus adressée au rôle.
+        this.pourRole = false;
         this.responsableId = responsable;
         this.modifieLe = le;
     }
@@ -333,10 +346,32 @@ public class Tache extends EntitePilotage {
      * @return l'état quitté.
      */
     public EtatTache transiter(EtatTache cible, String motif, String acteurId, Instant le) {
+        return transiter(cible, motif, acteurId, false, le);
+    }
+
+    /**
+     * Transition demandée par {@code acteurId} ; {@code porteurDuRole} : l'acteur porte, dans l'unité visée, le rôle
+     * auquel la tâche est adressée (D-138) et agit comme son responsable, sans prise préalable : une tâche à prendre
+     * lui est confiée par son premier acte (version optimiste, le second reçoit 409 PIL_TRANSITION_INTERDITE).
+     */
+    public EtatTache transiter(EtatTache cible, String motif, String acteurId, boolean porteurDuRole, Instant le) {
         if (cible == null) {
             throw PilotageException.champ("etat", "État cible absent ou inconnu");
         }
-        boolean responsable = acteurId != null && acteurId.equals(responsableId);
+        boolean role = pourRole && porteurDuRole && acteurId != null && etat.estOuvert();
+        if (role && etat == EtatTache.A_PRENDRE && cible != EtatTache.ANNULEE) {
+            EtatTache avant = etat;
+            responsableId = acteurId;
+            etat = EtatTache.OUVERTE;
+            if (cible == EtatTache.OUVERTE) {
+                modifieLe = le;
+                return avant;
+            }
+            transiter(cible, motif, acteurId, false, le);
+            return avant;
+        }
+        // Le porteur du rôle agit comme le responsable, sauf pour annuler (réservé au créateur et au responsable).
+        boolean responsable = (role && cible != EtatTache.ANNULEE) || (acteurId != null && acteurId.equals(responsableId));
         boolean createur = createurId.equals(acteurId);
         if (etat == EtatTache.A_PRENDRE && cible == EtatTache.OUVERTE) {
             throw PilotageException.reservee("Une tâche à prendre s'ouvre par sa prise ou son attribution");
@@ -492,6 +527,10 @@ public class Tache extends EntitePilotage {
 
     public String getProfilRequis() {
         return profilRequis;
+    }
+
+    public boolean isPourRole() {
+        return pourRole;
     }
 
     public boolean isOffreProfils() {

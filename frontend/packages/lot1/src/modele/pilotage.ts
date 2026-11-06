@@ -130,6 +130,11 @@ export type Tache = {
   permissionsRequises?: string[] | null
   /** Vrai pour une tâche à prendre (sans responsable). */
   aPrendre?: boolean
+  /**
+   * D-138 : tâche adressée à un rôle ; tout porteur du rôle la voit et l'effectue jusqu'à sa clôture, sans prise
+   * préalable (« Je m'en occupe » reste possible, sans la réserver).
+   */
+  pourRole?: boolean
   origine: { type: TypeOrigine; reference: string | null; service: string | null; lien: string | null }
   enRetard: boolean
   creeeLe: string

@@ -125,11 +125,12 @@ class ResolutionIntervenantsTest {
     }
 
     @Test
-    @DisplayName("Un seul porteur actif dans l'unité : affectation automatique ; plusieurs : à prendre dans l'unité")
+    @DisplayName("D-138 : intervenant PROFIL adressé au rôle, plusieurs porteurs comme un seul ; jamais figé sur la personne")
     void seulPorteurDansLUnite() {
         assertThat(resoudre(i(ModeIntervenant.PROFIL, RESEAU, null, null), null, null, Map.of()).affectation()).isEqualTo(Affectation.profil(RESEAU, "POLE_RESEAU"));
         organisation.attribuerProfils(INGENIEUR_RESEAU, "ROLE_COLLABORATEUR");
         var seul = resoudre(i(ModeIntervenant.PROFIL, RESEAU, null, null), null, null, Map.of());
-        assertThat(seul.affectation()).isEqualTo(Affectation.personne(TECHNICIEN_RESEAU, "POLE_RESEAU"));
+        assertThat(seul.affectation()).isEqualTo(Affectation.profil(RESEAU, "POLE_RESEAU"));
+        assertThat(seul.nominative()).isFalse();
     }
 }

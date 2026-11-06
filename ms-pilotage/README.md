@@ -99,6 +99,7 @@ Copié et adapté (paquet `cm.gimac.des.pilotage`) ; chaque bean est inactif tan
 | 2026-11-05 | D-136 | Codes générés : processus `{UNITE}-PRC-{N}` (séquence `processus_code_seq`, changeset `20261105100000`), code envoyé ignoré ; clés provisoires des étapes nouvelles réécrites en `{CODE}-E{N}` avec leurs prédécesseurs, codes connus de la famille gardés (`CodeProcessus`, `CodesEtapes`, `ProcessusCodeIT` en concurrence) |
 | 2026-11-06 | D-139 | PDF des instances de processus (dont la demande de changement) au gabarit commun de MS-DOCUMENT : cartouche (référence, état, demandeur, date), états des étapes et des signatures en badges, dates à l'heure de Douala, libellés fr, en ou es (`GET …/instances/{id}/pdf?langue=`) ; `RenduPdfPort.Document`. |
 | 2026-11-06 | D-139, finition | `ValeursPdfInstance` : libellés fr, en, es des codes des listes fermées (choix d'étape, liste du formulaire), code non traduit mis en forme, sigles et valeurs saisies inchangés ; case cochée, période et pièce jointe lisibles. |
+| 2026-11-05 | D-138 | Tâche pour un rôle : `pour_role` (changeset `20261105130000`, sans migration rétroactive des tâches déjà nominatives), étape PROFIL jamais figée sur un seul porteur, « Mes tâches » de chaque porteur jusqu'à la clôture, exécution sans prise par tout porteur (`TacheService.porteurDuRole`), « Mes étapes » (`miennes`) des porteurs, premier acte de clôture gagnant, 409 au second ; `ProcessusRoleIT` (deux porteurs, nouveau porteur, fins simultanées, même version en deux transactions) |
 <!-- GIMAC:FIN -->
 
 # pilotage

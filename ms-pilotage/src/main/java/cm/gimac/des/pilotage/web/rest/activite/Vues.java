@@ -140,7 +140,8 @@ final class Vues {
      * Tâche ; D-81 §6 : {@code groupeId} (envoi à plusieurs), {@code uniteCible} (unité visée), {@code relanceeLe} ;
      * D-87 : {@code profilRequis} (étape de processus) ; D-93 : {@code profilsRequis} (offre d'un autre service, vide
      * sinon), {@code permissionsRequises} (offre par permission, D-94, vide sinon) et {@code aPrendre} (sans
-     * responsable, à prendre par sa prise).
+     * responsable, à prendre par sa prise) ; D-138 : {@code pourRole} (adressée à un rôle : tout porteur la voit et
+     * l'effectue, la prise ne la réserve pas).
      */
     record TacheVue(
         UUID id,
@@ -162,7 +163,8 @@ final class Vues {
         String profilRequis,
         List<String> profilsRequis,
         List<String> permissionsRequises,
-        boolean aPrendre
+        boolean aPrendre,
+        boolean pourRole
     ) {
         static TacheVue de(TacheLue l) {
             Tache t = l.tache();
@@ -191,7 +193,8 @@ final class Vues {
                 t.getProfilRequis(),
                 List.copyOf(t.getProfilsRequis()),
                 List.copyOf(t.getPermissionsRequises()),
-                t.getEtat() == cm.gimac.des.pilotage.domain.activite.EtatTache.A_PRENDRE
+                t.getEtat() == cm.gimac.des.pilotage.domain.activite.EtatTache.A_PRENDRE,
+                t.isPourRole()
             );
         }
     }

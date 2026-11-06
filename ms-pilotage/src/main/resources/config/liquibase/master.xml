@@ -64,5 +64,6 @@
     <!-- Références datées configurables des instances de processus. -->
     <include file="config/liquibase/changelog/20261028190000_pil_references_instances.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261105100000_pil_code_processus.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261105130000_pil_tache_pour_role.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

@@ -97,7 +97,8 @@ describe('D-98 : lancer une demande, la suivre', () => {
     // L'initiateur revient à « Mes demandes » : étape en cours et qui la tient.
     fireEvent.click(screen.getByRole('button', { name: 'Mes demandes' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Mes demandes' })).toBeTruthy()
-    expect(await screen.findByText(/tenue par Idriss Mahamat Saleh/)).toBeTruthy()
+    // D-138 : étape adressée au rôle, « à prendre » par le profil du pôle.
+    expect(await screen.findByText(/à prendre : /)).toBeTruthy()
     expect(screen.getByRole('list', { name: 'Étapes de la demande : 0 terminée(s) sur 4' })).toBeTruthy()
   })
 

@@ -306,4 +306,37 @@ class TacheTest {
         assertThat(t.getResponsableId()).isEqualTo("nouveau");
         assertThat(t.getTermineeLe()).isNull();
     }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("D-138 : tâche pour un rôle, le porteur agit sans prise ; second acte refusé ; confiée nommément, plus pour le rôle")
+    void tachePourUnRole() {
+        java.time.Instant le = java.time.Instant.parse("2026-11-05T08:00:00Z");
+        Tache t = Tache.pourUniteEtProfil("createur", "POLE_RESEAU", "ROLE_POLE_RESEAU", le);
+        org.assertj.core.api.Assertions.assertThat(t.isPourRole()).isTrue();
+        org.assertj.core.api.Assertions.assertThat(Tache.pourUniteEtProfil("createur", "POLE_RESEAU", null, le).isPourRole()).isFalse();
+        org.assertj.core.api.Assertions.assertThat(Tache.pourProfils("createur", null, java.util.List.of("ROLE_X"), le).isPourRole()).isTrue();
+        // Non porteur : réservé au responsable, comme avant.
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> t.transiter(EtatTache.EN_COURS, null, "autre", false, le))
+            .isInstanceOf(cm.gimac.des.pilotage.domain.exception.PilotageException.class);
+        // Porteur : premier acte sans prise, il devient l'auteur ; un autre porteur agit encore tant qu'elle est ouverte.
+        org.assertj.core.api.Assertions.assertThat(t.transiter(EtatTache.EN_COURS, null, "porteur-a", true, le)).isEqualTo(EtatTache.A_PRENDRE);
+        org.assertj.core.api.Assertions.assertThat(t.getEtat()).isEqualTo(EtatTache.EN_COURS);
+        org.assertj.core.api.Assertions.assertThat(t.getResponsableId()).isEqualTo("porteur-a");
+        org.assertj.core.api.Assertions.assertThat(t.transiter(EtatTache.TERMINEE, null, "porteur-b", true, le)).isEqualTo(EtatTache.EN_COURS);
+        // Close pour tous : un second acte de fin est refusé (409), le porteur ne la voit plus (non ouverte).
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> t.transiter(EtatTache.TERMINEE, null, "porteur-c", true, le))
+            .isInstanceOf(cm.gimac.des.pilotage.domain.exception.PilotageException.class);
+        // A_PRENDRE vers OUVERTE par un porteur ; annulation jamais par le rôle.
+        Tache u = Tache.pourUniteEtProfil("createur", "POLE_RESEAU", "ROLE_POLE_RESEAU", le);
+        org.assertj.core.api.Assertions.assertThat(u.transiter(EtatTache.OUVERTE, null, "porteur-a", true, le)).isEqualTo(EtatTache.A_PRENDRE);
+        org.assertj.core.api.Assertions.assertThat(u.getEtat()).isEqualTo(EtatTache.OUVERTE);
+        Tache v = Tache.pourUniteEtProfil("createur", "POLE_RESEAU", "ROLE_POLE_RESEAU", le);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> v.transiter(EtatTache.ANNULEE, "motif", "porteur-a", true, le))
+            .isInstanceOf(cm.gimac.des.pilotage.domain.exception.PilotageException.class);
+        // Réaffectation nominative par le service : plus pour le rôle ; remise à prendre par profil : de nouveau.
+        v.confierParService("nomme", le);
+        org.assertj.core.api.Assertions.assertThat(v.isPourRole()).isFalse();
+        v.remettreAPrendre("POLE_RESEAU", "ROLE_POLE_RESEAU", le);
+        org.assertj.core.api.Assertions.assertThat(v.isPourRole()).isTrue();
+    }
 }

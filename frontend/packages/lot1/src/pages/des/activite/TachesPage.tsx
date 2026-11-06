@@ -9,7 +9,7 @@ import { usePouvoirs } from '../../../hooks/pouvoirs'
 import { PERM } from '../../../permissions'
 import { useRetour } from '../parcours/communs'
 import { etatListe } from '../liaisons/communs'
-import { BadgePriorite, BadgeTache, ETAT_TACHE, useDates, useLibelleUnite } from './communs'
+import { BadgePriorite, BadgeTache, ETAT_TACHE, useDates, useLibelleUnite, BadgeRole } from './communs'
 import { DetailTache, DialogueAttribution, DialogueGroupe, DialogueTache, DialogueTransition, type Destination } from './dialoguesTache'
 
 // Tâches (D-76, /des/taches ; CP PIL-04, PIL-08 ; D-81 §6) : mes tâches, les tâches à prendre de mes unités,
@@ -70,7 +70,8 @@ export default function TachesPage() {
         <span className="gm-col" style={{ gap: 0 }}>
           <button type="button" className="gm-link" style={{ background: 'none', border: 0, padding: 0, font: 'inherit', textAlign: 'left', cursor: 'pointer' }} onClick={() => aller({ tache: x.id })}>{x.titre}</button>
           {x.origine.type !== 'INTERNE' ? <span className="gm-field-help">{t(`act.tache.origine.${x.origine.type}`)}{x.origine.reference ? ` · ${x.origine.reference}` : ''}</span> : null}
-          {x.profilRequis ? <span className="gm-field-help">{t('proc.tache.profilRequisDe', { profil: t(`compte.profil.${x.profilRequis}`, { defaultValue: x.profilRequis }) })}</span> : null}
+          {x.pourRole ? <span><BadgeRole tache={x} /></span> : null}
+          {x.profilRequis && !x.pourRole ? <span className="gm-field-help">{t('proc.tache.profilRequisDe', { profil: t(`compte.profil.${x.profilRequis}`, { defaultValue: x.profilRequis }) })}</span> : null}
           {/* Tâche offerte par permission ou par profils (§8.8) : libellés lisibles des permissions et profils requis. */}
           {x.permissionsRequises?.length ? <span className="gm-field-help">{t('pvr.tache.permissionsRequises', { liste: x.permissionsRequises.map((p) => t(`droits.permission.${p}`, { defaultValue: p })).join(', ') })}</span> : null}
           {x.profilsRequis?.length ? <span className="gm-field-help">{t('pvr.tache.profilsRequis', { liste: x.profilsRequis.map((p) => t(`compte.profil.${p}`, { defaultValue: p })).join(', ') })}</span> : null}

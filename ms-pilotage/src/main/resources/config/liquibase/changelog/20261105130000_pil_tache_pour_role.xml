@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <!-- D-138 : tâche adressée à un rôle, vue et faisable par tous les porteurs du rôle jusqu'à sa clôture. -->
+    <changeSet id="pil-tache-pour-role" author="lot1">
+        <addColumn tableName="tache">
+            <column name="pour_role" type="boolean" defaultValueBoolean="false" remarks="Tâche adressée à un rôle (D-138) : tout porteur la voit et l'effectue, la prise ne la réserve pas.">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <update tableName="tache">
+            <column name="pour_role" valueBoolean="true"/>
+            <where>etat = 'A_PRENDRE' and (profil_requis is not null or offre_profils = true)</where>
+        </update>
+    </changeSet>
+</databaseChangeLog>

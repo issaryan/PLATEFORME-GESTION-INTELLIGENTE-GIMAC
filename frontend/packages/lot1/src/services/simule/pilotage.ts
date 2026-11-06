@@ -179,7 +179,7 @@ export function pilotageSimule(
   const tache = (responsable: string | null, createur: string, titre: string, etat: EtatTache, echeance: string | null, o: Partial<Tache> = {}) => {
     const t: EtatTacheSim = {
       id: id('TCH'), titre, description: null, echeance, priorite: 'NORMALE', etat, responsable: responsable ? personne(responsable) : null, createur: personne(createur),
-      groupeId: null, uniteCible: null, profilRequis: null, profilsRequis: null, permissionsRequises: null, aPrendre: false,
+      groupeId: null, uniteCible: null, profilRequis: null, profilsRequis: null, permissionsRequises: null, aPrendre: false, pourRole: false,
       origine: { type: 'INTERNE', reference: null, service: null, lien: null }, enRetard: false, creeeLe: `${ajouterJours(jour, -6)}T08:30:00+01:00`,
       termineeLe: etat === 'TERMINEE' ? `${hier}T16:10:00+01:00` : null,
       historique: [{ quand: `${ajouterJours(jour, -6)}T08:30:00+01:00`, acteur: personne(createur), action: 'CREEE', detail: null }],
@@ -317,12 +317,14 @@ export function pilotageSimule(
   const porteProfils = (t: Tache) => !t.profilsRequis?.length || t.profilsRequis.some((p) => magasin.profilsDe(moi.id).includes(p))
   const offre = (t: Tache) => !!t.permissionsRequises?.length || !!t.profilsRequis?.length
   // D-99 : l'étape à prendre d'une demande n'est pas offerte à son initiateur (créateur de la tâche), comme MS-PILOTAGE.
+  // D-138 : tâche adressée à un rôle, vue et faisable par chaque porteur du rôle (dans l'unité visée) jusqu'à sa clôture.
+  const porteurDuRole = (t: Tache) => !!t.pourRole && ouverte(t) && t.responsable?.id !== moi.id && (!t.uniteCible || unitesVisibles().has(t.uniteCible)) && porteProfil(t) && portePermission(t) && porteProfils(t)
   const aPrendreVisible = (t: Tache) => t.etat === 'A_PRENDRE' && (t.uniteCible ? unitesVisibles().has(t.uniteCible) : offre(t) || !!t.profilRequis) && porteProfil(t) && portePermission(t) && porteProfils(t)
     && !(t.origine.type === 'PROCESSUS' && t.createur.id === moi.id)
   const trouverTache = (tid: string) => {
     const t = taches.find((x) => x.id === tid)
     const r = t?.responsable?.id
-    if (!t || (r !== moi.id && t.createur.id !== moi.id && !(r && dansEquipe(r)) && !aPrendreVisible(t))) throw refus(404, 'PIL_TACHE_INTROUVABLE', 'Tâche introuvable.')
+    if (!t || (r !== moi.id && t.createur.id !== moi.id && !(r && dansEquipe(r)) && !aPrendreVisible(t) && !porteurDuRole(t))) throw refus(404, 'PIL_TACHE_INTROUVABLE', 'Tâche introuvable.')
     return t
   }
   const confiable = (qui: string) => qui === moi.id || magasin.couvre(moi.id, 'TACHE_CONFIER', qui)
@@ -330,7 +332,7 @@ export function pilotageSimule(
   const pont: PontTachesProcessus = {
     creer: (x) => {
       const t = tache(x.responsable, x.createur, x.titre, x.responsable ? 'OUVERTE' : 'A_PRENDRE', x.echeance, {
-        description: x.description, uniteCible: x.uniteCible, profilRequis: x.profilRequis, creeeLe: maintenant(), historique: [],
+        description: x.description, uniteCible: x.uniteCible, profilRequis: x.profilRequis, pourRole: !x.responsable && !!x.profilRequis, creeeLe: maintenant(), historique: [],
         origine: { type: 'PROCESSUS', reference: x.reference, service: 'pilotage', lien: x.lien },
       })
       t.historique.push({ quand: maintenant(), acteur: personne(x.createur), action: 'CREEE', detail: null })
@@ -339,7 +341,8 @@ export function pilotageSimule(
     affecter: (tid, responsable, uniteCible = null, profilRequis = null) => {
       const t = taches.find((x) => x.id === tid)
       if (!t) return
-      Object.assign(t, responsable ? { responsable: personne(responsable), etat: t.etat === 'A_PRENDRE' ? 'OUVERTE' : t.etat } : { responsable: null, etat: 'A_PRENDRE', uniteCible, profilRequis })
+      // D-138 : confiée nommément, la tâche n'est plus pour le rôle ; remise à prendre par profil, de nouveau.
+      Object.assign(t, responsable ? { responsable: personne(responsable), etat: t.etat === 'A_PRENDRE' ? 'OUVERTE' : t.etat, pourRole: false } : { responsable: null, etat: 'A_PRENDRE', uniteCible, profilRequis, pourRole: !!profilRequis })
       t.historique.push({ quand: maintenant(), acteur: moi, action: 'REAFFECTEE', detail: responsable ? `À ${personne(responsable).nomAffiche}` : null })
     },
     terminer: (tid) => {
@@ -555,7 +558,7 @@ export function pilotageSimule(
     taches: (q) => attendre(() => {
       const equipe = equipeDe(moi.id).map((x) => x.membre.id)
       const l = taches
-        .filter((t) => (q.vue === 'moi' ? t.responsable?.id === moi.id : q.vue === 'creees' ? t.createur.id === moi.id && t.responsable?.id !== moi.id
+        .filter((t) => (q.vue === 'moi' ? t.responsable?.id === moi.id || porteurDuRole(t) : q.vue === 'creees' ? t.createur.id === moi.id && t.responsable?.id !== moi.id
           : q.vue === 'unite' ? aPrendreVisible(t) : !!t.responsable && equipe.includes(t.responsable.id)))
         .filter((t) => !q.etat || t.etat === q.etat)
         .map(vueTache)
@@ -608,8 +611,12 @@ export function pilotageSimule(
     }),
     transition: (tid, etat, motif) => attendre(() => {
       const t = trouverTache(tid)
-      const autorise = t.responsable?.id === moi.id || (etat === 'ANNULEE' && t.createur.id === moi.id)
-      if (!autorise || !TRANSITIONS_TACHE[t.etat].includes(etat)) throw refus(409, 'PIL_TRANSITION_INTERDITE', 'Transition non permise.')
+      // D-138 : un porteur du rôle agit comme le responsable, sans prise ; sur une tâche à prendre, son acte la lui confie.
+      const role = porteurDuRole(t) && etat !== 'ANNULEE'
+      const depart = role && t.etat === 'A_PRENDRE' ? 'OUVERTE' : t.etat
+      const autorise = t.responsable?.id === moi.id || role || (etat === 'ANNULEE' && t.createur.id === moi.id)
+      if (!autorise || !TRANSITIONS_TACHE[depart].includes(etat)) throw refus(409, 'PIL_TRANSITION_INTERDITE', 'Transition non permise.')
+      if (role && !t.responsable) t.responsable = moi
       if (deProcessus(t) && (etat === 'TERMINEE' || etat === 'ANNULEE')) throw refus(409, 'PIL_TACHE_PROCESSUS', 'La tâche suit l’étape de son processus.')
       // DDR-28 : comme MS-PILOTAGE, la tâche d'une décision se clôt quand le service prononce ou refuse.
       if (t.origine.type === 'DECISION' && (etat === 'TERMINEE' || etat === 'ANNULEE')) throw refus(409, 'PIL_TACHE_DECISION', 'La tâche d’une décision se clôt quand le service prononce ou refuse la proposition.')
