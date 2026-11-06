@@ -105,7 +105,7 @@ class ProcessusDefinitionIT extends AbstractProcessusIT {
             "CYCLE",
             "AUCUNE_ETAPE_INITIALE",
             "INTERVENANT_ABSENT",
-            "REMPLACEMENT_ABSENT",
+            "DESIGNATION_OUVERTE",
             "PREDECESSEUR_INCONNU",
             "SIGNATURE_PORTEE_INVALIDE"
         );

@@ -117,6 +117,10 @@ public final class ControleProcessus {
         if (i.mode().exigeRemplacement() && vide(i.remplacement())) {
             a.add(Anomalie.bloquante("REMPLACEMENT_ABSENT", r.etape(), r.element(), "Profil de remplacement exigé pour " + i.mode()));
         }
+        // D-142 : désignation au lancement sans profil de remplacement, ouverte à tout le GIMAC ; choix à lever avec motif.
+        if (i.mode() == ModeIntervenant.AU_LANCEMENT && vide(i.remplacement())) {
+            a.add(Anomalie.levable("DESIGNATION_OUVERTE", r.etape(), r.element(), "Désignation ouverte à toute personne interne active du GIMAC ; au départ de la personne désignée, l'étape revient à l'unité"));
+        }
     }
 
     private static void signatures(List<Etape> etapes, Etape e, List<Anomalie> a) {

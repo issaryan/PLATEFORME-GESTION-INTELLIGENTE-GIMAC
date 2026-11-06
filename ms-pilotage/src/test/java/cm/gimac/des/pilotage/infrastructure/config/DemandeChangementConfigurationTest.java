@@ -49,7 +49,8 @@ class DemandeChangementConfigurationTest {
         assertThat(p.getEtapes().get(4).signatures().get(0).signataire().profil()).isEqualTo("ROLE_RSSI");
         assertThat(p.getEtapes().get(4).signatures()).hasSize(1);
         assertThat(p.getEtapes().get(4).champs()).extracting(c -> c.type()).containsExactly(TypeChamp.DATE, TypeChamp.DATE, TypeChamp.TEXTE, TypeChamp.CHOIX, TypeChamp.TEXTE);
-        assertThat(ControleProcessus.structure(p.getEtapes())).isEmpty();
+        // D-142 : seul avertissement, levable, la mise en œuvre ouverte à toute personne interne.
+        assertThat(ControleProcessus.structure(p.getEtapes())).extracting(a -> a.code()).containsExactly("DESIGNATION_OUVERTE");
         verify(historique).save(any());
         when(processus.existsByCode(anyString())).thenReturn(true);
         configuration.run(null);
@@ -102,9 +103,9 @@ class DemandeChangementConfigurationTest {
 
     @Test
     void versionAJourGabaritPersonnaliseOuBrouillonLaissesTelsQuels() {
-        for (String gabarit : List.of(DemandeChangementConfiguration.REFERENCE, "RFC-{AAAA}-{MM}-{JJ}-{NNNNNN}")) {
+        // Modèle système à jour (format de la fiche, RSSI, mise en œuvre ouverte) ou gabarit personnalisé : inchangés.
+        for (Processus publiee : List.of(publieeAvecMiseEnOeuvre(null), publieeDatee("RFC-{AAAA}-{MM}-{JJ}-{NNNNNN}"))) {
             ProcessusRepository processus = mock(ProcessusRepository.class);
-            Processus publiee = publieeDatee(gabarit);
             when(processus.existsByCode(anyString())).thenReturn(true);
             when(processus.findFirstByCodeAndEtat(DemandeChangementConfiguration.CODE, EtatProcessus.PUBLIEE)).thenReturn(java.util.Optional.of(publiee));
             new DemandeChangementConfiguration(processus, mock(HistoriqueProcessusRepository.class), new TransactionTemplate(mock(PlatformTransactionManager.class)), Clock.fixed(LE, ZoneOffset.UTC)).run(null);
@@ -136,4 +137,49 @@ class DemandeChangementConfigurationTest {
         assertThat(migree.intervenant()).isNull();
         assertThat(migree.signatures().get(0).signataire()).isNull();
     }
+
+    /** Modèle système publié au format CHG-{AAAA}-{N}, mise en œuvre désignée au lancement avec le profil {@code remplacement}. */
+    static Processus publieeAvecMiseEnOeuvre(String remplacement) {
+        Instant le = Instant.parse("2026-11-04T08:00:00Z");
+        List<cm.gimac.des.pilotage.domain.processus.Etape> etapes = DemandeChangementConfiguration.etapes().stream().map(e -> !"IMPLEMENTATION".equals(e.code()) ? e : new cm.gimac.des.pilotage.domain.processus.Etape(
+            e.code(), e.libelle(), e.action(), new cm.gimac.des.pilotage.domain.processus.Intervenant(ModeIntervenant.AU_LANCEMENT, null, null, DemandeChangementConfiguration.UNITE, remplacement), e.validateur(), e.predecesseurs(), e.delaiJours(), e.livrables(), e.signatures(), e.champs(), e.position(), e.delaiMaxJours())).toList();
+        Processus p = Processus.brouillon(DemandeChangementConfiguration.CODE, DemandeChangementConfiguration.UNITE, "systeme", le);
+        p.decrire("Demande de changement", "Fiche RFC", "Exploitation", 10, etapes, "systeme", le);
+        p.definirReference(DemandeChangementConfiguration.REFERENCE);
+        p.publier("systeme", "Modèle", false, le);
+        return p;
+    }
+
+    @Test
+    void miseEnOeuvreReserveeALaProductionMonetiqueRemplaceeSeulementPourLeModeleSysteme() {
+        // D-142 : le modèle publié sur le serveur restreignait la mise en œuvre à ROLE_PRODUCTION_MONETIQUE.
+        Processus ancien = publieeAvecMiseEnOeuvre("ROLE_PRODUCTION_MONETIQUE");
+        assertThat(DemandeChangementConfiguration.aRemplacer(ancien)).isTrue();
+        assertThat(DemandeChangementConfiguration.aJour(ancien.getEtapes()).get(3).intervenant().remplacement()).isNull();
+        // Modèle à jour : rien à remplacer ; modèle personnalisé (autre profil) : jamais touché.
+        assertThat(DemandeChangementConfiguration.aRemplacer(publieeAvecMiseEnOeuvre(null))).isFalse();
+        assertThat(DemandeChangementConfiguration.aRemplacer(publieeAvecMiseEnOeuvre("ROLE_POLE_SYSTEME"))).isFalse();
+        // Le modèle provisionné laisse la désignation ouverte, et seul l'avertissement levable DESIGNATION_OUVERTE le signale.
+        assertThat(DemandeChangementConfiguration.etapes().get(3).intervenant()).matches(i -> i.mode() == ModeIntervenant.AU_LANCEMENT && i.remplacement() == null);
+        assertThat(ControleProcessus.structure(DemandeChangementConfiguration.etapes())).extracting(a -> a.code()).containsExactly("DESIGNATION_OUVERTE");
+    }
+
+    @Test
+    void miseEnOeuvreOuverteSeulementPourLeModeleSystemeDAvant() {
+        var lanceur = new cm.gimac.des.pilotage.domain.processus.Intervenant(ModeIntervenant.LANCEUR, null, null, null, null);
+        var profil = new cm.gimac.des.pilotage.domain.processus.Intervenant(ModeIntervenant.PROFIL, "ROLE_PRODUCTION_MONETIQUE", null, null, null);
+        var ancien = new cm.gimac.des.pilotage.domain.processus.Intervenant(ModeIntervenant.AU_LANCEMENT, null, null, "SSI", "ROLE_PRODUCTION_MONETIQUE");
+        List<cm.gimac.des.pilotage.domain.processus.Etape> l = List.of(
+            new cm.gimac.des.pilotage.domain.processus.Etape("AUTRE", "Autre", "", ancien, null, List.of(), 1, List.of(), List.of(), List.of(), null),
+            new cm.gimac.des.pilotage.domain.processus.Etape("IMPLEMENTATION", "Mise en œuvre", "", null, null, List.of(), 1, List.of(), List.of(), List.of(), null),
+            new cm.gimac.des.pilotage.domain.processus.Etape("IMPLEMENTATION", "Mise en œuvre", "", lanceur, null, List.of(), 1, List.of(), List.of(), List.of(), null),
+            new cm.gimac.des.pilotage.domain.processus.Etape("IMPLEMENTATION", "Mise en œuvre", "", profil, null, List.of(), 1, List.of(), List.of(), List.of(), null),
+            new cm.gimac.des.pilotage.domain.processus.Etape("IMPLEMENTATION", "Mise en œuvre", "", ancien, null, List.of(), 1, List.of(), List.of(), List.of(), null)
+        );
+        List<cm.gimac.des.pilotage.domain.processus.Etape> r = DemandeChangementConfiguration.ouvrirMiseEnOeuvre(l);
+        assertThat(r.subList(0, 4)).isEqualTo(l.subList(0, 4));
+        assertThat(r.get(4).intervenant().remplacement()).isNull();
+        assertThat(r.get(4).intervenant().unite()).isEqualTo("SSI");
+    }
 }
+

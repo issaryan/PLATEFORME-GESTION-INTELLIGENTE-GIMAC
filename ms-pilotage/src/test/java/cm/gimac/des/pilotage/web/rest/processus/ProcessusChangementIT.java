@@ -76,7 +76,7 @@ class ProcessusChangementIT extends AbstractProcessusIT {
     @Test
     void cycleCompletEtPdf() throws Exception {
         String processus = creer(administration(SUPER_ADMIN), definition());
-        publier(administration(SUPER_ADMIN), processus);
+        publierLevee(processus);
         JsonNode i = lire(mvc.perform(json(post(BASE + "/" + processus + "/instances").with(agent(AGENT)), lancement())).andExpect(status().isCreated()).andReturn());
         String id = i.get("id").asText();
         String reference = i.get("reference").asText();
@@ -109,5 +109,29 @@ class ProcessusChangementIT extends AbstractProcessusIT {
         mvc.perform(get(INSTANCES + "/" + id + "/pdf")).andExpect(status().isUnauthorized());
         mvc.perform(get(INSTANCES + "/" + id).with(agent(SUPER_ADMIN))).andExpect(status().isForbidden());
         mvc.perform(get(INSTANCES + "/" + id).with(agent(AGENT))).andExpect(status().isOk()).andExpect(jsonPath("$.reference").value(reference));
+    }
+
+    /** D-142 : la mise en œuvre ouverte à tout le GIMAC est un avertissement levé avec motif à la publication. */
+    private void publierLevee(String processus) throws Exception {
+        mvc.perform(json(post(BASE + "/" + processus + "/publication").with(administration(SUPER_ADMIN)), Map.of("motif", "Mise en œuvre confiée à toute personne interne (D-142)", "leverAvertissements", true)))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("D-142 : une personne d'une autre unité, sans le profil Production monétique, est désignée et la demande se lance ; un compte inactif reste refusé")
+    void miseEnOeuvreOuverteATousLeGimac() throws Exception {
+        String processus = creer(administration(SUPER_ADMIN), definition());
+        publierLevee(processus);
+        Map<String, Object> l = new HashMap<>(lancement());
+        // L'ingénieure du pôle réseau ne porte pas ROLE_PRODUCTION_MONETIQUE et n'est pas de l'unité SSI.
+        l.put("designations", Map.of("IMPLEMENTATION", cm.gimac.des.pilotage.infrastructure.client.OrganisationStubAdapter.INGENIEUR_RESEAU));
+        JsonNode i = lire(mvc.perform(json(post(BASE + "/" + processus + "/instances").with(agent(AGENT)), l)).andExpect(status().isCreated()).andReturn());
+        assertThat(i.at("/designations/" + etapeDe(processus, "IMPLEMENTATION") + "/id").asText()).isEqualTo(cm.gimac.des.pilotage.infrastructure.client.OrganisationStubAdapter.INGENIEUR_RESEAU);
+        // Contrôle de sécurité réel conservé : un compte inactif n'est jamais désignable.
+        String inactif = "00000000-0000-4000-8000-0000000ss142";
+        organisation.enregistrer(new Compte(inactif, "Compte inactif", "Ancien agent", "POLE_RESEAU", null, false, true));
+        l.put("designations", Map.of("IMPLEMENTATION", inactif));
+        mvc.perform(json(post(BASE + "/" + processus + "/instances").with(agent(AGENT)), l)).andExpect(status().isUnprocessableEntity())
+            .andExpect(jsonPath("$.code").value("PIL_PROCESSUS_DESIGNATION_INVALIDE"));
     }
 }

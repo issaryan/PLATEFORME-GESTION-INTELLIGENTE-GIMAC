@@ -5,7 +5,8 @@ const pos = (x: number, y: number) => ({ x, y })
 /** Modèle simulé de la fiche RFC, identique au provisionnement MS-PILOTAGE. */
 export function definitionChangementDemo(): SaisieProcessus {
   const demandeur: Intervenant = { mode: 'LANCEUR' }
-  const responsable: Intervenant = { mode: 'AU_LANCEMENT', unite: 'SSI', remplacement: 'ROLE_PRODUCTION_MONETIQUE' }
+  // D-142 : toute personne interne active du GIMAC peut être désignée pour la mise en œuvre.
+  const responsable: Intervenant = { mode: 'AU_LANCEMENT', unite: 'SSI', remplacement: null }
   // Verrou 2 (D-130) : le RSSI seul décide et signe.
   const ssi: Intervenant = { mode: 'PROFIL', profil: 'ROLE_RSSI', unite: 'SSI' }
   const champ = (code: string, libelle: string, type: 'TEXTE' | 'TEXTE_LONG' | 'LISTE', choix: string[] = []): ChampFormulaire => ({ code, libelle, type, choix, obligatoire: true, aide: null, typesPieces: [] })

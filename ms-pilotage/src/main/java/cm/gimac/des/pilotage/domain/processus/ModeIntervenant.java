@@ -12,8 +12,12 @@ public enum ModeIntervenant {
     LANCEUR,
     N_PLUS_1_LANCEUR;
 
-    /** Une personne nommée ou désignée peut quitter le GIMAC : un profil de remplacement est exigé. */
+    /**
+     * Une personne nommée peut quitter le GIMAC : un profil de remplacement est exigé. Pour une personne désignée au
+     * lancement (AU_LANCEMENT), il est facultatif : sans lui, la désignation est ouverte à toute personne interne active
+     * du GIMAC (D-142) et, au départ de la personne désignée, l'étape revient à l'unité.
+     */
     public boolean exigeRemplacement() {
-        return this == PERSONNE || this == AU_LANCEMENT;
+        return this == PERSONNE;
     }
 }

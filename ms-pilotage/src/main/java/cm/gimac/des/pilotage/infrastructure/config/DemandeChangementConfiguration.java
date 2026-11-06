@@ -41,6 +41,8 @@ public class DemandeChangementConfiguration implements ApplicationRunner {
     /** Gabarit daté du modèle système publié du 28/10 au 04/11/2026 (recette), remplacé au démarrage. */
     static final String REFERENCE_DATEE = "CHG-{AAAA}-{MM}-{JJ}-{NNNNNN}";
     static final String PROFIL_SSI = "ROLE_RSSI";
+    /** Profil de remplacement de la mise en œuvre avant D-142, qui restreignait la désignation à la Production monétique. */
+    static final String PROFIL_MISE_EN_OEUVRE_AVANT = "ROLE_PRODUCTION_MONETIQUE";
     private static final Logger LOG = LoggerFactory.getLogger(DemandeChangementConfiguration.class);
 
     private final ProcessusRepository processus;
@@ -59,7 +61,7 @@ public class DemandeChangementConfiguration implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         transactions.executeWithoutResult(s -> {
             if (processus.existsByCode(CODE)) {
-                processus.findFirstByCodeAndEtat(CODE, EtatProcessus.PUBLIEE).filter(v -> REFERENCE_DATEE.equals(v.getReferenceModele())).ifPresent(this::remplacer);
+                processus.findFirstByCodeAndEtat(CODE, EtatProcessus.PUBLIEE).filter(DemandeChangementConfiguration::aRemplacer).ifPresent(this::remplacer);
                 return;
             }
             Instant le = horloge.instant();
@@ -86,9 +88,9 @@ public class DemandeChangementConfiguration implements ApplicationRunner {
         }
         Instant le = horloge.instant();
         Processus p = publiee.nouvelleVersion(processus.derniereVersion(CODE) + 1, "systeme", le);
-        p.decrire(publiee.getLibelle(), publiee.getDescription(), publiee.getCategorie(), publiee.getDelaiCibleJours(), publiee.getDelaiMaxJours(), rssi(publiee.getEtapes()), "systeme", le);
+        p.decrire(publiee.getLibelle(), publiee.getDescription(), publiee.getCategorie(), publiee.getDelaiCibleJours(), publiee.getDelaiMaxJours(), aJour(publiee.getEtapes()), "systeme", le);
         p.definirReference(REFERENCE);
-        String motif = "Format de la fiche de changement CHG-AAAA-N (D-127) et RSSI signataire de la décision SSI (D-130)";
+        String motif = "Format de la fiche de changement CHG-AAAA-N (D-127), RSSI signataire de la décision SSI (D-130), mise en œuvre confiée à toute personne interne (D-142)";
         publiee.retirer("systeme", "Remplacée par la version " + p.getVersion(), le);
         processus.saveAndFlush(publiee);
         historique.save(new HistoriqueProcessus(publiee.getId(), null, null, le, "systeme", ActionProcessus.RETIRE, "Remplacée par la version " + p.getVersion()));
@@ -96,6 +98,33 @@ public class DemandeChangementConfiguration implements ApplicationRunner {
         processus.save(p);
         historique.save(new HistoriqueProcessus(p.getId(), null, null, le, "systeme", ActionProcessus.PUBLIE, motif));
         LOG.info("Processus {} : version {} publiée avec la référence {}, version {} retirée", CODE, p.getVersion(), REFERENCE, publiee.getVersion());
+    }
+
+    /**
+     * Version publiée du modèle système à remplacer : gabarit daté (D-127), ou étapes du modèle système d'avant D-130 et
+     * D-142 (agent SSI, mise en œuvre réservée à la Production monétique). Un modèle personnalisé n'est jamais touché.
+     */
+    static boolean aRemplacer(Processus publiee) {
+        if (REFERENCE_DATEE.equals(publiee.getReferenceModele())) {
+            return true;
+        }
+        return REFERENCE.equals(publiee.getReferenceModele()) && !aJour(publiee.getEtapes()).equals(publiee.getEtapes());
+    }
+
+    /** Étapes du modèle système mises à jour : RSSI à l'étape SSI (D-130), mise en œuvre ouverte à tout le GIMAC (D-142). */
+    static List<Etape> aJour(List<Etape> etapes) {
+        return ouvrirMiseEnOeuvre(rssi(etapes));
+    }
+
+    /** D-142 : le responsable de la mise en œuvre, désigné au lancement, peut être toute personne interne active. */
+    static List<Etape> ouvrirMiseEnOeuvre(List<Etape> etapes) {
+        return etapes.stream().map(e -> {
+            Intervenant i = e.intervenant();
+            if (!"IMPLEMENTATION".equals(e.code()) || i == null || i.mode() != ModeIntervenant.AU_LANCEMENT || !PROFIL_MISE_EN_OEUVRE_AVANT.equals(i.remplacement())) {
+                return e;
+            }
+            return new Etape(e.code(), e.libelle(), e.action(), new Intervenant(i.mode(), i.profil(), i.personneId(), i.unite(), null), e.validateur(), e.predecesseurs(), e.delaiJours(), e.livrables(), e.signatures(), e.champs(), e.position(), e.delaiMaxJours());
+        }).toList();
     }
 
     /** Étape SSI : intervenant et signataires de profil ramenés au RSSI ; les autres étapes restent identiques. */
@@ -134,7 +163,8 @@ public class DemandeChangementConfiguration implements ApplicationRunner {
 
     public static List<Etape> etapes() {
         Intervenant demandeur = new Intervenant(ModeIntervenant.LANCEUR, null, null, null, null);
-        Intervenant responsable = new Intervenant(ModeIntervenant.AU_LANCEMENT, null, null, UNITE, "ROLE_PRODUCTION_MONETIQUE");
+        // D-142 : n'importe quelle personne interne active du GIMAC peut être désignée pour mettre en œuvre le changement.
+        Intervenant responsable = new Intervenant(ModeIntervenant.AU_LANCEMENT, null, null, UNITE, null);
         // Verrou 2, approbation de la sécurité : le RSSI seul décide et signe (décision du 04/11/2026, D-130) ; l'agent SSI
         // n'y intervient pas.
         Intervenant ssi = new Intervenant(ModeIntervenant.PROFIL, PROFIL_SSI, null, UNITE, null);

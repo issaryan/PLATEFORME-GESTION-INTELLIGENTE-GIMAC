@@ -11,7 +11,10 @@ export type EtatProcessus = (typeof ETATS_PROCESSUS)[number]
 export const MODES_INTERVENANT = ['PROFIL', 'PERSONNE', 'AU_LANCEMENT', 'CHEF_UNITE', 'LANCEUR', 'N_PLUS_1_LANCEUR'] as const
 export type ModeIntervenant = (typeof MODES_INTERVENANT)[number]
 /** Modes qui exigent un profil de remplacement (§1). */
-export const MODES_REMPLACEMENT: readonly ModeIntervenant[] = ['PERSONNE', 'AU_LANCEMENT']
+/** Modes dont le profil de remplacement est exigé (personne nommée) ; facultatif au lancement (D-142). */
+export const MODES_REMPLACEMENT: readonly ModeIntervenant[] = ['PERSONNE']
+/** Modes qui proposent un profil de remplacement : sans lui, une désignation au lancement est ouverte à tout le GIMAC. */
+export const MODES_AVEC_REMPLACEMENT: readonly ModeIntervenant[] = ['PERSONNE', 'AU_LANCEMENT']
 
 export type Intervenant = {
   mode: ModeIntervenant

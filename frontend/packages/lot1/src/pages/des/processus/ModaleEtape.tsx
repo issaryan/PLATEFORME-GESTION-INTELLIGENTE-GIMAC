@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, CheckboxGroup, ConfirmDialog, Dialog, InlineAlert, KeyValueList, Note, NumberField, Select, Tabs, TextArea, TextField } from '@gimac/design-system'
 import type { ApiError } from '@gimac/socle'
 import {
-  LIMITES_PROCESSUS, MODES_INTERVENANT, MODES_REMPLACEMENT, TYPES_CHAMP, intervenantNormalise, type ChampProcessus, type EtapeProcessus, type Intervenant, type LivrableProcessus,
+  LIMITES_PROCESSUS, MODES_AVEC_REMPLACEMENT, MODES_INTERVENANT, MODES_REMPLACEMENT, TYPES_CHAMP, intervenantNormalise, type ChampProcessus, type EtapeProcessus, type Intervenant, type LivrableProcessus,
   type ModeIntervenant, type SignatureProcessus, type TypeChamp,
 } from '../../../modele/processus'
 import { useUnites } from '../../../hooks/pilotage'
@@ -115,8 +115,9 @@ function ChampsIntervenant({ chemin, valeur, onChange, lecture, err, legende, un
               candidats={candidats.data} chargement={!!profilCherche && candidats.isPending} onChange={(v) => maj({ personneId: v || null })} />
         ) : null}
         {valeur.mode === 'PROFIL' || valeur.mode === 'AU_LANCEMENT' || valeur.mode === 'CHEF_UNITE' ? uniteChamp : null}
-        {MODES_REMPLACEMENT.includes(valeur.mode) ? (
-          <Select name={`${chemin}.remplacement`} label={t('proc.intervenant.remplacement')} help={t('proc.intervenant.remplacementAide')} required value={valeur.remplacement ?? ''} disabled={lecture}
+        {MODES_AVEC_REMPLACEMENT.includes(valeur.mode) ? (
+          <Select name={`${chemin}.remplacement`} label={t('proc.intervenant.remplacement')} help={t(valeur.mode === 'AU_LANCEMENT' ? 'proc.intervenant.remplacementOuvert' : 'proc.intervenant.remplacementAide')}
+            required={MODES_REMPLACEMENT.includes(valeur.mode)} value={valeur.remplacement ?? ''} disabled={lecture}
             error={err(`${chemin}.remplacement`)} options={profils} onChange={(v) => maj({ remplacement: v || null })} />
         ) : null}
       </div>

@@ -54,7 +54,7 @@ class ControleProcessusTest {
     }
 
     @Test
-    @DisplayName("Intervenants : absent, profil ou personne manquants, remplacement exigé pour PERSONNE et AU_LANCEMENT, validateur distinct")
+    @DisplayName("Intervenants : absent, profil ou personne manquants, remplacement exigé pour PERSONNE, désignation au lancement ouverte signalée (D-142), validateur distinct")
     void intervenants() {
         Intervenant personneSansRemplacement = new Intervenant(ModeIntervenant.PERSONNE, null, "p1", null, null);
         Intervenant auLancement = new Intervenant(ModeIntervenant.AU_LANCEMENT, null, null, null, null);
@@ -62,7 +62,9 @@ class ControleProcessusTest {
         List<Anomalie> a = ControleProcessus.structure(
             List.of(etape("A", null, List.of()), etape("B", personneSansRemplacement, List.of("A")), etape("C", auLancement, List.of("B")), etape("D", profilVide, List.of("C")))
         );
-        assertThat(codes(a)).containsExactlyInAnyOrder("INTERVENANT_ABSENT", "REMPLACEMENT_ABSENT", "REMPLACEMENT_ABSENT", "INTERVENANT_INCOMPLET");
+        assertThat(codes(a)).containsExactlyInAnyOrder("INTERVENANT_ABSENT", "REMPLACEMENT_ABSENT", "DESIGNATION_OUVERTE", "INTERVENANT_INCOMPLET");
+        assertThat(a.stream().filter(x -> x.code().equals("DESIGNATION_OUVERTE")).findFirst().orElseThrow().gravite()).isEqualTo(cm.gimac.des.pilotage.domain.processus.GraviteAnomalie.LEVABLE);
+        assertThat(ModeIntervenant.AU_LANCEMENT.exigeRemplacement()).isFalse();
         Intervenant p = new Intervenant(ModeIntervenant.PERSONNE, null, "p1", null, "ROLE_X");
         Etape memePersonne = new Etape("A", "A", null, p, p, List.of(), 0, List.of(), List.of(), List.of(), null);
         assertThat(codes(ControleProcessus.structure(List.of(memePersonne)))).containsExactly("VALIDATEUR_IDENTIQUE");
