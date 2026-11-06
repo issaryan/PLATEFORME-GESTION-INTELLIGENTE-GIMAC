@@ -59,4 +59,16 @@ class ComptesSandboxSagaIT extends AbstractIamIT {
             .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(7)).andExpect(jsonPath("$.rejouee").value(true));
         assertThat(jdbc.queryForObject("select count(*) from etape_idempotente where cle = ?", Integer.class, cle)).isEqualTo(1);
     }
+
+    @Test
+    @DisplayName("D-133 : le chargé de l'implémentation des projets de la SNA traverse les deux listes ; un profil inconnu reste refusé")
+    void matriceAvecLeChargeDeLImplementationSna() throws Exception {
+        String inconnu = "{\"version\":9,\"profils\":{\"ROLE_CHARGE_IMPLEMENTATION_SNA\":[\"SBX_CER_CONSULTATION\"],\"ROLE_INCONNU\":[\"SBX_CER_CONSULTATION\"]}}";
+        mvc.perform(put("/api/v1/interne/sandbox/matrice").with(sbxEspace()).header("Idempotency-Key", "saga-matrice-" + UUID.randomUUID() + "/1").contentType(MediaType.APPLICATION_JSON).content(inconnu))
+            .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value("IAM_SBX_PROFIL_INVALIDE"));
+        String corps = "{\"version\":9,\"profils\":{\"ROLE_CHARGE_IMPLEMENTATION_SNA\":[\"SBX_CER_CONSULTATION\"]}}";
+        mvc.perform(put("/api/v1/interne/sandbox/matrice").with(sbxEspace()).header("Idempotency-Key", "saga-matrice-" + UUID.randomUUID() + "/1").contentType(MediaType.APPLICATION_JSON).content(corps))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(9)).andExpect(jsonPath("$.rejouee").value(false));
+        assertThat(annuaire.compositions().get("ROLE_CHARGE_IMPLEMENTATION_SNA")).contains("SBX_CER_CONSULTATION");
+    }
 }

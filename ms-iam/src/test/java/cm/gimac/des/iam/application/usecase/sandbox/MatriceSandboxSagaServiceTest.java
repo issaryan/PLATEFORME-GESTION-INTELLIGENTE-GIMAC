@@ -98,6 +98,24 @@ class MatriceSandboxSagaServiceTest {
     }
 
     @Test
+    void chargeDeLImplementationSnaEstRecomposable() {
+        org.mockito.Mockito.when(catalogue.attribuables()).thenReturn(Set.of("ROLE_CHARGE_IMPLEMENTATION_SNA"));
+        org.mockito.Mockito.when(catalogue.compositions()).thenReturn(Map.of("ROLE_CHARGE_IMPLEMENTATION_SNA", Set.of("HOM_PERIMETRE_EDIT_TOUS")));
+        assertThat(service.publier(SERVICE, 5, Map.of("ROLE_CHARGE_IMPLEMENTATION_SNA", Set.of("SBX_CER_CONSULTATION")), "saga-5/1").rejouee()).isFalse();
+        verify(profils).definirPermissions(any(), eq("ROLE_CHARGE_IMPLEMENTATION_SNA"), eq(Set.of("SBX_CER_CONSULTATION", "HOM_PERIMETRE_EDIT_TOUS")), eq("Publication de la matrice sandbox version 5"));
+    }
+
+    @Test
+    void profilInconnuToujoursRefuseMemeAttribuable() {
+        org.mockito.Mockito.when(catalogue.attribuables()).thenReturn(Set.of("ROLE_INCONNU", "ROLE_CHARGE_IMPLEMENTATION_SNA"));
+        Map<String, Set<String>> matrice = Map.of("ROLE_CHARGE_IMPLEMENTATION_SNA", Set.of("SBX_CER_CONSULTATION"), "ROLE_INCONNU", Set.of("SBX_CER_CONSULTATION"));
+        assertThatThrownBy(() -> service.publier(SERVICE, 6, matrice, "x"))
+            .isInstanceOfSatisfying(IamException.class, e -> assertThat(e.code()).isEqualTo("IAM_SBX_PROFIL_INVALIDE"));
+        verify(profils, never()).definirPermissions(any(), any(), any(), any());
+        assertThat(etapes.lignes).isEmpty();
+    }
+
+    @Test
     void validationExterneEstRefuseeAvantTouteRecomposition() {
         Map<String, Set<String>> matrice = Map.of(
             "ROLE_SNA", Set.of("SBX_CER_VALIDATION"),

@@ -30,6 +30,8 @@ public class MatriceSandboxSagaService {
         "ROLE_RSSI",
         "ROLE_PRODUCTION_MONETIQUE",
         "ROLE_ADMIN_SYSTEME",
+        // D-133 : chargé de l'implémentation des projets de la SNA, SBX_CER_CONSULTATION au générateur du domaine.
+        "ROLE_CHARGE_IMPLEMENTATION_SNA",
         "ROLE_SBX_ADMIN_INSTITUTION",
         "ROLE_SBX_CHEF_PROJET",
         "ROLE_SBX_DEVELOPPEUR",
