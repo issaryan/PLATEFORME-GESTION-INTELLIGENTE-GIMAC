@@ -30,7 +30,7 @@ final class RepriseInstitutionsValidation {
     static final Set<String> CEMAC = Set.of("CM", "CF", "CG", "GA", "GQ", "TD");
     static final Pattern BIC = Pattern.compile("^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$");
     static final Pattern CODE_BEAC = Pattern.compile("^[A-Z0-9]{1,10}$");
-    static final Pattern CODE_SERVICE = Pattern.compile("^[A-Z][A-Z0-9_]{1,49}$");
+    static final Pattern CODE_SERVICE = Pattern.compile("^[A-Z][A-Z0-9_.]{1,49}$");
 
     /** Ligne contrôlée et normalisée. */
     record Fiche(

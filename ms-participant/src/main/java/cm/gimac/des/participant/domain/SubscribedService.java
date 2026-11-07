@@ -30,7 +30,7 @@ public class SubscribedService implements Serializable {
      */
     @NotNull
     @Size(max = 50)
-    @Pattern(regexp = "^[A-Z0-9_]+$")
+    @Pattern(regexp = "^[A-Z0-9_.]+$")
     @Column(name = "service_code", length = 50, nullable = false)
     private String serviceCode;
 

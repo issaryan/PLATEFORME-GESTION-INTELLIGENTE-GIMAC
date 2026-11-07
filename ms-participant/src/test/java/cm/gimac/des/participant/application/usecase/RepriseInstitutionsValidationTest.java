@@ -81,6 +81,16 @@ class RepriseInstitutionsValidationTest {
         assertThat(champs(avecServices(new ServiceRepris("A_B", AUJOURDHUI.plusDays(1)))).get("servicesSouscrits")).contains("future");
     }
 
+    @Test
+    @DisplayName("Codes de service du TDR-SBX-GIMAC-02 annexe D.1 : préfixes ISO. et CRT. admis, codes mal formés refusés")
+    void codesDuTdr() {
+        var f = RepriseInstitutionsValidation.valider(avecServices(new ServiceRepris("ISO.W2W", null), new ServiceRepris("crt.net", null), new ServiceRepris("W2W", null)), AUJOURDHUI);
+        assertThat(f.services()).extracting(ServiceRepris::code).containsExactly("ISO.W2W", "CRT.NET", "W2W");
+        for (String mal : List.of(".W2W", "1SO.W2W", "ISO W2W", "ISO-W2W", "A", "X".repeat(51))) {
+            assertThat(champs(avecServices(new ServiceRepris(mal, null))).get("servicesSouscrits")).as(mal).contains("invalide");
+        }
+    }
+
     static InstitutionReprise avecServices(ServiceRepris... s) {
         return new InstitutionReprise("BQ-1", null, "Banque", null, "CM", "BANQUE", null, null, null, "CANDIDAT", null, null, null, null, null, null, null, null, null, Arrays.asList(s));
     }

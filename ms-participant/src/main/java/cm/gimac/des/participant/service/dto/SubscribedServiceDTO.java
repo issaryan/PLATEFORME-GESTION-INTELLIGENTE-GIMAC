@@ -19,7 +19,7 @@ public class SubscribedServiceDTO implements Serializable {
 
     @NotNull
     @Size(max = 50)
-    @Pattern(regexp = "^[A-Z0-9_]+$")
+    @Pattern(regexp = "^[A-Z0-9_.]+$")
     @Schema(description = "Code du service, par exemple TRANSFERT_COMPTE_A_COMPTE.", requiredMode = Schema.RequiredMode.REQUIRED)
     private String serviceCode;
 

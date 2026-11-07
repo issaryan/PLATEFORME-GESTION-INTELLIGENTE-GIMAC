@@ -117,6 +117,7 @@ JaCoCo bloque la construction sous 80 % : à `test`, chaque classe du lot en lig
 | 2026-11-05 | D-132 | Reprise des correspondants : `RepriseCorrespondants`, routes interne et de console `…/reprise/correspondants` (`REF_REPRISE_IMPORT`, simulation par défaut, idempotence par institution et compte), tests unitaires et d'intégration. |
 | 2026-11-05 | D-134 | Routes internes `/institutions/{id}/correspondance` et `/institutions/code/{code}/correspondance` (identifiant au registre et code participant), lues par MS-IAM |
 | 2026-11-06 | D-140 | `GET /api/v1/interne/institutions` : membres dotés d'un code participant, paginés (taille 1 à 100), triés par code, filtre de statut répétable, sous `INTERNAL_PARTICIPANT_READ` (compte `sbx-donnees`) |
+| 2026-11-07 | D-143 | Code de service des souscriptions : le point est admis pour les préfixes `ISO.` et `CRT.` du TDR-SBX-GIMAC-02 D.1 (`^[A-Z][A-Z0-9_.]{1,49}$` à la reprise des institutions, `^[A-Z0-9_.]+$` sur l'entité, le DTO et le JDL) ; test des codes du TDR et des codes mal formés. |
 <!-- GIMAC:FIN -->
 
 

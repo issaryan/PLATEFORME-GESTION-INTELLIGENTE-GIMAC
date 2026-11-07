@@ -18,7 +18,7 @@
       "fieldType": "String",
       "fieldValidateRules": ["required", "maxlength", "pattern"],
       "fieldValidateRulesMaxlength": "50",
-      "fieldValidateRulesPattern": "^[A-Z0-9_]+$"
+      "fieldValidateRulesPattern": "^[A-Z0-9_.]+$"
     },
     {
       "fieldName": "subscribedOn",

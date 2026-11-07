@@ -341,7 +341,7 @@ entity Convention {
 entity SubscribedService {
   id UUID
   /** Code du service, par exemple TRANSFERT_COMPTE_A_COMPTE. */
-  serviceCode String required maxlength(50) pattern(/^[A-Z0-9_]+$/)
+  serviceCode String required maxlength(50) pattern(/^[A-Z0-9_.]+$/)
   subscribedOn LocalDate required
   terminatedOn LocalDate
   state SubscriptionState required
