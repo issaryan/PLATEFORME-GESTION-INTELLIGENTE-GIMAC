@@ -90,7 +90,7 @@ PERMISSIONS = {
                  # Sandbox GIMAC, US-EXI-05 (D-123) : appels synchrones entre services de la sandbox (CC-SBX-GIMAC-02, tableau
                  # 5.3), une permission par opération appelée ; lecture de SBX-LECTURE par la plateforme du DES ; Mifos.
                  "SBX_RACCORDEMENT_IDENTIFIANTS", "SBX_RACCORDEMENT_LIAISONS", "SBX_RACCORDEMENT_RATTACHABILITE",
-                 "SBX_DONNEES_ETATS", "SBX_DONNEES_MOUVEMENTS", "SBX_MOBILE_COUPONS", "SBX_TRACE_REFERENCES",
+                 "SBX_DONNEES_ETATS", "SBX_ESPACE_PERSONNEL", "SBX_DONNEES_MOUVEMENTS", "SBX_MOBILE_COUPONS", "SBX_TRACE_REFERENCES",
                  "SBX_CAMPAGNE_REFERENCES_TRACE", "SBX_SANTE", "SBX_MIFOS_API", "SBX_LECTURE_READ"],
 }
 # Sandbox GIMAC (D-115, docs/lot1/sandbox-existant-adapte.md §2, US-EXI-02) : SBX_<MODULE>_<FONCTION>, douze modules et cinq
@@ -361,6 +361,7 @@ LIBELLES_PERMISSIONS = {"REF_METIER_ADMIN": "Administration des référentiels m
                         "INTERNAL_SBX_RACCORDEMENT_LIAISONS": "Sandbox, appel de SBX-RACCORDEMENT : disponibilité des liaisons de test",
                         "INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE": "Sandbox, appel de SBX-RACCORDEMENT : rattachabilité d'un participant",
                         "INTERNAL_SBX_DONNEES_ETATS": "Sandbox, appel de SBX-DONNEES : restauration de l'état initial et relevé des soldes",
+                        "INTERNAL_SBX_ESPACE_PERSONNEL": "Sandbox, appel de SBX-ESPACE : espace personnel actif d'un collaborateur",
                         "INTERNAL_SBX_DONNEES_MOUVEMENTS": "Sandbox, appel de SBX-DONNEES : mouvements, comptes, cartes, PIN et clés de travail",
                         "INTERNAL_SBX_MOBILE_COUPONS": "Sandbox, appel de SBX-MOBILE : coupons de retrait sans carte",
                         "INTERNAL_SBX_TRACE_REFERENCES": "Sandbox, appel de SBX-TRACE : référence de trace d'un essai",
@@ -477,6 +478,8 @@ APPELS_SBX = [
     ("sbx-simulation", "INTERNAL_SBX_TRACE_REFERENCES", "SBX-TRACE : référence de trace au démarrage de l'essai"),
     ("sbx-simulation", "INTERNAL_SBX_DONNEES_ETATS", "SBX-DONNEES : restauration de l'état initial, relevé des soldes"),
     ("sbx-simulation", "INTERNAL_SBX_RACCORDEMENT_LIAISONS", "SBX-RACCORDEMENT : disponibilité des liaisons de test"),
+    # Mode plateforme de SBX-SIMULATION : espace personnel du lanceur d'un essai libre (route interne de SBX-ESPACE).
+    ("sbx-simulation", "INTERNAL_SBX_ESPACE_PERSONNEL", "SBX-ESPACE : espace personnel actif d'un collaborateur"),
     ("sbx-mobile", "INTERNAL_SBX_DONNEES_MOUVEMENTS", "SBX-DONNEES : mouvements, comptes, cartes, PIN, clés de travail"),
     ("sbx-iso20022", "INTERNAL_SBX_DONNEES_MOUVEMENTS", "SBX-DONNEES : mouvements, comptes, cartes, PIN, clés de travail"),
     ("sbx-carte", "INTERNAL_SBX_DONNEES_MOUVEMENTS", "SBX-DONNEES : mouvements, comptes, cartes, PIN, clés de travail"),

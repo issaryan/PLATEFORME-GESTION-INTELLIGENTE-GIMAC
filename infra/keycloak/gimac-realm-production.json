@@ -725,6 +725,12 @@
         "clientRole": false
       },
       {
+        "name": "INTERNAL_SBX_ESPACE_PERSONNEL",
+        "description": "Sandbox, appel de SBX-ESPACE : espace personnel actif d'un collaborateur",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "INTERNAL_SBX_DONNEES_MOUVEMENTS",
         "description": "Sandbox, appel de SBX-DONNEES : mouvements, comptes, cartes, PIN et clés de travail",
         "composite": false,
@@ -2604,7 +2610,8 @@
         "default-roles-gimac",
         "INTERNAL_SBX_TRACE_REFERENCES",
         "INTERNAL_SBX_DONNEES_ETATS",
-        "INTERNAL_SBX_RACCORDEMENT_LIAISONS"
+        "INTERNAL_SBX_RACCORDEMENT_LIAISONS",
+        "INTERNAL_SBX_ESPACE_PERSONNEL"
       ]
     },
     {

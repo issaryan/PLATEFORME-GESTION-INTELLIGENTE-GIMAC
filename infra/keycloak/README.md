@@ -56,3 +56,4 @@ Le rattachement des jetons de service au certificat client (RFC 8705) reste une 
 | 2026-11-05 | D-119 | `SBX_REF_CONSULTATION` pour les rôles d'institution qui raccordent, exécutent ou consultent (portail du référentiel), pas pour l'administrateur de l'institution ; assertion et test |
 | 2026-11-05 | D-135 | `SBX_SUP_CONSULTATION` donnée à ROLE_CHEF_DES, ROLE_ADMIN_SYSTEME et ROLE_SUPER_ADMIN seuls (décision de l'utilisateur), assertion et test ; realm, realm de production et domaine régénérés |
 | 2026-11-06 | D-140 | `sbx-donnees` reçoit `INTERNAL_PARTICIPANT_READ` (liste paginée des membres de MS-PARTICIPANT), inscrite au tableau `APPELS_SBX` |
+| 2026-11-07 | - | `sbx-simulation` reçoit `INTERNAL_SBX_ESPACE_PERSONNEL` (route interne de SBX-ESPACE : espace personnel actif du lanceur d'un essai, mode plateforme de SBX-SIMULATION), par ajout à `APPELS_SBX` ; écart au CC (tableau 5.3) consigné ; realm, realm de production et domaine régénérés |
