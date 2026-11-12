@@ -773,6 +773,18 @@
         "clientRole": false
       },
       {
+        "name": "INTERNAL_SBX_ESPACE_COLLABORATEURS",
+        "description": "Sandbox, appel de SBX-ESPACE : collaborateurs d'une institution",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "INTERNAL_SBX_SIMULATION_ESSAIS",
+        "description": "Sandbox, appel de SBX-SIMULATION : lancement des essais d'un cas de campagne",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "SBX_HAB_ADMINISTRATION",
         "description": "Sandbox, habilitations : administration",
         "composite": false,
@@ -3383,6 +3395,8 @@
       "realmRoles": [
         "default-roles-gimac",
         "INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE",
+        "INTERNAL_SBX_ESPACE_COLLABORATEURS",
+        "INTERNAL_SBX_SIMULATION_ESSAIS",
         "INTERNAL_DOCUMENT_DEPOSIT"
       ]
     },

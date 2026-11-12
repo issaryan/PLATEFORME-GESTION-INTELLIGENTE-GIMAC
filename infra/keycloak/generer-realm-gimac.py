@@ -91,7 +91,10 @@ PERMISSIONS = {
                  # 5.3), une permission par opération appelée ; lecture de SBX-LECTURE par la plateforme du DES ; Mifos.
                  "SBX_RACCORDEMENT_IDENTIFIANTS", "SBX_RACCORDEMENT_LIAISONS", "SBX_RACCORDEMENT_RATTACHABILITE",
                  "SBX_DONNEES_ETATS", "SBX_ESPACE_PERSONNEL", "SBX_DONNEES_MOUVEMENTS", "SBX_MOBILE_COUPONS", "SBX_TRACE_REFERENCES",
-                 "SBX_CAMPAGNE_REFERENCES_TRACE", "SBX_SANTE", "SBX_MIFOS_API", "SBX_LECTURE_READ"],
+                 "SBX_CAMPAGNE_REFERENCES_TRACE", "SBX_SANTE", "SBX_MIFOS_API", "SBX_LECTURE_READ",
+                 # D-144 : appels de SBX-CAMPAGNE sous son compte de service, le jeton réduit d'un utilisateur n'étant
+                 # jamais relayé (annuaire des collaborateurs de SBX-ESPACE, essais d'un cas dans SBX-SIMULATION).
+                 "SBX_ESPACE_COLLABORATEURS", "SBX_SIMULATION_ESSAIS"],
 }
 # Sandbox GIMAC (D-115, docs/lot1/sandbox-existant-adapte.md §2, US-EXI-02) : SBX_<MODULE>_<FONCTION>, douze modules et cinq
 # fonctions (CA-SBX-GIMAC-02 UC-INS-04), soit soixante permissions contrôlées côté serveur par les services de la sandbox.
@@ -360,6 +363,8 @@ LIBELLES_PERMISSIONS = {"REF_METIER_ADMIN": "Administration des référentiels m
                         "INTERNAL_SBX_RACCORDEMENT_IDENTIFIANTS": "Sandbox, appel de SBX-RACCORDEMENT : vérification d'un identifiant d'accès de test",
                         "INTERNAL_SBX_RACCORDEMENT_LIAISONS": "Sandbox, appel de SBX-RACCORDEMENT : disponibilité des liaisons de test",
                         "INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE": "Sandbox, appel de SBX-RACCORDEMENT : rattachabilité d'un participant",
+                        "INTERNAL_SBX_ESPACE_COLLABORATEURS": "Sandbox, appel de SBX-ESPACE : collaborateurs d'une institution",
+                        "INTERNAL_SBX_SIMULATION_ESSAIS": "Sandbox, appel de SBX-SIMULATION : lancement des essais d'un cas de campagne",
                         "INTERNAL_SBX_DONNEES_ETATS": "Sandbox, appel de SBX-DONNEES : restauration de l'état initial et relevé des soldes",
                         "INTERNAL_SBX_ESPACE_PERSONNEL": "Sandbox, appel de SBX-ESPACE : espace personnel actif d'un collaborateur",
                         "INTERNAL_SBX_DONNEES_MOUVEMENTS": "Sandbox, appel de SBX-DONNEES : mouvements, comptes, cartes, PIN et clés de travail",
@@ -486,6 +491,10 @@ APPELS_SBX = [
     ("sbx-carte", "INTERNAL_SBX_MOBILE_COUPONS", "SBX-MOBILE : coupon de retrait sans carte"),
     ("sbx-campagne", "INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE", "SBX-RACCORDEMENT : rattachabilité d'un participant"),
     ("sbx-donnees", "INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE", "SBX-RACCORDEMENT : rattachabilité d'un participant"),
+    # D-144 : le jeton réduit d'un utilisateur n'est jamais relayé ; SBX-CAMPAGNE lit l'annuaire et lance les essais
+    # par les routes internes de SBX-ESPACE et de SBX-SIMULATION, institution et auteur en paramètres.
+    ("sbx-campagne", "INTERNAL_SBX_ESPACE_COLLABORATEURS", "SBX-ESPACE : collaborateurs d'une institution (affectation des cas)"),
+    ("sbx-campagne", "INTERNAL_SBX_SIMULATION_ESSAIS", "SBX-SIMULATION : lancement des essais d'un cas de campagne"),
     # D-140 : liste paginée des membres du registre, pour provisionner les comptes de test de chaque membre.
     ("sbx-donnees", "INTERNAL_PARTICIPANT_READ", "MS-PARTICIPANT : liste paginée des institutions (code participant, statut)"),
     ("sbx-trace", "INTERNAL_SBX_CAMPAGNE_REFERENCES_TRACE", "SBX-CAMPAGNE : références de trace protégées avant purge"),

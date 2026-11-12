@@ -1,0 +1,53 @@
+{
+  "roles": ["ROLE_SBX_DEVELOPPEUR", "ROLE_SBX_TESTEUR"],
+  "compte": {
+    "id": "947697ad-5b60-4e9d-a595-b281a4b7e80b",
+    "identifiant": "demo.dev.99001",
+    "prenom": "Développeur",
+    "nom": "Fictif",
+    "email": "demo.dev@institution-99001.example",
+    "actif": true,
+    "institutionId": "0b6f6c1e-0000-4000-8000-000000099001",
+    "codeParticipant": "99001",
+    "profils": ["ROLE_SBX_DEVELOPPEUR"],
+    "secondFacteur": true,
+    "actionsRequises": ["SECOND_FACTEUR"]
+  },
+  "comptes": {
+    "contenu": [
+      {
+        "id": "947697ad-5b60-4e9d-a595-b281a4b7e80b",
+        "identifiant": "demo.dev.99001",
+        "prenom": "Développeur",
+        "nom": "Fictif",
+        "email": "demo.dev@institution-99001.example",
+        "actif": true,
+        "institutionId": "0b6f6c1e-0000-4000-8000-000000099001",
+        "codeParticipant": "99001",
+        "profils": ["ROLE_SBX_DEVELOPPEUR"],
+        "secondFacteur": true,
+        "actionsRequises": ["SECOND_FACTEUR"]
+      }
+    ],
+    "total": 1,
+    "page": 0,
+    "taille": 20
+  },
+  "creation": {
+    "compte": {
+      "id": "947697ad-5b60-4e9d-a595-b281a4b7e80b",
+      "identifiant": "demo.dev.99001",
+      "prenom": "Développeur",
+      "nom": "Fictif",
+      "email": "demo.dev@institution-99001.example",
+      "actif": true,
+      "institutionId": "0b6f6c1e-0000-4000-8000-000000099001",
+      "codeParticipant": "99001",
+      "profils": ["ROLE_SBX_DEVELOPPEUR"],
+      "secondFacteur": true,
+      "actionsRequises": ["SECOND_FACTEUR"]
+    },
+    "invitationEnvoyee": true,
+    "rejouee": false
+  }
+}
