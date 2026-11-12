@@ -134,6 +134,7 @@ Unitaires (`LiaisonOpeningPolicyTest`, `OpenLiaisonServiceTest`, `LiaisonQueries
 | 2026-10-27 | D-125 | US-EXI-25 : empreinte du bilan dans `EvaluationBase`, propagation rétrocompatible par `homologation.campaign-result-imported.v1` ; `clean verify` : 536 tests unitaires et 421 d'intégration, seuils globaux et EXI 98 % |
 | 2026-11-02 | — | Profil `prod` : `spring.docker.compose.enabled: false` et fonction `kafkaConsumer` seule ; `ReleveSandboxScheduler` consigne l'échec d'une relève et reprend à la période suivante |
 | 2026-11-04 | D-126 | Finition : `KafkaProducer` généré rétabli et `kafkaProducer-out-0` défini, en `ByteArraySerializer` sur ce seul binding (cause des `KafkaSendFailureException`) ; le planificateur ne retient que les `RuntimeException` ; la relève dépose ses pièces par `deposerParLeService` (déposant `service-account-<client-id>` de la configuration), un dépôt pour un utilisateur sans identifiant reste refusé ; requête du dernier socle déplacée dans `infrastructure/persistence/EvaluationsLiaisonRepository`, `EvaluationBaseRepository` généré rétabli |
+| 2026-11-07 | D-143, complément | Codes de service à préfixe du TDR-SBX-GIMAC-02 D.1 (`ISO.W2W`, `CRT.NET`) admis à l'ouverture d'un service supplémentaire (`^[A-Z0-9_.]{2,40}$`) et à la reprise des liaisons (`^[A-Z][A-Z0-9_.]{1,39}$`) ; tests. |
 <!-- GIMAC:FIN -->
 
 # homologation

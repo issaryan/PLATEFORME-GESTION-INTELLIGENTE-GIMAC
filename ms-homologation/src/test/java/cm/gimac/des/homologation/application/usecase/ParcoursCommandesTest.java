@@ -239,6 +239,7 @@ class ParcoursCommandesTest {
         refus(() -> commandes.ouvrirServiceSupplementaire(p.id(), null, ACTEUR), "HOM_SERVICES_INVALID");
         refus(() -> commandes.ouvrirServiceSupplementaire(p.id(), List.of("cash in"), ACTEUR), "HOM_SERVICES_INVALID");
         refus(() -> commandes.ouvrirServiceSupplementaire(p.id(), List.of("TRANSVERSE"), ACTEUR), "HOM_SERVICES_INVALID");
+        refus(() -> commandes.ouvrirServiceSupplementaire(p.id(), List.of("ISO W2W"), ACTEUR), "HOM_SERVICES_INVALID");
         when(liaisons.saveAndFlush(any())).thenAnswer(i -> {
             Liaison l = i.getArgument(0);
             l.setId(UUID.randomUUID());
@@ -250,12 +251,13 @@ class ParcoursCommandesTest {
             return s;
         });
         when(versions.findFirstByTypeProjetAndEtat(any(), any())).thenReturn(Optional.empty());
-        Liaison n = commandes.ouvrirServiceSupplementaire(p.id(), java.util.Arrays.asList("CASH_IN", " CASH_IN ", "COMMERCE_ELECTRONIQUE"), ACTEUR);
+        // Codes de service du TDR-SBX-GIMAC-02 D.1 à préfixe (D-143) admis comme les codes métier.
+        Liaison n = commandes.ouvrirServiceSupplementaire(p.id(), java.util.Arrays.asList("CASH_IN", " CASH_IN ", "COMMERCE_ELECTRONIQUE", "ISO.W2W"), ACTEUR);
         assertThat(n.getLiaisonOrigineId()).isEqualTo(p.id());
         assertThat(n.getInstitutionId()).isEqualTo(p.liaison().getInstitutionId());
         assertThat(n.getVersion()).isSameAs(p.liaison().getVersion());
-        verify(elements, org.mockito.Mockito.times(3)).save(any(ScopeItem.class));
-        verify(instanciation).instancier(n, List.of("CASH_IN", "COMMERCE_ELECTRONIQUE"), false, p.id(), true);
+        verify(elements, org.mockito.Mockito.times(4)).save(any(ScopeItem.class));
+        verify(instanciation).instancier(n, List.of("CASH_IN", "COMMERCE_ELECTRONIQUE", "ISO.W2W"), false, p.id(), true);
     }
 
     @Test

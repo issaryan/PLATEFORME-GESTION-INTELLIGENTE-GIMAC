@@ -82,6 +82,16 @@ class RepriseLiaisonsValidationTest {
     }
 
     @Test
+    @DisplayName("Codes de service du TDR-SBX-GIMAC-02 D.1 (D-143) : préfixes ISO. et CRT. admis, codes mal formés refusés")
+    void codesDuTdr() {
+        var v = RepriseLiaisonsValidation.valider(ligne(null, null, List.of(new ServiceRepris("ISO.W2W", null, null, null), new ServiceRepris("crt.net", null, null, null)), null), AUJOURDHUI);
+        assertThat(v.services()).extracting(s -> s.code()).containsExactly("ISO.W2W", "CRT.NET");
+        for (String mal : List.of(".W2W", "1SO.W2W", "ISO W2W", "ISO-W2W", "A", "X".repeat(41))) {
+            assertThat(champs(ligne(null, null, List.of(new ServiceRepris(mal, null, null, null)), null)).get("services")).as(mal).contains("invalide");
+        }
+    }
+
+    @Test
     @DisplayName("Ressources, services et opérations invalides")
     void listes() {
         UUID c = UUID.randomUUID();
