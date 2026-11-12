@@ -30,7 +30,7 @@ final class RepriseLiaisonsValidation {
     /** Référence d'origine (D-104) : lettres, chiffres, « . », « _ », « / », « - », 50 caractères au plus. */
     static final Pattern REFERENCE_ORIGINE = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9._/-]{0,49}$");
     static final Pattern CODE_MEMBRE = Pattern.compile("^[A-Z0-9-]{1,20}$");
-    static final Pattern CODE_SERVICE = Pattern.compile("^[A-Z][A-Z0-9_]{1,39}$");
+    static final Pattern CODE_SERVICE = Pattern.compile("^[A-Z][A-Z0-9_.]{1,39}$");
     static final Pattern EMPREINTE = Pattern.compile("^[0-9a-f]{64}$");
 
     /** Liaison contrôlée. */

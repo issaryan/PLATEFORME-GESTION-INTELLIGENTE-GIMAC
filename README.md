@@ -224,6 +224,7 @@ Validations réellement exécutées et conservées dans les rapports du 27/10 :
 | 2026-11-06 | D-133, complément | REC : route console de SBX-ESPACE de rattachement d'un compte MS-IAM existant à l'espace ouvert de son institution (profils SBX, projection, espace personnel, idempotente), appelée par la migration de l'ancienne sandbox pour les collaborateurs injectés au format ancien. |
 | 2026-11-06 | D-133, complément | MS-IAM : `ROLE_CHARGE_IMPLEMENTATION_SNA` livré attribuable (`iam.profils.attribuables`, interne, hors `externes-initiaux`) et recomposable par la matrice de la sandbox (`PROFILS_MATRICE`), pour que la publication de SBX-ESPACE, qui porte `SBX_CER_CONSULTATION` sur ce profil, ne soit plus refusée en 422 `IAM_SBX_PROFIL_INVALIDE` ; un profil inconnu reste refusé. À déployer avant SBX-ESPACE. |
 | 2026-11-07 | D-143 | MS-PARTICIPANT : codes de service des souscriptions aux abréviations du TDR-SBX-GIMAC-02 D.1, préfixes `ISO.` et `CRT.` admis ; la nomenclature reste dérivée des abonnements actifs (D-120). |
+| 2026-11-07 | D-143, complément | MS-HOMOLOGATION : codes de service à préfixe admis au service supplémentaire et à la reprise des liaisons ; souscriptions de test par l'institution de recette 99101. |
 
 ### Mise a jour du 02/11/2026 : Releve Sandbox GIMAC et integration documentaire
 - MS-HOMOLOGATION : correction de DocumentRestAdapter pour transmettre service-account-homologation-service en cas de deposantId nul, securisation du scheduler de releve periodique par capture des exceptions, suppression du poller KafkaProducer parasite.
