@@ -737,6 +737,7 @@ synchrones du CC-SBX-GIMAC-02 (tableau 5.3), une permission par opération appel
 | sbx-mobile, sbx-iso20022, sbx-carte | `INTERNAL_SBX_DONNEES_MOUVEMENTS` | SBX-DONNEES : mouvements, comptes, cartes, PIN, clés |
 | sbx-carte | `INTERNAL_SBX_MOBILE_COUPONS` | SBX-MOBILE : coupon de retrait sans carte |
 | sbx-campagne, sbx-donnees | `INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE` | SBX-RACCORDEMENT : rattachabilité |
+| sbx-campagne (D-144) | `INTERNAL_SBX_ESPACE_COLLABORATEURS`, `INTERNAL_SBX_SIMULATION_ESSAIS` | SBX-ESPACE : annuaire interne des collaborateurs ; SBX-SIMULATION : essais d'un cas de campagne |
 | sbx-trace | `INTERNAL_SBX_CAMPAGNE_REFERENCES_TRACE`, `INTERNAL_SBX_SANTE` | SBX-CAMPAGNE (références protégées), points de santé des onze services |
 | sbx-campagne, sbx-trace, sbx-iso20022 | `INTERNAL_DOCUMENT_DEPOSIT` | MS-DOCUMENT : pièces de la sandbox (§6.7) |
 | sbx-mifos | `INTERNAL_SBX_MIFOS_API` | Mifos : interfaces publiques |
@@ -903,3 +904,4 @@ unitaires et 236 tests d'intégration pour MS-CERTIFICATION ; contrôles JaCoCo 
 | 2026-10-23 | - | §8.5 : verrouillage et déblocage des comptes de la sandbox (US-EXI-23) ; §10 : événements à effet dans MS-AUDIT (US-EXI-10) ; §11 : notifications de la sandbox dans MS-NOTIFICATION (US-EXI-09) ; §12 : US-EXI-25 en attente (D-124) |
 | 2026-10-27 | - | §8.1 : sagas OUVERTURE et MATRICE ; §8.5 : campagne trimestrielle de réexamen, décisions, scellement, journal et onglet console (US-EXI-23 critère 2) ; raccordement OPA des écritures BFF signalé au lot passerelle |
 | 2026-10-27 | - | §12 : empreinte du bilan dans le socle d'évaluation, caducité des quitus et refus des signatures sur ancien socle (US-EXI-25, D-125) |
+| 2026-11-12 | - | D-144 : routes internes de l'administration déléguée pour le compte de service de SBX-ESPACE (`/api/v1/interne/sandbox/administration-deleguee`) ; §6, permissions `INTERNAL_SBX_ESPACE_COLLABORATEURS` et `INTERNAL_SBX_SIMULATION_ESSAIS` de `sbx-campagne` |
