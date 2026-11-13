@@ -64,3 +64,4 @@ en 200, `/actuator/env` refusé en 401 sans jeton et test ciblé `AdaptateursSup
 | 2026-11-05 | D-132 | `reprise/importer-reprise.py correspondants` (reprise des correspondants, D-132), exemple fictif et tests ; OPA : route de console de reprise des correspondants. |
 | 2026-11-05 | D-132 | `reprise/corriger-reprise-1310.py` : propositions de correctifs de la reprise du 13 au 15/10/2026 à partir des exports en lecture seule et du relevé du portail, puis fichiers d'import des seules décisions retenues ; tests joués par `ci/valider-infra.sh`. |
 | 2026-11-05 | D-137 | `reprise/importer-reprise.py clotures` (clôture sans suite des liaisons reprises) et tests ; OPA : route de console de clôture. |
+| 2026-11-13 | D-145, D-146 | OPA : `sbx_perimetre_effectif` (lecture du périmètre effectif au portail de la sandbox, deux copies identiques, test) ; domaines Keycloak régénérés (`ROLE_CONDUCTEUR_PROJET`), à réimporter par un redéploiement complet |

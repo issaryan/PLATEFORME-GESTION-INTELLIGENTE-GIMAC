@@ -8,6 +8,7 @@ import { useGroupesInstitutions, useInstitutions } from '../../hooks/participant
 import { useDescripteurDS } from '../../ressources/descripteur'
 import { creerInstitutionDescriptor } from '../../ressources/institution'
 import { etatListe } from './liaisons/communs'
+import { useOuvertureLiaison } from './parcours/ouverture'
 import { FormulaireInstitution } from './institutions/formulaires'
 
 // DES-05 Registre des institutions (/des/institutions, gabarit G2 ; PAR-01, PAR-17) et DES-07 prise de
@@ -22,7 +23,7 @@ export default function InstitutionsPage() {
   const [requete, setRequete] = useState<FiltreInstitutions>({ page: 1, taille: 25, statut: statutInitial ? [statutInitial] : undefined })
   const filtre = useMemo(() => ({ ...requete, mesDossiers: onglet === 'mesDossiers' }), [requete, onglet])
 
-  const ouverture = aPermission(permissions, 'HOM_LIAISON_OPEN') && aPermission(permissions, 'HOM_PROJECT_DESIGNATE')
+  const { peutOuvrir: ouverture } = useOuvertureLiaison()
   // D-104 : filtre par groupe, offert dès qu'un groupe est déclaré au registre.
   const groupes = useGroupesInstitutions().data
   const lot = useMemo(() => creerInstitutionDescriptor({ t, ouvertureLiaison: ouverture, groupes }), [t, ouverture, groupes])

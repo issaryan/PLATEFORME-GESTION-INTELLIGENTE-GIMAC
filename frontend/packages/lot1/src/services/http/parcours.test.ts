@@ -86,6 +86,12 @@ describe('parcoursHttp : étape 3 (routes réelles de MS-HOMOLOGATION)', () => {
     expect(await parcoursHttp.conducteurs()).toEqual([{ id: 'U-1', nom: 'A', fonction: 'CONDUCTEUR' }, { id: 'U-2', nom: 'B', fonction: 'CONDUCTEUR' }])
     expect(ligne(0)).toBe('GET /bff/des/homologation/liaisons/conducteurs')
   })
+  it('D-145 : services proposables au périmètre du projet à créer', async () => {
+    const proposable = { souscrits: true, services: [{ code: 'ISO.W2W', libelle: 'ISO.W2W', interfaceSandbox: 'ISO20022' }] }
+    brancher(proposable)
+    expect(await parcoursHttp.perimetreProposable('INST-1', 'PAIEMENT_MOBILE')).toEqual(proposable)
+    expect(ligne(0)).toBe('GET /bff/des/homologation/liaisons/perimetre-proposable?institutionId=INST-1&typeProjet=PAIEMENT_MOBILE')
+  })
   it('ouverture (résumé traduit) et désignation motivée du conducteur', async () => {
     brancher(vue(), {})
     const o = { institutionId: 'INST-1', typeProjet: 'PAIEMENT_MOBILE' as const, chefDeProjetId: 'U-1', banquePartenaireId: 'INST-2' }

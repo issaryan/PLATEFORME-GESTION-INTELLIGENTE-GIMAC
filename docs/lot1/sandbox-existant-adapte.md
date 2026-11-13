@@ -883,6 +883,56 @@ méthodes, sans relever le seuil global des services. Le 27/10/2026, `TESTCONTAI
 verify` réussit sur les deux services : 536 tests unitaires et 421 tests d'intégration pour MS-HOMOLOGATION, 219 tests
 unitaires et 236 tests d'intégration pour MS-CERTIFICATION ; contrôles JaCoCo globaux et EXI 98 % respectés.
 
+## 13. Administrateur de l'institution désigné à la création du projet (D-147) : contrat prévu, non livré
+
+Décision du responsable du 13/11/2026 : le conducteur de projet crée le projet « avec l'administrateur de l'institution, donc du côté de l'institution, afin qu'il puisse déjà se connecter une fois à la sandbox ». Cette section fixe le contrat ; aucun code ne l'émet ni ne le lit encore (plan d'étapes au REC, D-147).
+
+### 13.1 Chemin existant, repris tel quel
+
+| Étape | Service | Chemin existant |
+|---|---|---|
+| Correspondant déclaré au registre | MS-PARTICIPANT | Seule écriture aujourd'hui : reprise `POST /api/v1/interne/reprise/correspondants` (`REF_REPRISE_IMPORT`, D-132) |
+| Ouverture de l'espace et désignation du premier administrateur | SBX-ESPACE | `POST /api/v1/console/espaces` (administrateur du GIMAC, `SBX_HAB_ADMINISTRATION`, second facteur), saga OUVERTURE à trois étapes : périmètre, compte, rôle (UC-INS-01 du CA-SBX-GIMAC-02) |
+| Compte nominatif et invitation | MS-IAM | `POST /api/v1/interne/sandbox/comptes` (`INTERNAL_IAM_SBX_SAGA`, compte de service `sbx-espace`) : création unique et invitation, jamais d'écriture directe dans Keycloak par la sandbox |
+
+### 13.2 Ajout à `homologation.liaison-opened.v1` (champ facultatif, contrat v1 compatible)
+
+```json
+"administrateurInstitution": {
+  "type": ["object", "null"],
+  "description": "Administrateur de l'institution désigné par le créateur du projet (D-147). correspondantId : correspondant déjà déclaré au registre ; sinon identité à déclarer.",
+  "required": ["nom", "courriel"],
+  "properties": {
+    "correspondantId": { "type": ["string", "null"], "format": "uuid" },
+    "prenom": { "type": ["string", "null"], "maxLength": 100 },
+    "nom": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "courriel": { "type": "string", "format": "email", "maxLength": 254 },
+    "telephone": { "type": ["string", "null"], "maxLength": 30 },
+    "fonction": { "type": ["string", "null"], "maxLength": 100 }
+  }
+}
+```
+
+### 13.3 Nouvel événement `participant.correspondent-declared.v1` (sujet à fixer selon la convention de l'outbox de MS-PARTICIPANT)
+
+Publié par MS-PARTICIPANT, par l'outbox, quand il a déclaré (ou retrouvé, à courriel égal) le correspondant porté par l'ouverture. SBX-ESPACE ne lit que cet événement : le correspondant existe donc au registre quand la saga le vérifie.
+
+```json
+{
+  "type": "object",
+  "required": ["institutionId", "codeParticipant", "correspondantId", "liaisonId", "administrateurSandbox", "declarePar", "declareLe"],
+  "properties": {
+    "institutionId": { "type": "string", "format": "uuid" },
+    "codeParticipant": { "type": "string" },
+    "correspondantId": { "type": "string", "format": "uuid" },
+    "liaisonId": { "type": "string", "format": "uuid" },
+    "administrateurSandbox": { "type": "boolean", "description": "Vrai : SBX-ESPACE ouvre l'espace de l'institution avec ce correspondant pour premier administrateur, ou le rattache comme administrateur si l'espace existe." },
+    "declarePar": { "type": "string", "format": "uuid", "description": "Créateur du projet, auteur de la saga." },
+    "declareLe": { "type": "string", "format": "date-time" }
+  }
+}
+```
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -906,3 +956,4 @@ unitaires et 236 tests d'intégration pour MS-CERTIFICATION ; contrôles JaCoCo 
 | 2026-10-27 | - | §12 : empreinte du bilan dans le socle d'évaluation, caducité des quitus et refus des signatures sur ancien socle (US-EXI-25, D-125) |
 | 2026-11-12 | - | D-144 : routes internes de l'administration déléguée pour le compte de service de SBX-ESPACE (`/api/v1/interne/sandbox/administration-deleguee`) ; §6, permissions `INTERNAL_SBX_ESPACE_COLLABORATEURS` et `INTERNAL_SBX_SIMULATION_ESSAIS` de `sbx-campagne` |
 | 2026-11-12 | - | D-145 : le champ `perimetre` de `homologation.liaison-opened.v1` est le périmètre retenu par le gestionnaire du projet à la création (services souscrits dérivés pour une ouverture sans saisie) ; contrat inchangé, description du schéma complétée ; la sandbox en tire le périmètre effectif de l'institution, en lecture seule pour elle |
+| 2026-11-13 | - | D-147 : §13, contrat prévu de l'administrateur d'institution désigné à la création du projet (champ `administrateurInstitution` de l'ouverture, événement `participant.correspondent-declared.v1`), non livré |

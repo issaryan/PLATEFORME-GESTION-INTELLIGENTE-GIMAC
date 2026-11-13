@@ -8,6 +8,7 @@ import { useConducteurs, useOuvrirLiaison } from '../../../hooks/parcours'
 import { useOptionsTypesProjet } from '../../../hooks/referentiels'
 import { useErreurService } from '../liaisons/communs'
 import { ChampPerimetre, useChoixPerimetre } from './PerimetreCreation'
+import { optionsConducteurs, useOuvertureLiaison } from './ouverture'
 
 // Étape 3, cadrage (D-57, D-58) : un chef de département ouvre la liaison sur une institution adhérente et
 // désigne le conducteur de projet dans le même acte. La banque partenaire (rang 4) est déclarée, ou son
@@ -31,7 +32,9 @@ export function DialogueOuverture({ onFermer }: { onFermer: () => void }) {
   // Adhérents, institutions en homologation ou actives (nouveau projet sans repasser par l'adhésion, D-107) : MS-HOMOLOGATION revérifie.
   const adherents = useInstitutions({ page: 1, taille: 200, statut: ['ADHERENT', 'EN_HOMOLOGATION', 'ACTIF'] })
   const banques = useInstitutions({ page: 1, taille: 200, statut: ['ACTIF'] })
-  const conducteurs = useConducteurs()
+  // D-146 : un conducteur de projet crée le projet qu'il conduit ; un chef de département désigne le conducteur.
+  const { conducteurImpose } = useOuvertureLiaison()
+  const conducteurs = useConducteurs(!conducteurImpose)
   const ouvrir = useOuvrirLiaison()
   const erreurService = useErreurService()
   const [institutionId, setInstitution] = useState('')
@@ -40,7 +43,8 @@ export function DialogueOuverture({ onFermer }: { onFermer: () => void }) {
   const types = useOptionsTypesProjet(true)
   const [portage, setPortage] = useState('')
   const [banqueId, setBanque] = useState('')
-  const [conducteurId, setConducteur] = useState('')
+  const [conducteurChoisi, setConducteur] = useState('')
+  const conducteurId = conducteurImpose ? conducteurImpose.id : conducteurChoisi
   const [tente, setTente] = useState(false)
   // D-145 : périmètre défini par le gestionnaire à la création, parmi les services proposables.
   const perimetre = useChoixPerimetre(institutionId, typeProjet)
@@ -48,7 +52,7 @@ export function DialogueOuverture({ onFermer }: { onFermer: () => void }) {
   const choisir = { value: '', label: t('parcoursOuverture.choisir') }
   const optionsAdherents = (adherents.data?.contenu ?? []).map((i) => ({ value: i.id, label: i.sigle ? `${i.nom} (${i.sigle})` : i.nom }))
   const optionsBanques = (banques.data?.contenu ?? []).filter((i) => i.id !== institutionId).map((i) => ({ value: i.id, label: i.nom }))
-  const optionsConducteurs = (conducteurs.data ?? []).map((p) => ({ value: p.id, label: p.nom }))
+  const listeConducteurs = optionsConducteurs(conducteurImpose, conducteurs.data)
   const erreurs = {
     institutionId: !institutionId ? t('parcoursOuverture.erreur.institution') : undefined,
     typeProjet: !typeProjet ? t('parcoursOuverture.erreur.type') : undefined,
@@ -144,10 +148,10 @@ export function DialogueOuverture({ onFermer }: { onFermer: () => void }) {
           name="conducteurId"
           label={t('parcoursOuverture.conducteur')}
           required
-          help={t('parcoursOuverture.conducteur.aide')}
+          help={t(conducteurImpose ? 'ouverture.conducteur.vous' : 'parcoursOuverture.conducteur.aide')}
           value={conducteurId}
-          options={[choisir, ...optionsConducteurs]}
-          disabled={conducteurs.isPending}
+          options={conducteurImpose ? listeConducteurs : [choisir, ...listeConducteurs]}
+          disabled={Boolean(conducteurImpose) || conducteurs.isPending}
           error={e('conducteurId')}
           onChange={setConducteur}
         />

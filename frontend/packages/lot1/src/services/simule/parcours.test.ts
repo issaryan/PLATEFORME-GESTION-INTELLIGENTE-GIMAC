@@ -20,6 +20,18 @@ describe('parcoursSimule : cadrage et liste', () => {
     expect(miens.contenu.every((l) => l.conducteurNom === 'Aïcha Mahamat Nour')).toBe(true)
     expect((await parcours.listerLiaisons({ page: 2, taille: 4 })).contenu).toHaveLength(4)
   })
+  it('D-145 : services proposables et périmètre retenu à la création ; refus d’un périmètre vide ou hors catalogue', async () => {
+    const { parcours } = svc()
+    const mobile = await parcours.perimetreProposable('INST-0042', 'PAIEMENT_MOBILE')
+    expect(mobile).toMatchObject({ souscrits: false, services: expect.arrayContaining([{ code: 'FACTURE', libelle: 'Paiement de facture', interfaceSandbox: null }]) })
+    expect((await parcours.perimetreProposable('INST-0042', 'CARTE_INTERBANCAIRE')).services.map((x) => x.code)).toContain('RETRAIT')
+    expect((await parcours.perimetreProposable('INST-0042', 'TYPE_CREE')).services).toEqual([])
+    const l = await parcours.ouvrirLiaison({ institutionId: 'INST-0042', typeProjet: 'PAIEMENT_MOBILE', chefDeProjetId: 'U-COND-1', perimetre: ['FACTURE', 'TRANSVERSE'] })
+    const inclus = (await parcours.dossier(l.id)).perimetre.filter((x) => x.inclus).map((x) => x.serviceCode)
+    expect(inclus).toEqual(['FACTURE'])
+    await expect(parcours.ouvrirLiaison({ institutionId: 'INST-0042', typeProjet: 'PAIEMENT_MOBILE', chefDeProjetId: 'U-COND-1', perimetre: ['TRANSVERSE'] })).rejects.toMatchObject({ code: 'HOM_PERIMETRE_VIDE' })
+    await expect(parcours.ouvrirLiaison({ institutionId: 'INST-0042', typeProjet: 'PAIEMENT_MOBILE', chefDeProjetId: 'U-COND-1', perimetre: ['RETRAIT'] })).rejects.toMatchObject({ code: 'HOM_PERIMETRE_SERVICE_NON_SOUSCRIT' })
+  })
   it('ouverture (D-104) : seconde liaison du même type admise, référence d’origine unique ; désignation motivée et éligibilité', async () => {
     const { parcours } = svc()
     const lot2 = await parcours.ouvrirLiaison({ institutionId: 'INST-0042', typeProjet: 'CARTE_INTERBANCAIRE', chefDeProjetId: 'U-COND-1', intituleProjet: ' Projet Carte EP A Lot 2 ', referenceOrigine: '202604-EPA-02' })

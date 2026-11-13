@@ -124,9 +124,13 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
 
     @Override
     public Liaison ouvrir(OpenLiaisonCommand cmd, Acteur acteur) {
-        if (!acteur.peutDesigner()) {
-            // Le conducteur est désigné par un chef de département (rang 6, D-58).
-            throw HomologationException.forbidden("HOM_PROJECT_DESIGNATION_FORBIDDEN", "La désignation du conducteur de projet revient à un chef de département");
+        if (!acteur.peutDesigner() && !acteur.id().equals(cmd.chefDeProjetId())) {
+            // Le conducteur est désigné par un chef de département (rang 6, D-58) ; un conducteur de projet qui crée
+            // le projet (D-146) ne peut que le conduire lui-même, la politique vérifiant ensuite son habilitation.
+            throw HomologationException.forbidden(
+                "HOM_PROJECT_DESIGNATION_FORBIDDEN",
+                "La désignation d'un autre conducteur de projet revient à un chef de département : un conducteur de projet ne crée que le projet qu'il conduit"
+            );
         }
         DefinitionTypeProjet definition = definition(cmd.typeProjet());
         InstitutionView institution = participants.getInstitution(cmd.institutionId());

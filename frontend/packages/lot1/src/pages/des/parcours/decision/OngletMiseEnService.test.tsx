@@ -50,11 +50,11 @@ describe('Étape 10 : mise en service constatée', () => {
     expect(await screen.findByText(/Mise en service constatée le/)).toBeTruthy()
   })
 
-  it('conducteur : lecture seule de la fiche, aucun geste', async () => {
+  it('conducteur : lecture seule de la fiche ; service supplémentaire offert à qui crée des projets (D-146)', async () => {
     ouvrir('LIA-2025-064', 'ROLE_CONDUCTEUR_PROJET')
     await screen.findByText(/est à constater/)
     expect(screen.queryByTestId('actions-fiche')).toBeNull()
-    expect(screen.queryByText('Service supplémentaire')).toBeNull()
+    expect(screen.getByText('Service supplémentaire')).toBeTruthy()
   })
 
   it('refus du service lors du constat : message traduit et identifiant de corrélation', async () => {

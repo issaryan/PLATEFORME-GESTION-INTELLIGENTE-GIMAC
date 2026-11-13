@@ -67,3 +67,4 @@ npm run lint -w @gimac/lot1
 | 2026-10-20 | - | D-117 : pdfDemo exporté pour la simulation du programme téléchargeable |
 | 2026-10-22 | D-122 | Écran `sandboxEspaces` (`/des/sandbox/espaces`) dans `ECRANS_DES` ; fonctionnalité au catalogue simulé, groupe de navigation « Sandbox GIMAC » |
 | 2026-11-12 | D-145 | Section « Périmètre du projet : services retenus » des deux écrans de création (`PerimetreCreation.tsx`, fiche de l'institution et dialogue du parcours), port `perimetreProposable`, `perimetre` de l'ouverture ; fr, en, es |
+| 2026-11-13 | D-146, D-145 | Ouverture proposée au conducteur de projet (`pages/des/parcours/ouverture.ts` : `HOM_LIAISON_OPEN` avec `HOM_PROJECT_DESIGNATE` ou `HOM_PROJECT_CONDUCT`, conducteur fixé à lui-même) sur les cinq écrans ; « Lancer une certification » porte le périmètre du projet ; `domaine-gimac.json` régénéré |

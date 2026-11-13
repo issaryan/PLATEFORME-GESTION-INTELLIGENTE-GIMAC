@@ -9,6 +9,7 @@ import { useConducteurs, useLiaisons, usePilotageLiaisons } from '../../hooks/li
 import { useDescripteurDS } from '../../ressources/descripteur'
 import { creerLiaisonDescriptor, creerPilotageDescriptor } from '../../ressources/liaison'
 import { etatListe, mesProjetsParDefaut } from './liaisons/communs'
+import { useOuvertureLiaison } from './parcours/ouverture'
 import { FormulaireChefDeProjet } from './liaisons/formulaires'
 
 // DES-08 Liaisons et parcours (/des/liaisons, gabarit G2 ; HOM-04, HOM-20) : liste paginée et filtrée par
@@ -28,7 +29,7 @@ export default function LiaisonsPage() {
   const filtree = useMemo<ListQuery>(() => ({ ...requete, filtres: { ...requete.filtres, mesProjets: mesProjets || undefined } }), [requete, mesProjets])
 
   const designation = permissions === undefined || aPermission(permissions, 'HOM_PROJECT_DESIGNATE')
-  const ouverture = aPermission(permissions, 'HOM_LIAISON_OPEN') && aPermission(permissions, 'HOM_PROJECT_DESIGNATE')
+  const { peutOuvrir: ouverture } = useOuvertureLiaison()
   const conducteurs = useConducteurs(designation)
   const options = useMemo(
     () => ({ t, ouverture, conducteurs: (conducteurs.data ?? []).map((c) => ({ value: c.id, label: c.nom })) }),
