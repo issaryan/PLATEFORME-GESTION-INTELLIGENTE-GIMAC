@@ -107,7 +107,7 @@ class ProfilsCrV17(unittest.TestCase):
         self.assertIn("répertoires de dépôt", m["ROLE_POLE_SYSTEME"])
         self.assertIn("Ouvre le parcours de certification", m["ROLE_CONDUCTEUR_PROJET"])
         for libelle, mission in G.PRESENTATIONS.values():
-            self.assertTrue(1 <= len(libelle) <= 80 and len(mission) <= 500)
+            self.assertTrue(1 <= len(libelle) <= 80 and len(mission) <= 255)
             self.assertNotIn("\u2014", libelle + mission)
 
 

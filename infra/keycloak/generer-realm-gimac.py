@@ -211,10 +211,10 @@ PRESENTATIONS = {
     "ROLE_RESPONSABLE_SERVICE": ("Responsable de service",
         "Dirige un service, un pôle ou une cellule : confie et suit les tâches de son équipe, lit ses activités et vise ses rapports."),
     "ROLE_CONDUCTEUR_PROJET": ("Conducteur de projet",
-        "Ouvre le parcours de certification : enregistre l'institution, crée le projet qu'il conduit et en définit le périmètre ; assure ensuite sa coordination au jour le jour : affecte les opérations, valide les preuves et établit le procès-verbal de certification."),
+        "Ouvre le parcours de certification : enregistre l'institution, crée le projet qu'il conduit et en définit le périmètre ; puis le coordonne : affecte les opérations, valide les preuves et établit le procès-verbal de certification."),
 }
 assert set(PRESENTATIONS) == set(PROFILS), "libellé et mission de chaque profil livré"
-assert all(1 <= len(l) <= 80 and len(d) <= 500 and "\u2014" not in l + d for l, d in PRESENTATIONS.values())
+assert all(1 <= len(l) <= 80 and len(d) <= 255 and "\u2014" not in l + d for l, d in PRESENTATIONS.values())
 # Messagerie de travail (D-64) : tous les profils internes du GIMAC, jamais le correspondant d'un
 # participant (profil externe, porteur d'une institution).
 PROFILS_EXTERNES = {"ROLE_CORRESPONDANT"}
@@ -294,7 +294,7 @@ PRESENTATIONS_SANDBOX = {
         "Intégrateur ou éditeur mandaté par une institution, pour une durée définie et révocable, dans la limite de son mandat."),
 }
 assert set(PRESENTATIONS_SANDBOX) == set(SANDBOX_INSTITUTIONS)
-assert all(1 <= len(l) <= 80 and len(d) <= 500 and "\u2014" not in l + d for l, d in PRESENTATIONS_SANDBOX.values())
+assert all(1 <= len(l) <= 80 and len(d) <= 255 and "\u2014" not in l + d for l, d in PRESENTATIONS_SANDBOX.values())
 for _profil, _ajouts in SANDBOX_GIMAC.items():
     PROFILS[_profil] = PROFILS[_profil] + [x for x in _ajouts if x not in PROFILS[_profil]]
 PROFILS.update({n: ps + ["NOT_INBOX_READ"] for n, ps in SANDBOX_INSTITUTIONS.items()})

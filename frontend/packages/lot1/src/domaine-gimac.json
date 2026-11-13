@@ -757,7 +757,7 @@
     {
       "code": "ROLE_CONDUCTEUR_PROJET",
       "libelle": "Conducteur de projet",
-      "description": "Ouvre le parcours de certification : enregistre l'institution, crée le projet qu'il conduit et en définit le périmètre ; assure ensuite sa coordination au jour le jour : affecte les opérations, valide les preuves et établit le procès-verbal de certification.",
+      "description": "Ouvre le parcours de certification : enregistre l'institution, crée le projet qu'il conduit et en définit le périmètre ; puis le coordonne : affecte les opérations, valide les preuves et établit le procès-verbal de certification.",
       "externe": false,
       "permissions": [
         "CER_CIRCUIT_READ",
