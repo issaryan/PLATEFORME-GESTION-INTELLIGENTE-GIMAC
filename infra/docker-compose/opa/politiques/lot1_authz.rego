@@ -650,6 +650,22 @@ allow if {
 	double_facteur
 }
 
+# D-145 : périmètre effectif de l'institution, défini par le GIMAC et lu sans permission particulière par tout compte
+# de l'institution (menu du portail) ; SBX-CAMPAGNE cloisonne à l'institution du jeton. Lecture seule : aucune écriture.
+sbx_perimetre_effectif if {
+	input.method == "GET"
+	input.path == "/bff/portail/sbx-campagne/perimetre/effectif"
+}
+
+allow if {
+	not restreinte
+	not interne
+	sbx_perimetre_effectif
+	compte_externe
+	input.authentifie == true
+	double_facteur
+}
+
 # D-121 : lectures exactes de la supervision dans le DES, permission SUP dédiée ; aucun repli sur TRA. Complément du
 # 05/11/2026 : mesures par service et statistiques des codes retour.
 sbx_supervision_des if {

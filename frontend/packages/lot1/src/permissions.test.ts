@@ -10,8 +10,10 @@ const SANS_FONCTION = ['ROLE_COLLABORATEUR', 'ROLE_RESPONSABLE_SERVICE', 'ROLE_A
 const LECTURE_DES = ['HOM_REFERENTIEL_READ', 'HOM_LIAISON_READ', 'HOM_LIAISON_LIST', 'HOM_DASHBOARD_READ', 'CER_CIRCUIT_READ', 'CER_DOSSIER_READ', 'CER_REGISTER_READ', 'PAR_INSTITUTION_READ']
 
 describe('matrice des rôles (PROFILS)', () => {
-  it('la DDRM seule ouvre la liaison (CR v1.7 §4.2.1) ; les deux chefs de département désignent le conducteur (D-58)', () => {
-    expect(detenteurs(PERM.liaisonOuvrir)).toEqual(['ROLE_CHEF_DDRM'])
+  it('la DDRM ouvre la liaison (CR v1.7 §4.2.1), le conducteur de projet celle qu’il conduit (D-146) ; les deux chefs de département désignent le conducteur (D-58)', () => {
+    expect(detenteurs(PERM.liaisonOuvrir)).toEqual(['ROLE_CHEF_DDRM', 'ROLE_CONDUCTEUR_PROJET'])
+    expect(PROFILS.ROLE_CONDUCTEUR_PROJET).toEqual(expect.arrayContaining(['PAR_INSTITUTION_CREATE', PERM.perimetreModifier, PERM.projetConduire]))
+    expect(PROFILS.ROLE_CONDUCTEUR_PROJET).not.toContain(PERM.transitionApprouver)
     expect(detenteurs(PERM.projetDesigner)).toEqual(['ROLE_CHEF_DDRM', 'ROLE_CHEF_DES'])
     expect(PROFILS.ROLE_INGENIEUR_HOMOLOGATION).not.toContain(PERM.liaisonOuvrir)
     expect(PROFILS.ROLE_CONDUCTEUR_PROJET).not.toContain(PERM.projetDesigner)

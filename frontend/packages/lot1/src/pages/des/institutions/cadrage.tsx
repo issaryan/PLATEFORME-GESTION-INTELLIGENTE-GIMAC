@@ -12,6 +12,7 @@ import { etatLiaison } from '../../../dictionnaires'
 import { useOptionsTypesProjet } from '../../../hooks/referentiels'
 import { useErreurService } from '../liaisons/communs'
 import { ChampPerimetre, useChoixPerimetre } from '../parcours/PerimetreCreation'
+import { optionsConducteurs, useOuvertureLiaison } from '../parcours/ouverture'
 
 // Étape 3 du parcours (D-57, D-58) : ouverture d'une liaison en phase de cadrage depuis la fiche d'une
 // institution adhérente, en homologation ou active (D-107), par un chef de département qui détient HOM_LIAISON_OPEN et
@@ -29,7 +30,9 @@ const texte = (v: unknown) => (typeof v === 'string' ? v : '')
 export function FormulaireCadrage({ institution, onFermer }: { institution: Institution; onFermer: () => void }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const conducteurs = useConducteurs()
+  // D-146 : un conducteur de projet crée le projet qu'il conduit ; un chef de département désigne le conducteur.
+  const { conducteurImpose } = useOuvertureLiaison()
+  const conducteurs = useConducteurs(!conducteurImpose)
   // Banques partenaires possibles : banques du registre déjà admises.
   const banques = useInstitutions({ page: 1, taille: 100, statut: ['ADHERENT', 'EN_HOMOLOGATION', 'ACTIF'] })
   const ouvrir = useOuvrirLiaison()
@@ -55,9 +58,9 @@ export function FormulaireCadrage({ institution, onFermer }: { institution: Inst
       { name: 'intituleProjet', label: t('cadrage.intitule'), kind: 'text', inForm: 'create', help: t('cadrage.intitule.aide') },
       { name: 'referenceOrigine', label: t('cadrage.referenceOrigine'), kind: 'mono', inForm: 'create', help: t('cadrage.referenceOrigine.aide') },
       {
-        name: 'chefDeProjetId', label: t('cadrage.conducteur'), kind: 'select', required: true, inForm: 'create', help: t('cadrage.conducteur.aide'),
+        name: 'chefDeProjetId', label: t('cadrage.conducteur'), kind: 'select', required: true, inForm: 'create', help: t(conducteurImpose ? 'ouverture.conducteur.vous' : 'cadrage.conducteur.aide'), readOnly: Boolean(conducteurImpose),
         // Le formulaire du catalogue place lui-même l'option vide « Choisir » en tête de liste.
-        options: (conducteurs.data ?? []).map((c) => ({ value: c.id, label: c.nom })),
+        options: optionsConducteurs(conducteurImpose, conducteurs.data),
       },
       {
         name: 'banquePartenaireId', label: t('cadrage.banque'), kind: 'select', inForm: 'create', help: t('cadrage.banque.aide'),
@@ -69,6 +72,7 @@ export function FormulaireCadrage({ institution, onFermer }: { institution: Inst
     <ResourceForm
       descriptor={descripteur}
       mode="create"
+      initial={conducteurImpose ? { chefDeProjetId: conducteurImpose.id } : undefined}
       title={t('cadrage.form.titre', { nom: institution.nom })}
       submitLabel={t('cadrage.action.ouvrir')}
       intro={<InlineAlert level="info">{t(`cadrage.form.intro.${institution.statut === 'EN_HOMOLOGATION' || institution.statut === 'ACTIF' ? institution.statut : 'ADHERENT'}`, { nom: institution.nom })}</InlineAlert>}
@@ -82,7 +86,8 @@ export function FormulaireCadrage({ institution, onFermer }: { institution: Inst
       onSubmit={(v) => {
         const manquants: Record<string, string> = {}
         if (!texte(v.typeProjet)) manquants.typeProjet = t('cadrage.requis.typeProjet')
-        if (!texte(v.chefDeProjetId)) manquants.chefDeProjetId = t('cadrage.requis.conducteur')
+        const conducteurId = conducteurImpose ? conducteurImpose.id : texte(v.chefDeProjetId)
+        if (!conducteurId) manquants.chefDeProjetId = t('cadrage.requis.conducteur')
         const intitule = texte(v.intituleProjet).trim()
         const reference = texte(v.referenceOrigine).trim()
         if (intitule.length > 200) manquants.intituleProjet = t('institution.erreur.longueur', { max: 200 })
@@ -95,7 +100,7 @@ export function FormulaireCadrage({ institution, onFermer }: { institution: Inst
           {
             institutionId: institution.id,
             typeProjet: texte(v.typeProjet) as TypeProjet,
-            chefDeProjetId: texte(v.chefDeProjetId),
+            chefDeProjetId: conducteurId,
             banquePartenaireId: texte(v.banquePartenaireId) || null,
             intituleProjet: intitule || null,
             referenceOrigine: reference || null,

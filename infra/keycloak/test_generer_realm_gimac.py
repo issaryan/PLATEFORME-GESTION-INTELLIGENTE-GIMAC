@@ -15,8 +15,17 @@ _spec.loader.exec_module(G)
 
 
 class ProfilsCrV17(unittest.TestCase):
+    def test_conducteur_de_projet_ouvre_le_parcours(self):
+        conducteur = G.PROFILS["ROLE_CONDUCTEUR_PROJET"]
+        for permission in ("PAR_INSTITUTION_CREATE", "HOM_LIAISON_OPEN", "HOM_PERIMETRE_EDIT", "HOM_PROJECT_CONDUCT"):
+            self.assertIn(permission, conducteur)
+        # Ni désignation d'un autre conducteur, ni décision d'adhésion, ni périmètre des projets d'autrui.
+        for permission in ("HOM_PROJECT_DESIGNATE", "PAR_TRANSITION_APPROVE", "PAR_TRANSITION_REQUEST", "HOM_PERIMETRE_EDIT_TOUS"):
+            self.assertNotIn(permission, conducteur)
+
     def test_ouverture_des_liaisons_reservee_a_la_ddrm(self):
-        self.assertEqual([n for n, ps in G.PROFILS.items() if "HOM_LIAISON_OPEN" in ps], ["ROLE_CHEF_DDRM"])
+        # D-146 : le conducteur de projet crée aussi le projet qu'il conduit, sans désigner un autre conducteur.
+        self.assertEqual([n for n, ps in G.PROFILS.items() if "HOM_LIAISON_OPEN" in ps], ["ROLE_CHEF_DDRM", "ROLE_CONDUCTEUR_PROJET"])
         # Les deux chefs désignent le conducteur (rang 6) ; le chef du DES garde la certification.
         for chef in ("ROLE_CHEF_DES", "ROLE_CHEF_DDRM"):
             self.assertIn("HOM_PROJECT_DESIGNATE", G.PROFILS[chef])
@@ -96,7 +105,7 @@ class ProfilsCrV17(unittest.TestCase):
         self.assertIn("émet la demande de changement", m["ROLE_PRODUCTION_MONETIQUE"])
         self.assertIn("lien d'essai", m["ROLE_POLE_RESEAU"])
         self.assertIn("répertoires de dépôt", m["ROLE_POLE_SYSTEME"])
-        self.assertIn("coordination opérationnelle", m["ROLE_CONDUCTEUR_PROJET"])
+        self.assertIn("Ouvre le parcours de certification", m["ROLE_CONDUCTEUR_PROJET"])
         for libelle, mission in G.PRESENTATIONS.values():
             self.assertTrue(1 <= len(libelle) <= 80 and len(mission) <= 500)
             self.assertNotIn("\u2014", libelle + mission)

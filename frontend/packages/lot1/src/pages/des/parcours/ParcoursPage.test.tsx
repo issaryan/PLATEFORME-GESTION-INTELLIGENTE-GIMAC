@@ -93,13 +93,13 @@ describe('Étape 3 : liste des liaisons du parcours', () => {
     fireEvent.click(screen.getByRole('button', { name: /Suivante/ }))
     await waitFor(() => expect(filtres.at(-1)).toMatchObject({ page: 2, taille: 10 }))
   })
-  it('conducteur : onglet « Mes projets » restreint aux liaisons confiées ; pas d’ouverture', async () => {
+  it('conducteur : onglet « Mes projets » restreint aux liaisons confiées ; ouverture du projet qu’il conduit (D-146)', async () => {
     const filtres: FiltreLiaisons[] = []
     const s = servicesSimules({ latenceMs: 0 })
     page({ role: 'ROLE_CONDUCTEUR_PROJET', services: avec({ listerLiaisons: (f) => { filtres.push(f); return s.parcours.listerLiaisons(f) } }), chemin: '/des/parcours?mesProjets=1' })
     expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Mes projets')
     await waitFor(() => expect(filtres.at(-1)?.mesProjets).toBe(true))
-    expect(screen.queryByRole('button', { name: 'Ouvrir une liaison' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Ouvrir une liaison' })).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: 'Toutes les liaisons' }))
     await waitFor(() => expect(filtres.at(-1)?.mesProjets).toBeUndefined())
   })

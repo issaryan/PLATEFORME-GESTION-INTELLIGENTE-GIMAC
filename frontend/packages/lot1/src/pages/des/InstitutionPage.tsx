@@ -11,6 +11,7 @@ import { useDescripteurDS } from '../../ressources/descripteur'
 import { creerInstitutionDescriptor, creerPieceDescriptor, creerTransitionDescriptor } from '../../ressources/institution'
 import { Donnees } from './liaisons/communs'
 import { FormulaireConditions, FormulaireDepot, FormulaireInstitution } from './institutions/formulaires'
+import { useOuvertureLiaison } from './parcours/ouverture'
 import { FormulaireCadrage, OngletLiaisonsInstitution, STATUTS_OUVERTURE } from './institutions/cadrage'
 
 // DES-06 Dossier numérique d'une institution (/des/institutions/:id, gabarit G3 ; PAR-01 à PAR-04,
@@ -129,8 +130,8 @@ function Dossier({ dossier }: { dossier: DossierInstitution }) {
   const definir = useRef(setParams)
   definir.current = setParams
   const marraines = useInstitutions({ page: 1, taille: 100, statut: ['ACTIF'] })
-  // Étape 3 : l'ouverture exige les deux permissions (chefs du DES et de la DDRM) ; le service les revérifie.
-  const ouverture = aPermission(permissions, 'HOM_LIAISON_OPEN') && aPermission(permissions, 'HOM_PROJECT_DESIGNATE')
+  // Étape 3 : ouverture par un chef de département ou par le conducteur du projet (D-146) ; le service revérifie.
+  const { peutOuvrir: ouverture } = useOuvertureLiaison()
   const lecteurLiaisons = aPermission(permissions, 'HOM_LIAISON_LIST', 'HOM_LIAISON_READ')
   const lot = useMemo(() => {
     const d = creerInstitutionDescriptor({ t, ouvertureLiaison: ouverture })

@@ -945,8 +945,9 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
       const banque = o.banquePartenaireId ? await nomInstitution?.(o.banquePartenaireId) : undefined
       const datesAmont = await u.datesAmont?.(o.institutionId)
       return attendre(() => {
-        // D-106 (§12) : comme OpenLiaisonService, ouvrir exige HOM_LIAISON_OPEN et la désignation du conducteur (HOM_PROJECT_DESIGNATE).
-        if (u.profils?.length && u.permissions && !(u.permissions.includes('HOM_LIAISON_OPEN') && u.permissions.includes('HOM_PROJECT_DESIGNATE'))) {
+        // D-106 (§12), D-146 : comme OpenLiaisonService, ouvrir exige HOM_LIAISON_OPEN et la désignation du conducteur
+        // (HOM_PROJECT_DESIGNATE), ou la conduite de projet (HOM_PROJECT_CONDUCT) pour le projet que l'on conduit soi-même.
+        if (u.profils?.length && u.permissions && !(u.permissions.includes('HOM_LIAISON_OPEN') && (u.permissions.includes('HOM_PROJECT_DESIGNATE') || u.permissions.includes('HOM_PROJECT_CONDUCT')))) {
           throw refus(403, 'HOM_PROJECT_DESIGNATION_FORBIDDEN', 'Ouvrir une liaison exige HOM_LIAISON_OPEN et la désignation du conducteur (HOM_PROJECT_DESIGNATE).')
         }
         // D-104 : plusieurs liaisons actives par institution, y compris du même type ; seule la référence d'origine

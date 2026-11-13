@@ -40,9 +40,9 @@ Missions livrées (description du rôle, `infra/keycloak/generer-realm-gimac.py`
 
 | Profil | Mission (résumé) |
 |---|---|
-| `ROLE_CHEF_DDRM` | Coordonnateur fonctionnel : porte d'entrée, ouvre les liaisons (seul `HOM_LIAISON_OPEN`), cadrage, périmètre, coordination fonctionnelle, désigne les conducteurs |
+| `ROLE_CHEF_DDRM` | Coordonnateur fonctionnel : porte d'entrée, ouvre les liaisons (`HOM_LIAISON_OPEN`, partagée depuis D-146 avec le conducteur de projet pour le projet qu'il conduit), cadrage, périmètre, coordination fonctionnelle, désigne les conducteurs |
 | `ROLE_CHEF_DES` | Coordonnateur technique : affecte les ressources techniques, désigne les conducteurs, coordonne la certification ; n'ouvre plus de liaison |
-| `ROLE_CONDUCTEUR_PROJET` | Coordination opérationnelle au jour le jour du projet confié ; établit le procès-verbal |
+| `ROLE_CONDUCTEUR_PROJET` | Ouvre le parcours (D-146) : enregistre l'institution (`PAR_INSTITUTION_CREATE`), crée le projet qu'il conduit (`HOM_LIAISON_OPEN`, sans désigner un autre conducteur) et en définit le périmètre (`HOM_PERIMETRE_EDIT`, D-145) ; coordination opérationnelle au jour le jour du projet ; établit le procès-verbal |
 | `ROLE_SNA` | Conduit les essais service par service, constate leur aboutissement, porte la certification |
 | `ROLE_PRODUCTION_MONETIQUE` | Après la certification : paramètre en production, émet la demande de changement, exécute la configuration ; toute la branche mobile |
 | `ROLE_POLE_RESEAU` | Matrice des flux, atteignabilité des ports, lien d'essai (fin de son intervention) ; port des guichets en délégataire |

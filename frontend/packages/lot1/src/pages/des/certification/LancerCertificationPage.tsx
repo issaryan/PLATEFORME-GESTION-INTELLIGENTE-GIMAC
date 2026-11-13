@@ -13,6 +13,8 @@ import { useDescripteurDS } from '../../../ressources/descripteur'
 import { creerInstitutionDescriptor } from '../../../ressources/institution'
 import { FormulaireInstitution } from '../institutions/formulaires'
 import { useErreurService } from '../liaisons/communs'
+import { ChampPerimetre, useChoixPerimetre } from '../parcours/PerimetreCreation'
+import { optionsConducteurs, useOuvertureLiaison } from '../parcours/ouverture'
 import { useFormatDate } from '../parcours/communs'
 
 // « Lancer une certification » (D-98 §5, docs/lot1/lancement-processus.md §8) : point d'entrée unique du parcours de
@@ -117,28 +119,30 @@ function EtapeAdhesion({ dossier }: { dossier: DossierInstitution }) {
 function EtapeOuverture({ institution }: { institution: Institution }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const permissions = usePermissions()
-  // D-106 (§12) : le service exige aussi la désignation du conducteur (HOM_PROJECT_DESIGNATE, sinon 403).
-  const peutOuvrir = aPermission(permissions, PERM.liaisonOuvrir) && aPermission(permissions, PERM.projetDesigner)
+  // D-106 (§12), D-146 : ouverture par un chef de département, qui désigne le conducteur, ou par le conducteur du projet.
+  const { peutOuvrir, conducteurImpose } = useOuvertureLiaison()
   const ouvrable = OUVRABLES.includes(institution.statut)
   const types = useOptionsTypesProjet(true)
-  const conducteurs = useConducteurs(peutOuvrir && ouvrable)
+  const conducteurs = useConducteurs(peutOuvrir && ouvrable && !conducteurImpose)
   const banques = useInstitutions({ page: 1, taille: 200, statut: ['ADHERENT', 'EN_HOMOLOGATION', 'ACTIF'] }, peutOuvrir && ouvrable)
   // Liaisons déjà ouvertes pour l'institution : la recherche du service porte sur le nom de l'institution.
   const liaisons = useLiaisonsParcours({ page: 1, taille: 25, recherche: institution.nom })
   const ouvrir = useOuvrirLiaison()
   const erreur = useErreurService()(ouvrir.error)
   const [typeProjet, setType] = useState('')
-  const [conducteurId, setConducteur] = useState('')
+  const [conducteurChoisi, setConducteur] = useState('')
+  const conducteurId = conducteurImpose ? conducteurImpose.id : conducteurChoisi
+  // D-145 : périmètre défini par le gestionnaire du projet à la création.
+  const perimetre = useChoixPerimetre(ouvrable && peutOuvrir ? institution.id : '', typeProjet)
   const [banqueId, setBanque] = useState('')
   const [tente, setTente] = useState(false)
   const choisir = { value: '', label: t('certif.ouverture.choisir') }
   const erreurs = { type: !typeProjet ? t('certif.ouverture.erreur.type') : undefined, conducteur: !conducteurId ? t('certif.ouverture.erreur.conducteur') : undefined }
   const soumettre = () => {
     setTente(true)
-    if (erreurs.type || erreurs.conducteur) return
+    if (erreurs.type || erreurs.conducteur || perimetre.vide || perimetre.enCours) return
     ouvrir.mutate(
-      { institutionId: institution.id, typeProjet, chefDeProjetId: conducteurId, banquePartenaireId: banqueId || null },
+      { institutionId: institution.id, typeProjet, chefDeProjetId: conducteurId, banquePartenaireId: banqueId || null, ...(perimetre.aEnvoyer ? { perimetre: perimetre.aEnvoyer } : {}) },
       { onSuccess: (l) => { ecrireMemoire(null); void navigate(`/des/parcours/${encodeURIComponent(l.id)}?nouvelle=1`) } },
     )
   }
@@ -162,8 +166,9 @@ function EtapeOuverture({ institution }: { institution: Institution }) {
               {types.pret && !types.options.length ? <InlineAlert level="info">{t('certif.ouverture.aucunType')}</InlineAlert> : null}
               {tente && erreurs.type ? <span className="gm-field-error" role="alert">{erreurs.type}</span> : null}
             </div>
-            <Select name="conducteurId" label={t('certif.ouverture.conducteur')} help={t('certif.ouverture.conducteur.aide')} required value={conducteurId}
-              disabled={conducteurs.isPending} options={[choisir, ...(conducteurs.data ?? []).map((p) => ({ value: p.id, label: p.nom }))]} onChange={setConducteur}
+            <ChampPerimetre choix={perimetre} pret={Boolean(typeProjet)} erreur={tente && perimetre.vide ? t('perimetreCreation.erreur.vide') : undefined} />
+            <Select name="conducteurId" label={t('certif.ouverture.conducteur')} help={t(conducteurImpose ? 'ouverture.conducteur.vous' : 'certif.ouverture.conducteur.aide')} required value={conducteurId}
+              disabled={Boolean(conducteurImpose) || conducteurs.isPending} options={conducteurImpose ? optionsConducteurs(conducteurImpose, undefined) : [choisir, ...optionsConducteurs(null, conducteurs.data)]} onChange={setConducteur}
               error={tente ? erreurs.conducteur : undefined} />
             <Select name="banquePartenaireId" label={t('certif.ouverture.banque')} help={t('certif.ouverture.banque.aide')} value={banqueId}
               options={[{ value: '', label: t('certif.ouverture.sansBanque') }, ...(banques.data?.contenu ?? []).filter((b) => b.categorie === 'BANQUE' && b.id !== institution.id).map((b) => ({ value: b.id, label: b.nom }))]}

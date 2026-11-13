@@ -9,6 +9,7 @@ import { useLiaisonsParcours } from '../../../hooks/parcours'
 import { PERM } from '../../../permissions'
 import { colonnesLiaisons, useFormatDate } from './communs'
 import { DialogueOuverture } from './DialogueOuverture'
+import { useOuvertureLiaison } from './ouverture'
 import { useOptionsTypesProjet } from '../../../hooks/referentiels'
 
 // Étape 3, cadrage (/des/parcours, gabarit G2 ; D-57, D-58) : liste paginée côté serveur des liaisons du
@@ -29,7 +30,7 @@ export default function ParcoursPage() {
   const permissions = usePermissions()
   const [params, setParams] = useSearchParams()
   const conducteur = aPermission(permissions, PERM.pvEtablir)
-  const peutOuvrir = aPermission(permissions, PERM.liaisonOuvrir)
+  const { peutOuvrir } = useOuvertureLiaison()
   const mesProjets = conducteur && params.get('mesProjets') === '1'
   const page = Math.max(1, Number(params.get('page')) || 1)
   const taille = TAILLES.includes(Number(params.get('taille'))) ? Number(params.get('taille')) : 25

@@ -162,8 +162,13 @@ PROFILS = {
     # de travail Docker et Kubernetes) ; n'administre pas les comptes.
     "ROLE_ADMIN_SYSTEME": ["PLATFORM_SUPERVISION_READ", "PLATFORM_CONFIG_READ", "PLATFORM_OPS_READ", "PLATFORM_OPS_EXECUTE"],
     "ROLE_RESPONSABLE_SERVICE": [],
+    # D-146 (décision du responsable du 13/11/2026) : le parcours de certification commence par le conducteur de projet,
+    # qui enregistre l'institution (PAR_INSTITUTION_CREATE), crée le projet qu'il conduit (HOM_LIAISON_OPEN, sans
+    # HOM_PROJECT_DESIGNATE : MS-HOMOLOGATION lui refuse de désigner un autre conducteur) et, gestionnaire de ce projet,
+    # en définit et en modifie le périmètre (HOM_PERIMETRE_EDIT, D-145). L'adhésion reste prononcée par le chef de la DDRM.
     "ROLE_CONDUCTEUR_PROJET": LECTURE_DES + ["HOM_OPERATION_ASSIGN", "HOM_EVIDENCE_SUBMIT", "HOM_EVIDENCE_FILE_EXPORT",
-        "HOM_OPERATION_VALIDATE", "HOM_STEP_MANAGE", "CER_PV_ESTABLISH", "HOM_PROJECT_CONDUCT"],
+        "HOM_OPERATION_VALIDATE", "HOM_STEP_MANAGE", "CER_PV_ESTABLISH", "HOM_PROJECT_CONDUCT",
+        "HOM_LIAISON_OPEN", "HOM_PERIMETRE_EDIT", "PAR_INSTITUTION_CREATE"],
 }
 # Libellé (attribut gimac_libelle du rôle) et mission (description du rôle) de chaque profil livré (D-86,
 # docs/lot1/profils-organisation.md §2) : modifiables ensuite depuis la console, repris partout où un profil
@@ -206,7 +211,7 @@ PRESENTATIONS = {
     "ROLE_RESPONSABLE_SERVICE": ("Responsable de service",
         "Dirige un service, un pôle ou une cellule : confie et suit les tâches de son équipe, lit ses activités et vise ses rapports."),
     "ROLE_CONDUCTEUR_PROJET": ("Conducteur de projet",
-        "Désigné par projet, assure la coordination opérationnelle au jour le jour du projet de liaison qui lui est confié : affecte les opérations, valide les preuves et établit le procès-verbal de certification."),
+        "Ouvre le parcours de certification : enregistre l'institution, crée le projet qu'il conduit et en définit le périmètre ; assure ensuite sa coordination au jour le jour : affecte les opérations, valide les preuves et établit le procès-verbal de certification."),
 }
 assert set(PRESENTATIONS) == set(PROFILS), "libellé et mission de chaque profil livré"
 assert all(1 <= len(l) <= 80 and len(d) <= 500 and "\u2014" not in l + d for l, d in PRESENTATIONS.values())
@@ -223,8 +228,10 @@ RESPONSABLES = {"ROLE_CHEF_DES", "ROLE_CHEF_DDRM", "ROLE_DG", "ROLE_RSSI", "ROLE
 REFERENTIEL_EDITEURS = {"ROLE_INGENIEUR_HOMOLOGATION", "ROLE_CHEF_DES", "ROLE_CHEF_DDRM", "ROLE_RESPONSABLE_SERVICE", "ROLE_SUPER_ADMIN"}
 REFERENTIEL_PUBLIEURS = {"ROLE_INGENIEUR_HOMOLOGATION", "ROLE_CHEF_DES", "ROLE_CHEF_DDRM", "ROLE_SUPER_ADMIN"}
 REFERENTIEL_LECTURE_COMPLETE = {"ROLE_DG", "ROLE_CONFORMITE", "ROLE_RSSI", "ROLE_CHEF_DES", "ROLE_CHEF_DDRM"}
-# Ouverture d'une liaison (CR v1.7 §4.2.1 : « Celui-ci ouvre le projet ») : la DDRM seule, par son chef.
-assert [n for n, ps in PROFILS.items() if "HOM_LIAISON_OPEN" in ps] == ["ROLE_CHEF_DDRM"]
+# Ouverture d'une liaison (CR v1.7 §4.2.1 : « Celui-ci ouvre le projet ») : la DDRM, par son chef ; depuis D-146, aussi
+# le conducteur de projet, pour le seul projet qu'il conduit. La désignation d'un conducteur reste aux chefs de département.
+assert [n for n, ps in PROFILS.items() if "HOM_LIAISON_OPEN" in ps] == ["ROLE_CHEF_DDRM", "ROLE_CONDUCTEUR_PROJET"]
+assert "HOM_PROJECT_DESIGNATE" not in PROFILS["ROLE_CONDUCTEUR_PROJET"] and "PAR_TRANSITION_APPROVE" not in PROFILS["ROLE_CONDUCTEUR_PROJET"]
 # Agent de la sécurité des SI : ni administration des comptes ou de la plateforme, ni quitus.
 assert not [p for p in PROFILS["ROLE_AGENT_SSI"] if p.startswith(("IAM_", "PLATFORM_", "CER_QUITUS_"))]
 # Sandbox GIMAC (D-115 §2, CA-SBX-GIMAC-02 UC-INS-04) : valeurs de départ, configurables ensuite depuis la console (D-86,
@@ -306,7 +313,7 @@ assert "SBX_MOB_EXECUTION" in PROFILS["ROLE_SBX_TESTEUR"] and "SBX_MOB_ADMINISTR
 assert "SBX_TRA_CONSULTATION" not in PROFILS["ROLE_SBX_LECTEUR"]
 # D-133 : le périmètre de tout projet, au super administrateur et au chargé de l'implémentation SNA seulement ; celui de
 # ses projets, au profil qui les ouvre ; celui qui fixe le périmètre ne valide ni opération ni verdict.
-assert [n for n, ps in PROFILS.items() if "HOM_PERIMETRE_EDIT" in ps] == ["ROLE_CHEF_DDRM"]
+assert [n for n, ps in PROFILS.items() if "HOM_PERIMETRE_EDIT" in ps] == ["ROLE_CHEF_DDRM", "ROLE_CONDUCTEUR_PROJET"]
 assert not [p for p in PROFILS["ROLE_CHARGE_IMPLEMENTATION_SNA"] if p.endswith("_VALIDATION") or p in ("HOM_OPERATION_VALIDATE", "CER_DOSSIER_VERIFY")]
 # Administration des référentiels métier (D-92) : super administrateur et ingénieur d'homologation seulement ; le
 # super administrateur porte aussi tous les droits du référentiel des opérations (lecture complète, migration).

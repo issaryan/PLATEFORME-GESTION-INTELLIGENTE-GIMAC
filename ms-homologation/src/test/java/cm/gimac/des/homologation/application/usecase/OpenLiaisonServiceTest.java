@@ -171,6 +171,19 @@ class OpenLiaisonServiceTest {
     }
 
     @Test
+    @DisplayName("D-146 : un conducteur de projet crée le projet qu'il conduit, et en est le gestionnaire ; jamais celui d'un autre")
+    void conducteurCreeSonProjet() {
+        Acteur conducteur = new Acteur(CONDUCTEUR, false);
+        Liaison l = service.ouvrir(new OpenLiaisonCommand(EP_A, TypeProjet.PAIEMENT_MOBILE, CONDUCTEUR, null), conducteur);
+        assertThat(l.getChefDeProjetId()).isEqualTo(CONDUCTEUR);
+        assertThat(l.getGestionnaireId()).isEqualTo(CONDUCTEUR);
+        UUID autre = UUID.randomUUID();
+        refus(() -> service.ouvrir(new OpenLiaisonCommand(EP_A, TypeProjet.PAIEMENT_MOBILE, autre, null), conducteur), "HOM_PROJECT_DESIGNATION_FORBIDDEN");
+        // Sans le rôle de conducteur, se désigner soi-même reste refusé par la politique d'ouverture.
+        refus(() -> service.ouvrir(new OpenLiaisonCommand(EP_A, TypeProjet.PAIEMENT_MOBILE, autre, null), new Acteur(autre, false)), "HOM_LIAISON_PROJECT_LEAD_NOT_HABILITATED");
+    }
+
+    @Test
     @DisplayName("D-104 : deux liaisons actives du même type pour la même institution, distinguées par l'intitulé")
     void plusieursLiaisonsDuMemeType() {
         Liaison lot1 = service.ouvrir(new OpenLiaisonCommand(EP_A, TypeProjet.PAIEMENT_MOBILE, CONDUCTEUR, null, " Projet Mobile EP A Lot 1 ", null), CHEF);

@@ -1678,6 +1678,16 @@ test_sbx_trace_post_lecture_motivee if {
 	}
 }
 
+test_sbx_perimetre_effectif_tout_compte_de_l_institution if {
+	chemin := "/bff/portail/sbx-campagne/perimetre/effectif"
+	authz.allow with input as {"method": "GET", "path": chemin, "permissions": [], "institution_id": "99001", "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": chemin, "permissions": [], "institution_id": "", "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": chemin, "permissions": [], "institution_id": "99001", "authentifie": false, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": chemin, "permissions": [], "institution_id": "99001", "authentifie": true, "acr": "1"}
+	not authz.allow with input as {"method": "PUT", "path": chemin, "permissions": [], "institution_id": "99001", "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": "/bff/portail/sbx-campagne/perimetre", "permissions": [], "institution_id": "99001", "authentifie": true, "acr": "2"}
+}
+
 test_sbx_espace_personnel_non_administrateur if {
 	every chemin in ["/bff/portail/sbx-espace/espace", "/bff/portail/sbx-espace/espaces-personnels/moi", "/bff/portail/sbx-espace/perimetre"] {
 		authz.allow with input as {"method": "GET", "path": chemin, "permissions": [], "institution_id": "99001", "authentifie": true, "acr": "2"}
