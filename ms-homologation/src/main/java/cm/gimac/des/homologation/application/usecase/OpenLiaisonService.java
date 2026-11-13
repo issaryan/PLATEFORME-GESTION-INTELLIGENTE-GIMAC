@@ -35,8 +35,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Ouverture d'une liaison au cadrage (HOM-04 adapté par D-57 et D-58) : sur un adhérent, une institution
  * déjà en homologation ou une institution active (nouveau projet, D-107), liée à la version publiée en vigueur du référentiel, avec son
- * périmètre contractualisé dérivé des services souscrits (HOM-05, service TRANSVERSE toujours
- * inclus) et le conducteur de projet désigné par un chef de département.
+ * périmètre défini par le gestionnaire du projet à la création parmi les services souscrits (D-145 ; sans saisie,
+ * dérivé des services souscrits, HOM-05 ; service TRANSVERSE toujours inclus) et le conducteur de projet désigné par
+ * un chef de département.
  * L'événement homologation.liaison-opened.v1 fait passer l'adhérent à EN_HOMOLOGATION dans MS-PARTICIPANT ; une
  * institution déjà en homologation ou active garde son statut.
  */
@@ -60,6 +61,13 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
     private final ParcoursCommandes conduite;
     private final DefinitionTypeProjetRepository typesProjet;
     private PorteursPermission porteurs;
+    private cm.gimac.des.homologation.repository.PerimetreModificationRepository journal;
+
+    /** Journal du périmètre (D-133, D-145) : la définition à la création y porte la version 1. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setJournal(cm.gimac.des.homologation.repository.PerimetreModificationRepository journal) {
+        this.journal = journal;
+    }
     private cm.gimac.des.homologation.application.usecase.sandbox.PublicationEtatsLiaison publication;
 
     /** Publication des états de la liaison pour la Sandbox GIMAC (US-EXI-16). */
@@ -151,6 +159,9 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
             .definitionTypeProjet(definition)
             .intituleProjet(vide(cmd.intituleProjet()))
             .referenceOrigine(referenceOrigine);
+        List<String> proposables = perimetre(l.modeleTypeProjet(), institution);
+        // D-145 : le gestionnaire du projet définit le périmètre à la création, parmi les services proposables.
+        List<String> perimetre = PerimetreCreation.retenir(cmd.perimetre(), proposables);
         try {
             l = liaisons.saveAndFlush(l);
         } catch (DataIntegrityViolationException e) {
@@ -160,7 +171,10 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
             }
             throw e;
         }
-        List<String> perimetre = deriverPerimetre(l, institution, maintenant);
+        enregistrerPerimetre(l, perimetre, maintenant);
+        if (cmd.perimetre() != null && journal != null) {
+            journal.save(PerimetreCreation.ligne(l.getId(), acteur.id(), proposables, perimetre, maintenant));
+        }
         // Étapes 3 à 10 : référentiel de l'annexe A instancié pour la liaison (D-59).
         parcours.instancier(l, perimetre, estFintech(institution), null, false);
         LiaisonOpenedPayload ouverte = new LiaisonOpenedPayload(l.getId(), l.getInstitutionId(), l.getTypeProjet().name(), enVigueur.getId(), enVigueur.getNumero(), l.getChefDeProjetId(), l.getBanquePartenaireId(), perimetre, acteur.id(), l.modeleTypeProjet().name());
@@ -252,14 +266,21 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
         return codes;
     }
 
-    private List<String> deriverPerimetre(Liaison l, InstitutionView institution, Instant maintenant) {
+    private void enregistrerPerimetre(Liaison l, List<String> codes, Instant maintenant) {
         ContractualScope p = perimetres.save(new ContractualScope().dateDerivation(maintenant).sourceEventId("ouverture:" + l.getId()).liaison(l));
-        List<String> codes = perimetre(l.modeleTypeProjet(), institution);
         for (String code : codes) {
             elements.save(new ScopeItem().serviceCode(code).serviceLibelle(code).etat(EtatScopeItem.A_ENGAGER).scope(p));
         }
         l.setContractualScope(p);
-        return codes;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PerimetreProposable perimetreProposable(UUID institutionId, cm.gimac.des.homologation.domain.enumeration.TypeProjet typeProjet) {
+        DefinitionTypeProjet definition = definition(typeProjet);
+        InstitutionView institution = participants.getInstitution(institutionId);
+        var modele = definition == null ? cm.gimac.des.homologation.domain.parcours.ModeleTypeProjet.parDefaut(typeProjet) : definition.getModele();
+        return PerimetreCreation.proposable(perimetre(modele, institution), institution);
     }
 
     private static HomologationException referenceEnDouble(String referenceOrigine) {

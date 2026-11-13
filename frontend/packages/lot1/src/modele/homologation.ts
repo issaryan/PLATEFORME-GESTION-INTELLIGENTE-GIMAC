@@ -158,6 +158,8 @@ export type OuvertureLiaison = {
   institutionId: string; typeProjet: TypeProjet; chefDeProjetId: string; banquePartenaireId?: string | null
   /** D-104 : intitulé libre et référence d'origine facultatifs. */
   intituleProjet?: string | null; referenceOrigine?: string | null
+  /** D-145 : services retenus par le gestionnaire du projet à la création. */
+  perimetre?: string[] | null
 }
 
 /** Rôle d'un intervenant de la liaison au cadrage (étape 3 du parcours, D-57, D-58). */

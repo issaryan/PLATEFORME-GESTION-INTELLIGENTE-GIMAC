@@ -12,6 +12,9 @@ const P = [cles.parcours, cles.homologation]
 // Lectures
 export const useLiaisonsParcours = (f: FiltreLiaisons, actif = true) => useLecture(cles.parcoursLiaisons(f), (s) => s.parcours.listerLiaisons(f), { enabled: actif })
 export const useConducteurs = (actif = true) => useLecture(cles.parcoursPersonnes('CONDUCTEUR'), (s) => s.parcours.conducteurs(), { enabled: actif })
+/** D-145 : services proposables au périmètre du projet à créer, dès que l'institution et le type sont choisis. */
+export const usePerimetreProposable = (institutionId: string, typeProjet: string) =>
+  useLecture(cles.parcoursPerimetreProposable(institutionId, typeProjet), (s) => s.parcours.perimetreProposable(institutionId, typeProjet), { enabled: Boolean(institutionId && typeProjet), retry: false })
 export const usePersonnes = (fonction: Fonction, actif = true) => useLecture(cles.parcoursPersonnes(fonction), (s) => s.parcours.personnes(fonction), { enabled: actif })
 export const useDossierLiaison = (id: string) => useLecture(cles.parcoursDossier(id), (s) => s.parcours.dossier(id), { enabled: Boolean(id) })
 export const useOperationsParcours = (id: string, filtre?: { etape?: string; fonction?: Fonction }, actif = true) =>

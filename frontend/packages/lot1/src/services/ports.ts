@@ -29,7 +29,7 @@ import type {
 } from '../modele/participant'
 import type {
   ApprobationSecurite, Blocage, DossierLiaison, EvenementPreuve, Fonction, FonctionUtilisateur, FicheSuiviServices, IndicateursPilotage, LiaisonResume, MesOperations, OperationParcours,
-  Ceremonie, OuvertureLiaison as OuvertureCadrage, Personne, ProcesVerbalCertification, TableauActeur, TypeAttestation,
+  Ceremonie, OuvertureLiaison as OuvertureCadrage, PerimetreProposable, Personne, ProcesVerbalCertification, TableauActeur, TypeAttestation,
 } from '../modele/parcours'
 
 // Ports de l'interface du lot 1 : le seul contrat entre les écrans et les données. Les composants et
@@ -198,6 +198,8 @@ export interface ServiceParcours {
   listerLiaisons(f: FiltreLiaisons): Promise<Page<LiaisonResume>>
   conducteurs(): Promise<Personne[]>
   ouvrirLiaison(o: OuvertureCadrage): Promise<LiaisonResume>
+  /** D-145 : services proposables au périmètre d'un projet à créer, pour une institution et un type de projet. */
+  perimetreProposable(institutionId: string, typeProjet: string): Promise<PerimetreProposable>
   designerConducteur(liaisonId: string, conducteurId: string, motif: string): Promise<void>
   // Dossier numérique et progression
   dossier(liaisonId: string): Promise<DossierLiaison>

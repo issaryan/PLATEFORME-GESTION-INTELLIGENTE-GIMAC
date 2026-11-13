@@ -40,6 +40,10 @@ export interface ResourceFormProps<T> {
   title?: string
   /** Texte d'introduction sous le titre (effets de la soumission, rappel d'une règle du service). */
   intro?: ReactNode
+  /** Complément rendu sous les champs (saisie qui dépend des valeurs du formulaire, suivies par `onValues`). */
+  complement?: ReactNode
+  /** Valeurs du formulaire à chaque saisie, pour un complément qui en dépend. */
+  onValues?: (values: Record<string, unknown>) => void
   /**
    * Présentation : « page » (gabarit G4, défaut) ou « dialog » (modale CRUD standard, CrudDialog, ouverte sur la fiche ou la liste :
    * toute modification, mise à jour ou création déclenchée depuis une fiche ou une liste, D-63).
@@ -62,6 +66,7 @@ export function ResourceForm<T extends object>(p: ResourceFormProps<T>) {
     const o = Object.assign({}, vals)
     o[n] = v
     setVals(o)
+    p.onValues?.(o)
   }
   const errors = p.errors || {}
   const steps = p.steps
@@ -172,6 +177,7 @@ export function ResourceForm<T extends object>(p: ResourceFormProps<T>) {
           </div>
         ))}
       </div>
+      {p.complement ? p.complement : null}
       <div className="gm-field-help">{t('crud.legende')}</div>
     </>
   )

@@ -955,10 +955,17 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
         if (referenceOrigine && tous().some((e) => e.s.referenceOrigine === referenceOrigine)) {
           throw refus(409, 'HOM_LIAISON_REFERENCE_ORIGINE_DUPLICATE', "Cette référence d'origine est déjà portée par une autre liaison.")
         }
+        // D-145 : périmètre défini par le gestionnaire à la création, parmi les services proposables (PerimetreCreation).
+        const catalogue = o.typeProjet === 'PAIEMENT_MOBILE' ? SERVICES_MOBILE : SERVICES_CARTE
+        if (o.perimetre) {
+          const retenus = o.perimetre.filter((c) => c !== 'TRANSVERSE')
+          if (!retenus.length) throw refus(422, 'HOM_PERIMETRE_VIDE', 'Le périmètre porte au moins un service à certifier.')
+          if (retenus.some((c) => !catalogue.some((x) => x.code === c))) throw refus(422, 'HOM_PERIMETRE_SERVICE_NON_SOUSCRIT', 'Un service non souscrit ne peut entrer au périmètre (RG-72).')
+        }
         const cond = PERSONNES.findIndex((p) => p.id === o.chefDeProjetId)
         // D-91, D-98 : un type créé dans la plateforme s'instancie depuis la version publiée de son référentiel.
         const version = ['CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE'].includes(o.typeProjet) ? null : u.versionPubliee?.(o.typeProjet) ?? null
-        const s: Scenario = { id: `LIA-2026-${String(50 + etats.size).padStart(3, '0')}`, institutionId: o.institutionId, institutionNom: nom ?? (o.institutionId === 'INST-0042' ? 'Établissement de paiement A' : o.institutionId === 'INST-0017' ? 'Banque B' : 'Nouvel adhérent'), typeProjet: o.typeProjet, banque: banque ?? null, personnalisateur: null, fintech: false, avancement: '2', statut: 'CADREE', conducteur: cond >= 0 ? PERSONNES.filter((p) => p.fonction === 'CONDUCTEUR').findIndex((p) => p.id === o.chefDeProjetId) : 0, debut: 0, cible: null, services: version ? [{ code: 'TRANSVERSE', libelle: 'Service du projet', inclus: true }] : perimetre(o.typeProjet === 'PAIEMENT_MOBILE' ? SERVICES_MOBILE : SERVICES_CARTE, []), ...(version ? { depuisVersion: true } : {}),
+        const s: Scenario = { id: `LIA-2026-${String(50 + etats.size).padStart(3, '0')}`, institutionId: o.institutionId, institutionNom: nom ?? (o.institutionId === 'INST-0042' ? 'Établissement de paiement A' : o.institutionId === 'INST-0017' ? 'Banque B' : 'Nouvel adhérent'), typeProjet: o.typeProjet, banque: banque ?? null, personnalisateur: null, fintech: false, avancement: '2', statut: 'CADREE', conducteur: cond >= 0 ? PERSONNES.filter((p) => p.fonction === 'CONDUCTEUR').findIndex((p) => p.id === o.chefDeProjetId) : 0, debut: 0, cible: null, services: version ? [{ code: 'TRANSVERSE', libelle: 'Service du projet', inclus: true }] : perimetre(catalogue, o.perimetre ? catalogue.map((x) => x.code).filter((c) => !o.perimetre!.includes(c)) : []), ...(version ? { depuisVersion: true } : {}),
           versionNumero: u.numeroPublie?.(o.typeProjet) ?? undefined, amont: datesAmont, intituleProjet: o.intituleProjet?.trim() || null, referenceOrigine }
         const e = construire(s, version)
         etats.set(s.id, e)
@@ -968,6 +975,11 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
         return resume(e)
       })
     },
+    perimetreProposable: (_institutionId, typeProjet) => attendre(() => ({
+      // Démonstration : aucun registre de souscriptions, le catalogue du type de projet est proposé.
+      services: ['CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE'].includes(typeProjet) ? (typeProjet === 'PAIEMENT_MOBILE' ? SERVICES_MOBILE : SERVICES_CARTE).map((x) => ({ ...x, interfaceSandbox: null })) : [],
+      souscrits: false,
+    })),
     designerConducteur: (id, conducteurId, motif) => attendre(() => {
       const e = trouver(id)
       if (e.conducteur && !motif.trim()) throw refus(422, 'HOM_DESIGNATION_REASON_REQUIRED', 'Une redésignation doit être motivée.')
