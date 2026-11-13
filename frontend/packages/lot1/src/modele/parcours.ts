@@ -424,4 +424,12 @@ export type OuvertureLiaison = {
   intituleProjet?: string | null
   /** D-104 : référence du projet dans l'outil d'origine, unique quand elle est renseignée. */
   referenceOrigine?: string | null
+  /** D-145 : services retenus par le gestionnaire du projet à la création ; absent, le service dérive le périmètre. */
+  perimetre?: string[] | null
 }
+
+/** Interface de la sandbox d'un service proposable (D-143) ; nulle pour un service du catalogue du type. */
+export type InterfaceSandbox = 'MOBILE' | 'ISO20022' | 'CARTE'
+export type ServiceProposable = { code: string; libelle: string; interfaceSandbox: InterfaceSandbox | null }
+/** Services proposables au périmètre d'un projet à créer (D-145) : souscrits, sinon catalogue du type de projet. */
+export type PerimetreProposable = { services: ServiceProposable[]; souscrits: boolean }

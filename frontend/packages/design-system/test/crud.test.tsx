@@ -64,6 +64,13 @@ describe('ResourceForm', () => {
     fireEvent.submit(container.querySelector('form')!)
     expect(soumettre.mock.calls[0][0]).toMatchObject({ nom: 'Banque Z', note: 'Note', type: 'A', actif: true, mode: 'I', ref_q: 'R' })
   })
+  it('complément sous les champs et valeurs suivies à chaque saisie', () => {
+    const valeurs = vi.fn()
+    const { container } = render(<ResourceForm descriptor={descripteur()} complement={<p>Complément du formulaire</p>} onValues={valeurs} />)
+    expect(screen.getByText('Complément du formulaire')).toBeTruthy()
+    fireEvent.change(container.querySelector('input[name="nom"]')!, { target: { value: 'Banque Z' } })
+    expect(valeurs).toHaveBeenLastCalledWith(expect.objectContaining({ nom: 'Banque Z' }))
+  })
   it('modification : champs d’édition, erreurs du service et synthèse des champs à corriger', () => {
     const annuler = vi.fn()
     render(<ResourceForm descriptor={descripteur({ label: { singular: 'institution', plural: 'institutions', gender: 'f' } })} mode="edit" initial={{ nom: 'Banque B', bascule: true }}

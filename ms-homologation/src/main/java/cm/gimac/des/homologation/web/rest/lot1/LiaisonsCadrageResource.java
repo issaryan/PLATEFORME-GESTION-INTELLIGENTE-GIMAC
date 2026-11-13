@@ -128,7 +128,8 @@ public class LiaisonsCadrageResource {
 
     /**
      * Ouverture (D-104) : intitulé libre facultatif ; référence d'origine facultative, unique, en lettres, chiffres,
-     * tirets, points, barres obliques et soulignés (par exemple « 202604-BCEG-01 »).
+     * tirets, points, barres obliques et soulignés (par exemple « 202604-BCEG-01 »). Périmètre (D-145) : services
+     * retenus par le gestionnaire du projet, parmi ceux de {@code GET /api/v1/liaisons/perimetre-proposable}.
      */
     public record OuvertureRequest(
         @NotNull UUID institutionId,
@@ -136,7 +137,9 @@ public class LiaisonsCadrageResource {
         @NotNull UUID chefDeProjetId,
         UUID banquePartenaireId,
         @Size(max = 200) String intituleProjet,
-        @Size(max = 50) @Pattern(regexp = "^\\s*[A-Za-z0-9][A-Za-z0-9._/-]*\\s*$") String referenceOrigine
+        @Size(max = 50) @Pattern(regexp = "^\\s*[A-Za-z0-9][A-Za-z0-9._/-]*\\s*$") String referenceOrigine,
+        /** D-145 : services retenus par le gestionnaire du projet à la création ; absent : dérivation HOM-05. */
+        @Size(min = 1, max = 60) List<@NotNull @Size(min = 1, max = 40) String> perimetre
     ) {}
 
     public record DesignationRequest(@NotNull UUID chefDeProjetId, @Size(max = 500) String motif) {}
@@ -180,6 +183,13 @@ public class LiaisonsCadrageResource {
         return queries.conducteurs().stream().map(c -> new ConducteurVue(c.id(), c.nomAffiche())).toList();
     }
 
+    /** Services proposables au périmètre d'un projet à créer (D-145), pour l'écran de création du DES. */
+    @GetMapping("/perimetre-proposable")
+    @PreAuthorize("hasAuthority('HOM_LIAISON_OPEN')")
+    public OpenLiaisonUseCase.PerimetreProposable perimetreProposable(@RequestParam(name = "institutionId") UUID institutionId, @RequestParam(name = "typeProjet") TypeProjet typeProjet) {
+        return useCase.perimetreProposable(institutionId, typeProjet);
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('HOM_LIAISON_READ')")
     public LiaisonVue lire(@PathVariable UUID id, Authentication auth) {
@@ -190,7 +200,7 @@ public class LiaisonsCadrageResource {
     @PreAuthorize("hasAuthority('HOM_LIAISON_OPEN')")
     public ResponseEntity<LiaisonVue> ouvrir(@Valid @RequestBody OuvertureRequest r, Authentication auth) {
         Liaison l = useCase.ouvrir(
-            new OpenLiaisonCommand(r.institutionId(), r.typeProjet(), r.chefDeProjetId(), r.banquePartenaireId(), r.intituleProjet(), r.referenceOrigine()),
+            new OpenLiaisonCommand(r.institutionId(), r.typeProjet(), r.chefDeProjetId(), r.banquePartenaireId(), r.intituleProjet(), r.referenceOrigine(), r.perimetre()),
             acteur(auth)
         );
         return ResponseEntity.created(URI.create("/api/v1/liaisons/" + l.getId())).body(LiaisonVue.de(queries.fiche(l.getId(), permissions(auth))));

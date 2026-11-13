@@ -13,7 +13,7 @@
     "versionNumero": { "type": "integer" },
     "chefDeProjetId": { "type": "string", "format": "uuid" },
     "banquePartenaireId": { "type": ["string", "null"], "format": "uuid" },
-    "perimetre": { "type": "array", "items": { "type": "string" } },
+    "perimetre": { "type": "array", "items": { "type": "string" }, "description": "Version 1 du périmètre du projet : services retenus par le gestionnaire du projet au GIMAC à la création (D-145), TRANSVERSE compris ; pour une ouverture sans saisie (reprise, service supplémentaire, automate), services souscrits dérivés (HOM-05). L'interface de la sandbox d'un service se lit à son préfixe (D-143) : ISO. pour le mobile ISO 20022, CRT. pour la carte ISO 8583, sinon le mobile propriétaire. SBX-CAMPAGNE en tire le périmètre effectif de l'institution, qu'elle ne modifie pas." },
     "ouvertPar": { "type": "string", "format": "uuid" },
     "modeleTypeProjet": { "type": "string" },
     "codeParticipant": { "type": ["string", "null"], "description": "Code du participant au registre de MS-PARTICIPANT ; null seulement si le registre était injoignable." },

@@ -34,5 +34,6 @@ export const cles = {
   parcoursActeur: (fonctions: string[]) => ['parcours', 'acteur', fonctions.join(',')] as const,
   parcoursPilotage: () => ['parcours', 'pilotage'] as const,
   parcoursPersonnes: (fonction: string) => ['parcours', 'personnes', fonction] as const,
+  parcoursPerimetreProposable: (institutionId: string, typeProjet: string) => ['parcours', 'perimetre-proposable', institutionId, typeProjet] as const,
   parcoursPortail: (sous: string, id?: string) => ['parcours', 'portail', sous, ...(id ? [id] : [])] as const,
 }

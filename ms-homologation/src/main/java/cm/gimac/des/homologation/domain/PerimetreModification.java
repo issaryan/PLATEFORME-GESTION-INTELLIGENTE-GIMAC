@@ -10,7 +10,8 @@ import java.util.UUID;
 /**
  * Modification du périmètre d'un projet de certification (D-133), jamais modifiée ni supprimée : version atteinte,
  * auteur, permission qui a autorisé l'acte, services inclus avant et après (codes séparés par des virgules), motif et
- * horodatage. La version 1 est le périmètre dérivé à l'ouverture, sans ligne.
+ * horodatage. La version 1 est le périmètre de l'ouverture : sans ligne quand il est dérivé des services souscrits,
+ * avec une ligne quand le gestionnaire du projet l'a défini à la création (D-145).
  */
 @Entity
 @Table(name = "perimetre_modification")

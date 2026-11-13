@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        D-145 : le gestionnaire du projet définit le périmètre à la création de la liaison. Cette définition est
+        journalisée comme version 1 du périmètre : la contrainte de D-133, qui n'admettait de ligne qu'à partir de la
+        version 2, est remplacée. Aucune ligne existante n'est modifiée.
+    -->
+    <changeSet id="d145-perimetre-modification-version-1" author="gimac">
+        <sql>ALTER TABLE perimetre_modification DROP CONSTRAINT ck_perimetre_modification_version</sql>
+        <sql>ALTER TABLE perimetre_modification ADD CONSTRAINT ck_perimetre_modification_version CHECK (version_perimetre &gt;= 1)</sql>
+    </changeSet>
+</databaseChangeLog>

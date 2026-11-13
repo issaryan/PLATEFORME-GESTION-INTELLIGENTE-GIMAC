@@ -7,6 +7,7 @@ import { useInstitutions } from '../../../hooks/participant'
 import { useConducteurs, useOuvrirLiaison } from '../../../hooks/parcours'
 import { useOptionsTypesProjet } from '../../../hooks/referentiels'
 import { useErreurService } from '../liaisons/communs'
+import { ChampPerimetre, useChoixPerimetre } from './PerimetreCreation'
 
 // Étape 3, cadrage (D-57, D-58) : un chef de département ouvre la liaison sur une institution adhérente et
 // désigne le conducteur de projet dans le même acte. La banque partenaire (rang 4) est déclarée, ou son
@@ -41,6 +42,8 @@ export function DialogueOuverture({ onFermer }: { onFermer: () => void }) {
   const [banqueId, setBanque] = useState('')
   const [conducteurId, setConducteur] = useState('')
   const [tente, setTente] = useState(false)
+  // D-145 : périmètre défini par le gestionnaire à la création, parmi les services proposables.
+  const perimetre = useChoixPerimetre(institutionId, typeProjet)
 
   const choisir = { value: '', label: t('parcoursOuverture.choisir') }
   const optionsAdherents = (adherents.data?.contenu ?? []).map((i) => ({ value: i.id, label: i.sigle ? `${i.nom} (${i.sigle})` : i.nom }))
@@ -52,6 +55,7 @@ export function DialogueOuverture({ onFermer }: { onFermer: () => void }) {
     portage: !portage ? t('parcoursOuverture.erreur.portage') : undefined,
     banqueId: portage === 'AVEC' && !banqueId ? t('parcoursOuverture.erreur.banque') : undefined,
     conducteurId: !conducteurId ? t('parcoursOuverture.erreur.conducteur') : undefined,
+    perimetre: perimetre.vide ? t('perimetreCreation.erreur.vide') : undefined,
   }
   const valide = Object.values(erreurs).every((e) => !e)
   const refus = erreurService(ouvrir.error)
@@ -61,7 +65,7 @@ export function DialogueOuverture({ onFermer }: { onFermer: () => void }) {
     setTente(true)
     if (!valide) return
     ouvrir.mutate(
-      { institutionId, typeProjet: typeProjet as TypeProjet, chefDeProjetId: conducteurId, banquePartenaireId: portage === 'AVEC' ? banqueId : null },
+      { institutionId, typeProjet: typeProjet as TypeProjet, chefDeProjetId: conducteurId, banquePartenaireId: portage === 'AVEC' ? banqueId : null, ...(perimetre.aEnvoyer ? { perimetre: perimetre.aEnvoyer } : {}) },
       { onSuccess: (l) => void navigate(`/des/parcours/${l.id}?nouvelle=1`) },
     )
   }
@@ -79,7 +83,7 @@ export function DialogueOuverture({ onFermer }: { onFermer: () => void }) {
       submitLabel={t('parcoursOuverture.valider')}
       submitIcon="plus"
       submitting={ouvrir.isPending}
-      submitDisabled={aucunAdherent} submitDisabledReason={t('parcoursOuverture.aucunAdherent')}
+      submitDisabled={aucunAdherent || perimetre.enCours} submitDisabledReason={t(aucunAdherent ? 'parcoursOuverture.aucunAdherent' : 'perimetreCreation.chargement')}
     >
       <div className="gm-col">
         {refus ? (
@@ -105,6 +109,7 @@ export function DialogueOuverture({ onFermer }: { onFermer: () => void }) {
           {types.pret && !types.options.length ? <InlineAlert level="info">{t('parcoursOuverture.aucunType')}</InlineAlert> : null}
           <ErreurGroupe texte={e('typeProjet')} />
         </div>
+        <ChampPerimetre choix={perimetre} pret={Boolean(institutionId && typeProjet)} erreur={e('perimetre')} />
         <div className="gm-col" style={{ gap: 'var(--gm-space-1)' }}>
           <RadioGroup
             name="portage"

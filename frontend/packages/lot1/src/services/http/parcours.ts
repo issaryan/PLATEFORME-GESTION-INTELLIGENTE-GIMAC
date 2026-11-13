@@ -112,6 +112,7 @@ export const parcoursHttp: ServiceParcours = {
   },
   conducteurs: async () => (await http.get<{ id: string; nom: string }[]>(`${L}/conducteurs`)).map((c): Personne => ({ ...c, fonction: 'CONDUCTEUR' })),
   ouvrirLiaison: async (o) => versResume(await http.post<LiaisonVue>(L, { body: o })),
+  perimetreProposable: (institutionId, typeProjet) => http.get(`${L}/perimetre-proposable`, { query: { institutionId, typeProjet } }),
   designerConducteur: (id, chefDeProjetId, motif) => http.put(`${L}/${id}/chef-de-projet`, { body: { chefDeProjetId, motif } }),
   dossier: (id) => http.get(`${L}/${id}/dossier`),
   operations: (id, f) => http.get(`${L}/${id}/parcours/operations`, { query: { etape: f?.etape, fonction: f?.fonction } }),

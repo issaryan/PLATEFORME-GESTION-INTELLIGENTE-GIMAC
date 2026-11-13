@@ -11,6 +11,7 @@ import { useInstitutions } from '../../../hooks/participant'
 import { etatLiaison } from '../../../dictionnaires'
 import { useOptionsTypesProjet } from '../../../hooks/referentiels'
 import { useErreurService } from '../liaisons/communs'
+import { ChampPerimetre, useChoixPerimetre } from '../parcours/PerimetreCreation'
 
 // Étape 3 du parcours (D-57, D-58) : ouverture d'une liaison en phase de cadrage depuis la fiche d'une
 // institution adhérente, en homologation ou active (D-107), par un chef de département qui détient HOM_LIAISON_OPEN et
@@ -36,6 +37,10 @@ export function FormulaireCadrage({ institution, onFermer }: { institution: Inst
   const types = useOptionsTypesProjet(true)
   const erreur = useErreurService()
   const [erreurs, setErreurs] = useState<Record<string, string>>({})
+  // D-145 : périmètre défini par le gestionnaire à la création, pour le type de projet choisi dans le formulaire.
+  const [type, setType] = useState('')
+  const perimetre = useChoixPerimetre(institution.id, type)
+  const [perimetreVide, setPerimetreVide] = useState(false)
   const descripteur: ResourceDescriptor<Valeurs> = {
     key: 'cadrage',
     label: { singular: t('liaison.singulier'), plural: t('liaison.pluriel'), gender: 'f' },
@@ -68,6 +73,8 @@ export function FormulaireCadrage({ institution, onFermer }: { institution: Inst
       submitLabel={t('cadrage.action.ouvrir')}
       intro={<InlineAlert level="info">{t(`cadrage.form.intro.${institution.statut === 'EN_HOMOLOGATION' || institution.statut === 'ACTIF' ? institution.statut : 'ADHERENT'}`, { nom: institution.nom })}</InlineAlert>}
       errors={erreurs}
+      onValues={(v) => setType(texte(v.typeProjet))}
+      complement={<ChampPerimetre choix={perimetre} pret={Boolean(type)} erreur={perimetreVide && perimetre.vide ? t('perimetreCreation.erreur.vide') : undefined} />}
       presentation="dialog"
       submitting={ouvrir.isPending}
       serverError={erreur(ouvrir.error)}
@@ -81,7 +88,9 @@ export function FormulaireCadrage({ institution, onFermer }: { institution: Inst
         if (intitule.length > 200) manquants.intituleProjet = t('institution.erreur.longueur', { max: 200 })
         if (reference && (reference.length > 50 || !REFERENCE_ORIGINE.test(reference))) manquants.referenceOrigine = t('cadrage.referenceOrigine.format')
         setErreurs(manquants)
-        if (Object.keys(manquants).length) return
+        setPerimetreVide(perimetre.vide)
+        // Services proposables encore en lecture : la création attend le périmètre que le gestionnaire va valider.
+        if (Object.keys(manquants).length || perimetre.vide || perimetre.enCours) return
         ouvrir.mutate(
           {
             institutionId: institution.id,
@@ -90,6 +99,7 @@ export function FormulaireCadrage({ institution, onFermer }: { institution: Inst
             banquePartenaireId: texte(v.banquePartenaireId) || null,
             intituleProjet: intitule || null,
             referenceOrigine: reference || null,
+            ...(perimetre.aEnvoyer ? { perimetre: perimetre.aEnvoyer } : {}),
           },
           // D-98 : la liaison ouverte mène à son dossier (parcours), où chaque acteur suit ses opérations.
           { onSuccess: (l) => void navigate(`/des/parcours/${encodeURIComponent(l.id)}?nouvelle=1`) },

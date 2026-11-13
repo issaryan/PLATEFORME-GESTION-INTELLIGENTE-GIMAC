@@ -141,6 +141,36 @@ class OpenLiaisonServiceTest {
     }
 
     @Test
+    @DisplayName("D-145 : périmètre défini par le gestionnaire à la création, journalisé en version 1 et publié ; refus sans enregistrement")
+    void perimetreDefiniALaCreation() {
+        cm.gimac.des.homologation.repository.PerimetreModificationRepository journal = org.mockito.Mockito.mock(cm.gimac.des.homologation.repository.PerimetreModificationRepository.class);
+        service.setJournal(journal);
+        UUID ep = UUID.randomUUID();
+        when(participants.getInstitution(ep)).thenReturn(
+            new InstitutionView(ep, "EP C", "ADHERENT", "ETABLISSEMENT_PAIEMENT", List.of(new InstitutionView.ServiceSouscrit("W2W", null), new InstitutionView.ServiceSouscrit("ISO.W2W", null), new InstitutionView.ServiceSouscrit("CRT.NET", null)))
+        );
+        Liaison l = service.ouvrir(new OpenLiaisonCommand(ep, TypeProjet.PAIEMENT_MOBILE, CONDUCTEUR, null, null, null, List.of("ISO.W2W")), CHEF);
+        ArgumentCaptor<ScopeItem> e = ArgumentCaptor.forClass(ScopeItem.class);
+        verify(elements, times(2)).save(e.capture());
+        assertThat(e.getAllValues()).extracting(ScopeItem::getServiceCode).containsExactly("TRANSVERSE", "ISO.W2W");
+        ArgumentCaptor<LiaisonOpenedPayload> p = ArgumentCaptor.forClass(LiaisonOpenedPayload.class);
+        verify(outbox).publish(eq("liaison"), eq(l.getId()), eq(LiaisonOpenedPayload.TYPE), p.capture());
+        assertThat(p.getValue().perimetre()).containsExactly("TRANSVERSE", "ISO.W2W");
+        ArgumentCaptor<cm.gimac.des.homologation.domain.PerimetreModification> m = ArgumentCaptor.forClass(cm.gimac.des.homologation.domain.PerimetreModification.class);
+        verify(journal).save(m.capture());
+        assertThat(m.getValue().getVersionPerimetre()).isEqualTo(1);
+        assertThat(m.getValue().getAuteurId()).isEqualTo(CHEF.id());
+        assertThat(m.getValue().getApres()).isEqualTo("TRANSVERSE,ISO.W2W");
+
+        refus(() -> service.ouvrir(new OpenLiaisonCommand(ep, TypeProjet.PAIEMENT_MOBILE, CONDUCTEUR, null, null, null, List.of("BILL")), CHEF), "HOM_PERIMETRE_SERVICE_NON_SOUSCRIT");
+        verify(liaisons, times(1)).saveAndFlush(any());
+
+        var proposable = service.perimetreProposable(ep, TypeProjet.PAIEMENT_MOBILE);
+        assertThat(proposable.souscrits()).isTrue();
+        assertThat(proposable.services()).extracting(cm.gimac.des.homologation.application.port.in.OpenLiaisonUseCase.ServiceProposable::code).containsExactly("W2W", "ISO.W2W", "CRT.NET");
+    }
+
+    @Test
     @DisplayName("D-104 : deux liaisons actives du même type pour la même institution, distinguées par l'intitulé")
     void plusieursLiaisonsDuMemeType() {
         Liaison lot1 = service.ouvrir(new OpenLiaisonCommand(EP_A, TypeProjet.PAIEMENT_MOBILE, CONDUCTEUR, null, " Projet Mobile EP A Lot 1 ", null), CHEF);
