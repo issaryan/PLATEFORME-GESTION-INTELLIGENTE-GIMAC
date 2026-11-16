@@ -10,7 +10,7 @@ signatures. Complète D-77 (modélisateur, moteur unique) et D-89 (droits, étap
 
 ```jsonc
 { "code": "^[A-Z][A-Z0-9_]{2,39}$", "libelle": "1..120", "description": "0..1000",
-  "modele": "CARTE_INTERBANCAIRE" | "PAIEMENT_MOBILE" | "DELEGATAIRE" | "GENERIQUE",
+  "modele": "CARTE_INTERBANCAIRE" | "PAIEMENT_MOBILE" | "DELEGATAIRE" | "GENERIQUE" | "MOBILE_ISO20022" (D-148),
   "actif": true, "referentielActif": { "id", "version" } | null, "creeLe", "creePar", "modifieLe", "modifiePar" }
 ```
 - Les trois types actuels deviennent les trois premiers enregistrements (mêmes codes) ; tout ce qui en dépend
@@ -62,7 +62,7 @@ et notification au signataire attendu. Les opérations existantes n'ont aucune s
 ### 5.1 Types de projet en données
 
 - **Stockage** : table `type_projet` (clé `code`, `^[A-Z][A-Z0-9_]{2,39}$` ; `libelle` 1..120 ; `description` 0..1000 ;
-  `modele` ∈ `CARTE_INTERBANCAIRE`, `PAIEMENT_MOBILE`, `DELEGATAIRE`, `GENERIQUE` ; `actif` ; traçabilité ; `version`),
+  `modele` ∈ `CARTE_INTERBANCAIRE`, `PAIEMENT_MOBILE`, `DELEGATAIRE`, `GENERIQUE`, `MOBILE_ISO20022` (D-148 : mobile restreint aux services de préfixe `ISO.`, type `MOBILE_ISO20022` créé par le changeset `20261116000100_d148_mobile_iso20022.xml`) ; `actif` ; traçabilité ; `version`),
   changelog `20261010000100_types_projet_fonctions_signatures.xml`. Les trois types historiques sont repris (mêmes codes,
   modèle de même nom) dans tous les contextes. Les colonnes `liaison.type_projet` et `referential_version.type_projet`
   restent du texte (`varchar(40)`), désormais clés étrangères vers `type_projet(code)` : aucune valeur ne change.

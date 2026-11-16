@@ -363,7 +363,7 @@ Interface interne de MS-PARTICIPANT (jamais relayée par la passerelle), jeton d
 
 | Événement (sujet `homologation.liaison`, extension `institutionid`) | Quand | Données ajoutées pour la sandbox |
 |---|---|---|
-| `homologation.liaison-opened.v1` | Ouverture au cadrage, reprise de l'existant (D-107), service supplémentaire (rang 35) | `codeParticipant`, `versionEtat` = 1 |
+| `homologation.liaison-opened.v1` | Ouverture au cadrage, reprise de l'existant (D-107), service supplémentaire (rang 35) | `codeParticipant`, `versionEtat` = 1 ; `referenceOrigine` facultatif (D-148), rattachement des campagnes reprises |
 | `homologation.liaison-status-changed.v1` (nom P14 retenu) | Ouverture, puis chaque changement du statut vu par la sandbox | `liaisonId`, `institutionId`, `codeParticipant`, `typeProjet`, `statut` (`OUVERTE`, `GELEE`, `CLOSE`), `statutPrecedent`, `etatLiaison`, `versionEtat`, `survenuLe` |
 
 - **Statut vu par la sandbox** : tous les états actifs de la liaison (ouverte, en homologation, apte, mise en service autorisée, certifiée) valent `OUVERTE` ; `GELEE` et `CLOSE` interdisent l'ouverture d'une campagne.
@@ -957,3 +957,4 @@ Publié par MS-PARTICIPANT, par l'outbox, quand il a déclaré (ou retrouvé, à
 | 2026-11-12 | - | D-144 : routes internes de l'administration déléguée pour le compte de service de SBX-ESPACE (`/api/v1/interne/sandbox/administration-deleguee`) ; §6, permissions `INTERNAL_SBX_ESPACE_COLLABORATEURS` et `INTERNAL_SBX_SIMULATION_ESSAIS` de `sbx-campagne` |
 | 2026-11-12 | - | D-145 : le champ `perimetre` de `homologation.liaison-opened.v1` est le périmètre retenu par le gestionnaire du projet à la création (services souscrits dérivés pour une ouverture sans saisie) ; contrat inchangé, description du schéma complétée ; la sandbox en tire le périmètre effectif de l'institution, en lecture seule pour elle |
 | 2026-11-13 | - | D-147 : §13, contrat prévu de l'administrateur d'institution désigné à la création du projet (champ `administrateurInstitution` de l'ouverture, événement `participant.correspondent-declared.v1`), non livré |
+| 2026-11-16 | - | D-148 : §7.1, champ facultatif `referenceOrigine` de `homologation.liaison-opened.v1` (texte ou nul, 50 caractères au plus, comme dans `homologation.liaison-status-changed.v1`) ; contrat v1 compatible, schéma publié complété ; liaisons déjà ouvertes : republication de `homologation.liaison-status-changed.v1` par la route d'exploitation existante |
