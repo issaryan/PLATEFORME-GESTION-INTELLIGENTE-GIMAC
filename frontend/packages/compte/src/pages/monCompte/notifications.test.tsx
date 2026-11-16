@@ -18,7 +18,7 @@ const secure = (v: boolean) => Object.defineProperty(window, 'isSecureContext', 
 describe('Mon compte : notifications', () => {
   it('QUO-08 : seuls les types qui peuvent concerner le compte (collaborateur sans équipe ni homologation)', async () => {
     const s = notificationsSimulees({ latenceMs: 0 })
-    const session = { sujet: 'u-collab', nom: 'Nadège Mvondo Assiga', identifiant: 'n.mvondo', roles: ['ROLE_COLLABORATEUR'], permissions: ['COL_MESSAGE_READ', 'COL_MESSAGE_SEND', 'PIL_ACTIVITY_OWN', 'NOT_INBOX_READ'], institutionId: '', acr: '2', doubleFacteur: true }
+    const session = { sujet: 'u-collab', nom: 'Collaboratrice Réseau', identifiant: 'collab.reseau', roles: ['ROLE_COLLABORATEUR'], permissions: ['COL_MESSAGE_READ', 'COL_MESSAGE_SEND', 'PIL_ACTIVITY_OWN', 'NOT_INBOX_READ'], institutionId: '', acr: '2', doubleFacteur: true }
     rendre(<NotificationsProvider service={s} couche="des" actif><PreferencesNotificationsSection /></NotificationsProvider>, { session })
     expect(await screen.findByRole('switch', { name: 'Tâches qui me sont confiées' })).toBeTruthy()
     expect(screen.getByRole('switch', { name: 'Processus d’unité : étapes à exécuter, à signer ou à valider' })).toBeTruthy()

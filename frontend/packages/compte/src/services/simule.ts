@@ -78,7 +78,7 @@ function lireEnAdresse(b: Blob): Promise<string | null> {
 
 export function compteDemo(c: Partial<Compte> = {}): Compte {
   return {
-    id: 'u-demo', identifiant: 'demo', prenom: 'Aïssatou', nom: 'Ngo Mbarga', nomAffiche: 'Aïssatou Ngo Mbarga', email: 'a.ngombarga@gimac-afr.org',
+    id: 'u-demo', identifiant: 'demo', prenom: 'Analyste', nom: 'Numérique', nomAffiche: 'Analyste Numérique', email: 'analyste.numerique@gimac-afr.org',
     emailVerifie: true, actif: true, creeLe: il(24 * 90), telephone: '+237 699 12 34 56', fonction: 'Ingénieure d’exploitation', langue: 'fr',
     institutionId: null, profilComplet: true, premierAccesEnAttente: false, profils: ['ROLE_CHEF_DDRM'], actionsRequises: [], secondFacteur: true, ...c,
   }

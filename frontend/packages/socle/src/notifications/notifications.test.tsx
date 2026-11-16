@@ -33,7 +33,7 @@ const message = (id: string, auteur: string, o: Partial<ArriveeNotification> = {
   type: 'MESSAGE', titre: auteur, sousTitre: null, lien: `/des/messagerie?conversation=${id}`, reference: referenceConversation(id), acteur: { id: `u-${auteur}`, nomAffiche: auteur }, ...o,
 })
 const tache = (id: string, o: Partial<ArriveeNotification> = {}): ArriveeNotification => ({
-  type: 'TACHE', titre: 'Tâche confiée par Paul', sousTitre: 'Échéance : 2026-10-09', lien: `/des/taches?tache=${id}`, reference: { service: 'pilotage', type: 'TACHE', id }, acteur: null, ...o,
+  type: 'TACHE', titre: 'Tâche confiée par Pilote', sousTitre: 'Échéance : 2026-10-09', lien: `/des/taches?tache=${id}`, reference: { service: 'pilotage', type: 'TACHE', id }, acteur: null, ...o,
 })
 
 describe('service http des notifications', () => {
@@ -90,8 +90,8 @@ describe('service simulé des notifications', () => {
     const s = notificationsSimulees({ latenceMs: 0 })
     s.recevoir(message('c-1', 'Carine', { le: '2026-10-05T08:00:00Z' }))
     s.recevoir(tache('t-1', { le: '2026-10-05T09:00:00Z' }))
-    const regroupee = s.recevoir(message('c-1', 'Paul', { le: '2026-10-05T10:00:00Z' }))
-    expect(regroupee).toMatchObject({ nombre: 2, titre: 'Paul', misAJourLe: '2026-10-05T10:00:00Z' })
+    const regroupee = s.recevoir(message('c-1', 'Pilote', { le: '2026-10-05T10:00:00Z' }))
+    expect(regroupee).toMatchObject({ nombre: 2, titre: 'Pilote', misAJourLe: '2026-10-05T10:00:00Z' })
     const page = await s.lister({})
     expect(page.total).toBe(2)
     expect(page.contenu.map((n) => n.type)).toEqual(['MESSAGE', 'TACHE'])
@@ -100,7 +100,7 @@ describe('service simulé des notifications', () => {
     expect(await s.compteur()).toEqual({ nonLues: 1 })
     expect((await s.lister({ etat: 'non-lues' })).contenu.map((n) => n.type)).toEqual(['TACHE'])
     // Lue, la conversation reçoit une nouvelle notification au message suivant.
-    expect(s.recevoir(message('c-1', 'Paul'))!.nombre).toBe(1)
+    expect(s.recevoir(message('c-1', 'Pilote'))!.nombre).toBe(1)
     await s.marquerLues({ type: 'TACHE' })
     await s.marquerLues()
     expect(await s.compteur()).toEqual({ nonLues: 0 })
@@ -123,10 +123,10 @@ describe('service simulé des notifications', () => {
     const fin = s.ecouter!(rappel)
     expect(s.recevoir(tache('t-2'))).toBeNull()
     expect(rappel).not.toHaveBeenCalled()
-    s.recevoir(message('c-2', 'Paul'))
+    s.recevoir(message('c-2', 'Pilote'))
     expect(rappel).toHaveBeenCalledTimes(1)
     fin()
-    s.recevoir(message('c-3', 'Paul'))
+    s.recevoir(message('c-3', 'Pilote'))
     expect(rappel).toHaveBeenCalledTimes(1)
   })
 })
@@ -221,7 +221,7 @@ describe('cloche de la barre du haut', () => {
     expect(within(panneau).getByText('Échéance : 2026-10-09')).toBeTruthy()
     expect(within(panneau).getByRole('button', { name: 'Rapport : Rapport de Joël' })).toBeTruthy()
     expect(within(panneau).getByText('2 non lues')).toBeTruthy()
-    fireEvent.click(within(panneau).getByRole('button', { name: 'Tâche : Tâche confiée par Paul, non lue' }))
+    fireEvent.click(within(panneau).getByRole('button', { name: 'Tâche : Tâche confiée par Pilote, non lue' }))
     expect(screen.getByTestId('ici').textContent).toBe('/des/taches?tache=t-1')
     expect(screen.queryByRole('dialog', { name: 'Centre de notifications' })).toBeNull()
     await waitFor(() => expect(document.querySelector('.gm-topbar-pastille')?.textContent).toBe('1'))
@@ -279,9 +279,9 @@ describe('fenêtres surgissantes', () => {
     const s = notificationsSimulees({ latenceMs: 200, initiales: [message('c-0', 'Ancienne')] })
     monter(s)
     // Réception immédiate, avant que la liste récente soit lue.
-    act(() => void s.recevoir(message('c-9', 'Hervé Kamga Tchoupo')))
+    act(() => void s.recevoir(message('c-9', 'Officier Sécurité Groupe')))
     const region = await screen.findByRole('region', { name: 'Notifications reçues' }, { timeout: 3000 })
-    expect(await within(region).findByText('Hervé Kamga Tchoupo')).toBeTruthy()
+    expect(await within(region).findByText('Officier Sécurité Groupe')).toBeTruthy()
     expect(within(region).queryByText('Ancienne')).toBeNull()
   })
 
@@ -297,22 +297,22 @@ describe('fenêtres surgissantes', () => {
     expect(within(region).getByText('Groupe Cadrage')).toBeTruthy()
     expect(await within(region).findByText('Dernier message de Carine Ebongue')).toBeTruthy()
     act(() => void s.recevoir(tache('t-1')))
-    await within(region).findByText('Tâche confiée par Paul')
-    act(() => void s.recevoir(message('c-2', 'Paul')))
-    await within(region).findByText('Paul')
-    act(() => void s.recevoir(message('c-3', 'Rachel')))
-    await within(region).findByText('Rachel')
+    await within(region).findByText('Tâche confiée par Pilote')
+    act(() => void s.recevoir(message('c-2', 'Pilote')))
+    await within(region).findByText('Pilote')
+    act(() => void s.recevoir(message('c-3', 'Responsable')))
+    await within(region).findByText('Responsable')
     expect(region.querySelectorAll('.gm-toast')).toHaveLength(SURGISSANTES_MAX)
     expect(within(region).queryByText('Carine Ebongue')).toBeNull()
     // Regroupement : la notification de la même conversation surgit de nouveau, avec son nombre.
-    act(() => void s.recevoir(message('c-3', 'Rachel')))
-    await within(region).findByText('Rachel (2)')
+    act(() => void s.recevoir(message('c-3', 'Responsable')))
+    await within(region).findByText('Responsable (2)')
     fireEvent.click(within(region).getAllByRole('button', { name: 'Fermer la notification' })[0])
     await waitFor(() => expect(region.querySelectorAll('.gm-toast')).toHaveLength(2))
-    const toast = within(region).getByText('Rachel (2)').closest('.gm-toast') as HTMLElement
+    const toast = within(region).getByText('Responsable (2)').closest('.gm-toast') as HTMLElement
     fireEvent.click(within(toast).getByRole('button', { name: 'Ouvrir' }))
     expect(screen.getByTestId('ici').textContent).toBe('/des/messagerie?conversation=c-3')
-    await waitFor(() => expect(within(screen.getByRole('region', { name: 'Notifications reçues' })).queryByText('Rachel (2)')).toBeNull())
+    await waitFor(() => expect(within(screen.getByRole('region', { name: 'Notifications reçues' })).queryByText('Responsable (2)')).toBeNull())
   })
 
   it('disparaît après 6 s', async () => {
@@ -341,7 +341,7 @@ describe('fenêtres surgissantes', () => {
     await waitFor(async () => expect(await s.compteur()).toEqual({ nonLues: 1 }))
     expect(screen.queryByRole('region', { name: 'Notifications reçues' })).toBeNull()
     // Une autre conversation surgit.
-    act(() => void s.recevoir(message('c-2', 'Paul')))
+    act(() => void s.recevoir(message('c-2', 'Pilote')))
     expect(await screen.findByRole('region', { name: 'Notifications reçues' })).toBeTruthy()
   })
 

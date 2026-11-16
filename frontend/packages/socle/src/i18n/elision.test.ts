@@ -10,7 +10,7 @@ describe('élision de « de » (recette ADM-07)', () => {
     expect(prepositionDe('Administration de tous les domaines')).toBe('d’Administration de tous les domaines')
     expect(prepositionDe('Organisation')).toBe('d’Organisation')
     expect(prepositionDe('Écrans')).toBe('d’Écrans')
-    expect(prepositionDe('Aïssatou Ngo Mbarga')).toBe('d’Aïssatou Ngo Mbarga')
+    expect(prepositionDe('Analyste Numérique')).toBe('d’Analyste Numérique')
     expect(prepositionDe('Tableau de bord')).toBe('de Tableau de bord')
     expect(prepositionDe('Le Pôle réseau')).toBe('du Pôle réseau')
     expect(prepositionDe('Les institutions')).toBe('des institutions')

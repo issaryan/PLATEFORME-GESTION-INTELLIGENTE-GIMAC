@@ -19,7 +19,7 @@ describe('ConversationList', () => {
         selected="c2"
         onSelect={choisir}
         items={[
-          { id: 'c1', titre: 'Aïcha Mahamat Nour', extrait: 'Le procès-verbal est établi', quand: '15:12', nonLus: 2 },
+          { id: 'c1', titre: 'Équipe Conduite Projet', extrait: 'Le procès-verbal est établi', quand: '15:12', nonLus: 2 },
           { id: 'c2', titre: 'Essais de LIA-2026-030', sousTitre: '4 membres', extrait: 'Rapport joint', groupe: true },
         ]}
       />,
@@ -28,8 +28,8 @@ describe('ConversationList', () => {
     expect(within(liste).getAllByRole('button')).toHaveLength(2)
     expect(screen.getByLabelText('2 non lus').textContent).toBe('2')
     expect(screen.getByRole('button', { name: /Essais de LIA-2026-030/ }).getAttribute('aria-current')).toBe('true')
-    expect(screen.getByRole('button', { name: /Aïcha/ }).className).toContain('gm-conv-nonlu')
-    fireEvent.click(screen.getByRole('button', { name: /Aïcha/ }))
+    expect(screen.getByRole('button', { name: /Équipe/ }).className).toContain('gm-conv-nonlu')
+    fireEvent.click(screen.getByRole('button', { name: /Équipe/ }))
     expect(choisir).toHaveBeenCalledWith('c1')
     // Groupe : pictogramme, pas d'initiales.
     expect(screen.getByRole('button', { name: /Essais/ }).querySelector('.gm-avatar svg')).toBeTruthy()
@@ -56,8 +56,8 @@ describe('MessageThread', () => {
         onPiece={piece}
         saisie={<div>saisie</div>}
         messages={[
-          { id: 'm1', auteur: 'Rachel Biyong Mengue', quand: '09:10', contenu: 'Rapport joint', etiquettes: <a href="/des/parcours/LIA-2026-030">LIA-2026-030</a>, pieces: [{ id: 'p1', nom: 'rapport.pdf', taille: '12 Ko' }] },
-          { id: 'm2', auteur: 'Paul', quand: '09:12', contenu: 'Merci', mine: true },
+          { id: 'm1', auteur: 'Responsable SNA', quand: '09:10', contenu: 'Rapport joint', etiquettes: <a href="/des/parcours/LIA-2026-030">LIA-2026-030</a>, pieces: [{ id: 'p1', nom: 'rapport.pdf', taille: '12 Ko' }] },
+          { id: 'm2', auteur: 'Pilote', quand: '09:12', contenu: 'Merci', mine: true },
         ]}
       />,
     )

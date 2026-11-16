@@ -12,10 +12,10 @@ describe('MessageThread : accusés de lecture (D-88)', () => {
       <MessageThread
         titre="Échange"
         messages={[
-          { id: 'a', auteur: 'Aïcha', quand: '09:00', contenu: 'Bonjour', lecture: { etat: 'LU', lus: 1, destinataires: 1 } },
-          { id: 'b', auteur: 'Paul', quand: '09:01', contenu: 'Envoyé', mine: true, lecture: { etat: 'ENVOYE', lus: 0, destinataires: 1 } },
-          { id: 'c', auteur: 'Paul', quand: '09:02', contenu: 'Lu', mine: true, lecture: { etat: 'LU', lus: 1, destinataires: 1 } },
-          { id: 'd', auteur: 'Paul', quand: '09:03', contenu: 'Sans accusé', mine: true },
+          { id: 'a', auteur: 'Équipe', quand: '09:00', contenu: 'Bonjour', lecture: { etat: 'LU', lus: 1, destinataires: 1 } },
+          { id: 'b', auteur: 'Pilote', quand: '09:01', contenu: 'Envoyé', mine: true, lecture: { etat: 'ENVOYE', lus: 0, destinataires: 1 } },
+          { id: 'c', auteur: 'Pilote', quand: '09:02', contenu: 'Lu', mine: true, lecture: { etat: 'LU', lus: 1, destinataires: 1 } },
+          { id: 'd', auteur: 'Pilote', quand: '09:03', contenu: 'Sans accusé', mine: true },
         ]}
       />,
     )
@@ -28,15 +28,15 @@ describe('MessageThread : accusés de lecture (D-88)', () => {
     render(
       <MessageThread
         titre="Groupe"
-        messages={[{ id: 'g', auteur: 'Paul', quand: '09:00', contenu: 'Merci', mine: true, lecture: { etat: 'LU_PAR_CERTAINS', lus: 2, destinataires: 3, detail: <p>Rachel, 09:20</p> } }]}
+        messages={[{ id: 'g', auteur: 'Pilote', quand: '09:00', contenu: 'Merci', mine: true, lecture: { etat: 'LU_PAR_CERTAINS', lus: 2, destinataires: 3, detail: <p>Responsable, 09:20</p> } }]}
       />,
     )
     const bouton = screen.getByRole('button', { name: 'Lu par 2 sur 3, voir qui l’a lu' })
     expect(bouton.textContent).toContain('2/3')
-    expect(screen.queryByText('Rachel, 09:20')).toBeNull()
+    expect(screen.queryByText('Responsable, 09:20')).toBeNull()
     fireEvent.click(bouton)
     const detail = screen.getByRole('dialog', { name: 'Lu par' })
-    expect(within(detail).getByText('Rachel, 09:20')).toBeTruthy()
+    expect(within(detail).getByText('Responsable, 09:20')).toBeTruthy()
     expect(bouton.getAttribute('aria-controls')).toBe(detail.id)
     fireEvent.keyDown(bouton, { key: 'Escape' })
     expect(screen.queryByRole('dialog')).toBeNull()
@@ -50,7 +50,7 @@ describe('MessageThread : accusés de lecture (D-88)', () => {
   it('liste : coches devant l’extrait ; libellés anglais et espagnols', () => {
     const { unmount } = render(
       <LangueProvider langue="en">
-        <ConversationList items={[{ id: '1', titre: 'Aïcha', extrait: 'Vous : Merci', lecture: { etat: 'LU_PAR_CERTAINS', lus: 1, destinataires: 2 } }]} />
+        <ConversationList items={[{ id: '1', titre: 'Équipe', extrait: 'Vous : Merci', lecture: { etat: 'LU_PAR_CERTAINS', lus: 1, destinataires: 2 } }]} />
       </LangueProvider>,
     )
     expect(screen.getByRole('img', { name: 'Read by 1 of 2' })).toBeTruthy()

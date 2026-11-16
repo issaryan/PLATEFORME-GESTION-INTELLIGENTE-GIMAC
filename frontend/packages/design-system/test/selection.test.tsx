@@ -6,9 +6,9 @@ import { MultiSelect, SearchSelect, Select } from '../src'
 
 afterEach(cleanup)
 const OPTIONS = [
-  { value: 'u1', label: 'Aïcha Mahamat Nour', code: 'COND' },
-  { value: 'u2', label: 'Rachel Biyong Mengue', code: 'SNA' },
-  { value: 'u3', label: 'Hervé Kamga Tchoupo', code: 'RSSI' },
+  { value: 'u1', label: 'Équipe Conduite Projet', code: 'COND' },
+  { value: 'u2', label: 'Responsable SNA', code: 'SNA' },
+  { value: 'u3', label: 'Officier Sécurité Groupe', code: 'RSSI' },
 ]
 
 describe('SearchSelect', () => {
@@ -34,7 +34,7 @@ describe('SearchSelect', () => {
     const { rerender } = render(<SearchSelect label="Liaison" options={OPTIONS} onChange={choisir} />)
     const champ = screen.getByRole('combobox')
     fireEvent.change(champ, { target: { value: 'x' } })
-    fireEvent.mouseDown(screen.getByRole('option', { name: /Hervé/ }))
+    fireEvent.mouseDown(screen.getByRole('option', { name: /Officier/ }))
     expect(choisir).toHaveBeenCalledWith('u3')
     fireEvent.change(champ, { target: { value: 'y' } })
     fireEvent.keyDown(champ, { key: 'Escape' })
@@ -60,10 +60,10 @@ describe('MultiSelect avec suggestions', () => {
     expect(screen.getByText('Personne hors page')).toBeTruthy()
     const champ = screen.getByRole('combobox', { name: 'Destinataires' })
     fireEvent.focus(champ)
-    fireEvent.mouseDown(screen.getByRole('option', { name: 'Rachel Biyong Mengue' }))
+    fireEvent.mouseDown(screen.getByRole('option', { name: 'Responsable SNA' }))
     expect(changer).toHaveBeenLastCalledWith(['u9', 'u2'])
     // L'option choisie ne figure plus parmi les suggestions.
-    expect(screen.queryByRole('option', { name: 'Rachel Biyong Mengue' })).toBeNull()
+    expect(screen.queryByRole('option', { name: 'Responsable SNA' })).toBeNull()
     fireEvent.change(champ, { target: { value: 'h' } })
     fireEvent.keyDown(champ, { key: 'ArrowDown' })
     fireEvent.keyDown(champ, { key: 'Enter' })
@@ -90,9 +90,9 @@ describe('Select groupé', () => {
     const choisir = vi.fn()
     render(<Select label="Personne" value="" onChange={choisir} options={[
       { value: '', label: 'Choisir' },
-      { value: 'u1', label: 'Aïcha', group: 'Dans l’unité' },
-      { value: 'u2', label: 'Rachel', group: 'Ailleurs' },
-      { value: 'u3', label: 'Hervé', group: 'Ailleurs' },
+      { value: 'u1', label: 'Équipe', group: 'Dans l’unité' },
+      { value: 'u2', label: 'Responsable', group: 'Ailleurs' },
+      { value: 'u3', label: 'Officier', group: 'Ailleurs' },
     ]} />)
     const liste = screen.getByRole('combobox', { name: 'Personne' })
     const groupes = liste.querySelectorAll('optgroup')

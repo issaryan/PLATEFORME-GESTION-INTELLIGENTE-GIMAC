@@ -1,5 +1,5 @@
 // Élision et contraction de la préposition « de » devant un nom variable (recette ADM-07) : « Droits d’Agenda »,
-// « Pouvoirs d’Aïssatou Ngo Mbarga », « Membres du Pôle réseau ». Règle générale, appliquée par le formateur
+// « Pouvoirs d’Analyste Numérique », « Membres du Pôle réseau ». Règle générale, appliquée par le formateur
 // i18next « de » ({{nom, de}}) des libellés français : élision devant une voyelle (accentuée ou non), contraction
 // devant les articles « le » et « les ». Le h n'est pas élidé : h muet et h aspiré ne se distinguent pas sans
 // dictionnaire. Les autres langues gardent leur propre tournure dans leur catalogue.

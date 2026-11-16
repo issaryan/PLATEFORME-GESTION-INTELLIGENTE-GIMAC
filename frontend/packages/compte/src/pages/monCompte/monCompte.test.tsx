@@ -52,7 +52,7 @@ describe('Mon compte : photo de profil', () => {
     const changerPhoto = vi.fn(base.changerPhoto)
     const { container } = rendre(<MonComptePage />, { service: avec({ changerPhoto }, base) })
     const carte = (await screen.findByRole('heading', { name: 'Photo de profil' })).closest('section')!
-    expect(within(carte).getByRole('img', { name: 'Aïssatou Ngo Mbarga' }).textContent).toBe('AN')
+    expect(within(carte).getByRole('img', { name: 'Analyste Numérique' }).textContent).toBe('AN')
     expect(within(carte).queryByRole('button', { name: 'Retirer ma photo' })).toBeNull()
     fireEvent.click(within(carte).getByRole('button', { name: 'Ajouter une photo' }))
     expect((within(fenetre()).getByRole('button', { name: 'Enregistrer la photo' }) as HTMLButtonElement).disabled).toBe(true)

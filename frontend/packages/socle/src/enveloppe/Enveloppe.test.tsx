@@ -62,13 +62,13 @@ describe('Enveloppe : espace personnel', () => {
     render(
       <MemoryRouter initialEntries={['/des/tableau-de-bord']}>
         <ThemeProvider theme="light">
-          <Enveloppe couche="des" navigation={[]} espacePersonnel="/des" utilisateur="Paul Mbarga" fonction="Chef du département DES" avatar="data:image/png;base64,AAAA">
+          <Enveloppe couche="des" navigation={[]} espacePersonnel="/des" utilisateur="Chef Département" fonction="Chef du département DES" avatar="data:image/png;base64,AAAA">
             <Routes><Route path="*" element={<Ici />} /></Routes>
           </Enveloppe>
         </ThemeProvider>
       </MemoryRouter>,
     )
-    const bouton = screen.getByRole('button', { name: 'Menu utilisateur : Paul Mbarga' })
+    const bouton = screen.getByRole('button', { name: 'Menu utilisateur : Chef Département' })
     expect(bouton.querySelector('img')!.getAttribute('src')).toBe('data:image/png;base64,AAAA')
     fireEvent.click(bouton)
     expect(screen.getByText('Chef du département DES')).toBeTruthy()

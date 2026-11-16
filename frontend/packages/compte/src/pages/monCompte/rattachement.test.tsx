@@ -12,9 +12,9 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 const rattachement = {
-  id: 'u-demo', nomAffiche: 'Aïssatou Ngo Mbarga', unite: { code: 'POLE_RESEAU', libelle: 'Pôle réseau', type: 'POLE', parent: 'PROD_INFO', active: true },
+  id: 'u-demo', nomAffiche: 'Analyste Numérique', unite: { code: 'POLE_RESEAU', libelle: 'Pôle réseau', type: 'POLE', parent: 'PROD_INFO', active: true },
   chemin: [{ code: 'PROD_INFO', libelle: 'Service Production informatique', type: 'SERVICE', parent: 'DES', active: true }, { code: 'POLE_RESEAU', libelle: 'Pôle réseau', type: 'POLE', parent: 'PROD_INFO', active: true }],
-  responsable: { id: 'u-chef', nomAffiche: 'Gaston Ndzana Ebode', fonction: 'Chef du service Production informatique' }, chaine: ['u-chef'], equipeDirecte: 2,
+  responsable: { id: 'u-chef', nomAffiche: 'Responsable Production', fonction: 'Chef du service Production informatique' }, chaine: ['u-chef'], equipeDirecte: 2,
 }
 
 describe('Mon compte : rattachement', () => {
@@ -22,7 +22,7 @@ describe('Mon compte : rattachement', () => {
     rendre(<MonComptePage />, { service: monCompteSimule({ latenceMs: 0, compte: { unite: 'POLE_RESEAU', responsableId: 'u-chef' }, rattachement }) })
     expect(await screen.findByRole('heading', { name: 'Mon rattachement' })).toBeTruthy()
     expect(await screen.findByText('Service Production informatique › Pôle réseau')).toBeTruthy()
-    expect(screen.getByText('Gaston Ndzana Ebode, Chef du service Production informatique')).toBeTruthy()
+    expect(screen.getByText('Responsable Production, Chef du service Production informatique')).toBeTruthy()
     expect(screen.getByText('2 collaborateurs')).toBeTruthy()
   })
   it('sans service d’organisation (portail, console) : codes bruts ; sans rattachement : aucun bloc', async () => {

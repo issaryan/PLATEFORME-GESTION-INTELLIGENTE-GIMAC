@@ -5,7 +5,7 @@ export default function Apercu() {
     <PageHeader
       title="Liaisons et parcours"
       subtitle="Les liaisons en cours d'homologation et de mise en service, avec leur phase et leurs couvertures."
-      user={{ name: 'Aïcha Mahamat Nour', roles: ['Conducteur de projet'] }}
+      user={{ name: 'Équipe Conduite Projet', roles: ['Conducteur de projet'] }}
       meta={<StatusBadge status="info" label="en homologation" />}
       actions={<Button variant="primary" icon="plus">Ouvrir une liaison</Button>}
     />

@@ -178,7 +178,7 @@ describe('Mon compte : service simulé', () => {
     await s.changerMotDePasse({ actuel: 'Actuel-Mdp-2026!', nouveau: 'Suivant-Mdp-2026!' })
     await expect(s.modifier({ telephone: 'abc' })).rejects.toMatchObject({ code: 'IAM_PHONE_INVALID' })
     await expect(s.modifier({ langue: 'it' as 'fr' })).rejects.toMatchObject({ code: 'IAM_LANGUAGE_INVALID' })
-    expect((await s.modifier({ prenom: 'Awa', nom: 'Diallo', langue: 'es' })).compte.nomAffiche).toBe('Awa Diallo')
+    expect((await s.modifier({ prenom: 'Cheffe', nom: 'Projet', langue: 'es' })).compte.nomAffiche).toBe('Cheffe Projet')
     expect((await s.modifier({ prenom: '', nom: '' })).compte.nomAffiche).toBe('demo')
     await expect(s.enrolerCle('  ')).rejects.toMatchObject({ code: 'IAM_KEY_NAME_INVALID' })
     const k = await s.enrolerCle('Clé de secours')

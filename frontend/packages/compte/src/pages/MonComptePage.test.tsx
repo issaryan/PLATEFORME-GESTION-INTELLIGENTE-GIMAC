@@ -27,7 +27,7 @@ describe('Mon compte', () => {
     fireEvent.click(within(fenetre()).getByRole('button', { name: 'Enregistrer ma fiche' }))
     expect(await screen.findByText('Votre fiche a été enregistrée.')).toBeTruthy()
     expect(screen.queryByRole('dialog')).toBeNull()
-    expect(modifier).toHaveBeenCalledWith(expect.objectContaining({ fonction: 'Cheffe de la DDRM', langue: 'es', prenom: 'Aïssatou' }))
+    expect(modifier).toHaveBeenCalledWith(expect.objectContaining({ fonction: 'Cheffe de la DDRM', langue: 'es', prenom: 'Analyste' }))
     expect(await screen.findByText('Cheffe de la DDRM')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Modifier ma fiche' }))
     saisir('telephone', 'abc')

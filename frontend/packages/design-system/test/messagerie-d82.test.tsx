@@ -23,15 +23,15 @@ describe('MessageThread : citations, réponse, mise en évidence (D-82)', () => 
         titre="Essais"
         onRepondre={repondre}
         messages={[
-          { id: 'm1', auteur: 'Rachel', quand: '09:10', contenu: 'Rapport joint' },
-          { id: 'm2', auteur: 'Hervé', quand: '09:12', contenu: 'Bien noté', mentionneMoi: true, citation: { auteur: 'Rachel', extrait: 'Rapport joint', pieces: 2, onOuvrir: ouvrir } },
-          { id: 'm3', auteur: 'Paul', quand: '09:13', contenu: 'Merci', mine: true, citation: { auteur: 'Paul', mine: true, extrait: '', pieces: 1 } },
-          { id: 'm4', auteur: 'Hervé', quand: '09:14', contenu: 'Ancien', citation: { auteur: null, extrait: '', supprime: true, onOuvrir: ouvrir } },
-          { id: 'e1', auteur: 'Paul', quand: '09:15', contenu: 'Paul a créé le groupe', evenement: true },
+          { id: 'm1', auteur: 'Responsable', quand: '09:10', contenu: 'Rapport joint' },
+          { id: 'm2', auteur: 'Officier', quand: '09:12', contenu: 'Bien noté', mentionneMoi: true, citation: { auteur: 'Responsable', extrait: 'Rapport joint', pieces: 2, onOuvrir: ouvrir } },
+          { id: 'm3', auteur: 'Pilote', quand: '09:13', contenu: 'Merci', mine: true, citation: { auteur: 'Pilote', mine: true, extrait: '', pieces: 1 } },
+          { id: 'm4', auteur: 'Officier', quand: '09:14', contenu: 'Ancien', citation: { auteur: null, extrait: '', supprime: true, onOuvrir: ouvrir } },
+          { id: 'e1', auteur: 'Pilote', quand: '09:15', contenu: 'Pilote a créé le groupe', evenement: true },
         ]}
       />,
     )
-    const cite = screen.getByRole('button', { name: /En réponse à :\s*Rachel\s*Rapport joint/ })
+    const cite = screen.getByRole('button', { name: /En réponse à :\s*Responsable\s*Rapport joint/ })
     expect(cite.getAttribute('title')).toBe('Aller au message cité')
     fireEvent.click(cite)
     expect(ouvrir).toHaveBeenCalledTimes(1)
@@ -44,11 +44,11 @@ describe('MessageThread : citations, réponse, mise en évidence (D-82)', () => 
     const m2 = screen.getByText('Bien noté').closest('li')!
     expect(m2.classList.contains('gm-msg-mentionne')).toBe(true)
     expect(within(m2).getByRole('img', { name: 'Vous concerne' })).toBeTruthy()
-    fireEvent.click(within(m2).getByRole('button', { name: 'Répondre à Hervé' }))
+    fireEvent.click(within(m2).getByRole('button', { name: 'Répondre à Officier' }))
     expect(repondre).toHaveBeenCalledWith('m2')
     expect(screen.getByRole('button', { name: 'Répondre à mon message' })).toBeTruthy()
     // Pas de réponse à un événement de groupe.
-    expect(within(screen.getByText('Paul a créé le groupe').closest('li')!).queryByRole('button')).toBeNull()
+    expect(within(screen.getByText('Pilote a créé le groupe').closest('li')!).queryByRole('button')).toBeNull()
   })
 
   it('balayage vers la droite sur écran tactile : répondre ; geste vertical ignoré', () => {
@@ -84,9 +84,9 @@ describe('MessageThread : citations, réponse, mise en évidence (D-82)', () => 
 
 describe('MessageComposer : réponse en cours et mentions (D-82)', () => {
   const membres: MembreMention[] = [
-    { id: 'u1', nom: 'Aïcha Mahamat Nour', detail: 'Conductrice de projet' },
-    { id: 'u2', nom: 'Hervé Kamga Tchoupo' },
-    { id: 'u3', nom: 'Rachel Biyong Mengue', avatar: null },
+    { id: 'u1', nom: 'Équipe Soutien Projet', detail: 'Conductrice de projet' },
+    { id: 'u2', nom: 'Officier Sécurité Groupe' },
+    { id: 'u3', nom: 'Responsable SNA', avatar: null },
   ]
   function Banc({ onMention = vi.fn(), onSend = vi.fn(), reponse }: { onMention?: (m: MembreMention) => void; onSend?: () => void; reponse?: { cle: string; auteur: string; extrait: string; onAnnuler: () => void } }) {
     const [v, setV] = useState('')
@@ -100,7 +100,7 @@ describe('MessageComposer : réponse en cours et mentions (D-82)', () => {
     expect(mentionEnCours('@', 1)).toEqual({ debut: 0, requete: '' })
     expect(mentionEnCours('courriel@gimac', 14)).toBeNull()
     expect(mentionEnCours('Bonjour', 7)).toBeNull()
-    expect(membresProposes(membres, 'aicha').map((m) => m.id)).toEqual(['u1'])
+    expect(membresProposes(membres, 'equipe').map((m) => m.id)).toEqual(['u1'])
     expect(membresProposes(membres, '').length).toBe(3)
   })
 
@@ -116,7 +116,7 @@ describe('MessageComposer : réponse en cours et mentions (D-82)', () => {
     expect(screen.getByText(/3 membre\(s\) proposé\(s\)/)).toBeTruthy()
     expect(champ().getAttribute('aria-controls')).toBe(liste.id)
     taper('Bonjour @ou')
-    // « ou » : Aïcha (Nour) et Hervé (Tchoupo) ; la flèche descend, puis remonte en boucle.
+    // « ou » : Équipe (Soutien) et Officier (Groupe) ; la flèche descend, puis remonte en boucle.
     expect(within(liste).getAllByRole('option')).toHaveLength(2)
     fireEvent.keyDown(champ(), { key: 'ArrowDown' })
     expect(within(liste).getAllByRole('option')[1].getAttribute('aria-selected')).toBe('true')
@@ -124,12 +124,12 @@ describe('MessageComposer : réponse en cours et mentions (D-82)', () => {
     fireEvent.keyDown(champ(), { key: 'ArrowDown' })
     fireEvent.keyDown(champ(), { key: 'ArrowUp' })
     fireEvent.keyDown(champ(), { key: 'Enter' })
-    expect(champ().value).toBe('Bonjour @Hervé Kamga Tchoupo ')
+    expect(champ().value).toBe('Bonjour @Officier Sécurité Groupe ')
     expect(mention).toHaveBeenCalledWith(expect.objectContaining({ id: 'u2' }))
     expect(envoyer).not.toHaveBeenCalled()
     expect(screen.queryByRole('listbox')).toBeNull()
     await act(async () => { await new Promise((r) => setTimeout(r, 5)) })
-    expect(champ().selectionStart).toBe('Bonjour @Hervé Kamga Tchoupo '.length)
+    expect(champ().selectionStart).toBe('Bonjour @Officier Sécurité Groupe '.length)
     // Liste fermée : Entrée envoie.
     fireEvent.keyDown(champ(), { key: 'Enter' })
     expect(envoyer).toHaveBeenCalledTimes(1)
@@ -138,14 +138,14 @@ describe('MessageComposer : réponse en cours et mentions (D-82)', () => {
   it('clic sur une personne, Tab, Échap ferme la liste sans annuler la réponse, aucun résultat', () => {
     const mention = vi.fn()
     const annuler = vi.fn()
-    render(<Banc onMention={mention} reponse={{ cle: 'm9', auteur: 'Hervé', extrait: 'Attestation reçue', onAnnuler: annuler }} />)
+    render(<Banc onMention={mention} reponse={{ cle: 'm9', auteur: 'Officier', extrait: 'Attestation reçue', onAnnuler: annuler }} />)
     // La réponse reprend le focus.
     expect(document.activeElement).toBe(champ())
-    expect(screen.getByRole('group', { name: 'Réponse à Hervé' })).toBeTruthy()
-    taper('@he')
-    fireEvent.mouseDown(screen.getByRole('option', { name: /Hervé Kamga Tchoupo/ }))
-    expect(champ().value).toBe('@Hervé Kamga Tchoupo ')
-    taper('@Hervé Kamga Tchoupo et @ai')
+    expect(screen.getByRole('group', { name: 'Réponse à Officier' })).toBeTruthy()
+    taper('@of')
+    fireEvent.mouseDown(screen.getByRole('option', { name: /Officier Sécurité Groupe/ }))
+    expect(champ().value).toBe('@Officier Sécurité Groupe ')
+    taper('@Officier Sécurité Groupe et @eq')
     fireEvent.keyDown(champ(), { key: 'Tab' })
     expect(mention).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'u1' }))
     taper('@zz')

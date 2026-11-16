@@ -33,7 +33,7 @@ export interface ConversationItem {
   avatar?: string | null
   /** Interlocuteur en ligne (D-72) : point vert sur l'avatar. */
   enLigne?: boolean
-  /** « Aminata écrit… » (D-72) : remplace l'extrait tant que quelqu'un écrit. */
+  /** « Un membre écrit… » (D-72) : remplace l'extrait tant que quelqu'un écrit. */
   saisie?: string
   /** Accusé de lecture de mon dernier message (D-88) : coches devant l'extrait. */
   lecture?: ThreadLecture
@@ -242,7 +242,7 @@ export interface MessageThreadProps {
   sousTitre?: ReactNode
   /** Avatar de l'en-tête (interlocuteur d'un échange direct, D-72) ; pictogramme de messagerie à défaut. */
   avatar?: ReactNode
-  /** « Aminata écrit… » (D-72), sous le dernier message. */
+  /** « Un membre écrit… » (D-72), sous le dernier message. */
   ecrit?: string
   actions?: ReactNode
   messages: ThreadMessage[]
@@ -397,7 +397,7 @@ export interface MembreMention {
   avatar?: string | null
 }
 
-/** Comparaison sans casse ni accents (« aicha » trouve « Aïcha »). */
+/** Comparaison sans casse ni accents (« equipe » trouve « Équipe »). */
 const plier = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
 
 /** Mention en cours de frappe : « @ » en début de texte ou après une espace, jusqu'au curseur. */

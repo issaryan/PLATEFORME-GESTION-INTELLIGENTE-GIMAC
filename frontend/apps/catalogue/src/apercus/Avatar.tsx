@@ -7,11 +7,11 @@ export default function Apercu() {
     <div className="gm-row" style={{ alignItems: 'center', gap: 'var(--gm-space-3)' }}>
       <Avatar name="Chef de quart" />
       <Avatar name="Opérateur Nuit" size="lg" />
-      <Avatar name="Rachel Biyong" src={photoDemoCatalogue('u-sna')} size="xs" />
-      <Avatar name="Rachel Biyong" src={photoDemoCatalogue('u-sna')} size="sm" />
-      <Avatar name="Rachel Biyong" src={photoDemoCatalogue('u-sna')} />
-      <Avatar name="Hervé Kamga" src={photoDemoCatalogue('u-rssi')} size="lg" />
-      <Avatar name="Hervé Kamga" src={photoDemoCatalogue('u-rssi')} size="xl" />
+      <Avatar name="Responsable SNA" src={photoDemoCatalogue('u-sna')} size="xs" />
+      <Avatar name="Responsable SNA" src={photoDemoCatalogue('u-sna')} size="sm" />
+      <Avatar name="Responsable SNA" src={photoDemoCatalogue('u-sna')} />
+      <Avatar name="Officier Sécurité" src={photoDemoCatalogue('u-rssi')} size="lg" />
+      <Avatar name="Officier Sécurité" src={photoDemoCatalogue('u-rssi')} size="xl" />
     </div>
   )
 }

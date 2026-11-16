@@ -8,7 +8,7 @@ afterEach(cleanup)
 const RESULTATS: CommandResult[] = [
   { key: 'e1', group: 'ecrans', kind: 'ecran', label: 'Liaisons et parcours' },
   { key: 'l1', group: 'objets', kind: 'liaison', code: 'LIA-2026-030', label: 'Banque C', detail: 'Certification' },
-  { key: 'c1', group: 'objets', kind: 'compte', label: 'Rachel Biyong Mengue' },
+  { key: 'c1', group: 'objets', kind: 'compte', label: 'Responsable SNA' },
 ]
 
 describe('CommandPalette interactive', () => {
@@ -19,7 +19,7 @@ describe('CommandPalette interactive', () => {
     const champ = screen.getByRole('combobox')
     expect(document.activeElement).toBe(champ)
     const options = screen.getAllByRole('option')
-    expect(options.map((o) => o.textContent)).toEqual(['LIA-2026-030Banque CCertification', 'Rachel Biyong Mengue', 'Liaisons et parcours'])
+    expect(options.map((o) => o.textContent)).toEqual(['LIA-2026-030Banque CCertification', 'Responsable SNA', 'Liaisons et parcours'])
     expect(champ.getAttribute('aria-activedescendant')).toBe(options[0].id)
     fireEvent.keyDown(champ, { key: 'ArrowDown' })
     expect(options[1].getAttribute('aria-selected')).toBe('true')

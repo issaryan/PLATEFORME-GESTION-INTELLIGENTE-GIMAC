@@ -11,9 +11,9 @@ export default function Apercu() {
         <ConversationList
           selected="c2"
           items={[
-            { id: 'c1', titre: 'Aïcha Mahamat Nour', avatar: photoDemoCatalogue('U-201'), extrait: 'Le procès-verbal de LIA-2026-027 est établi à 100 %.', quand: '15:12', nonLus: 1 },
-            { id: 'c2', titre: 'Essais de LIA-2026-030', sousTitre: 'Rachel, Aïcha, Hervé', extrait: 'Le blocage est déclaré sur la liaison.', quand: '15:40', nonLus: 2 },
-            { id: 'c3', titre: 'Hervé Kamga Tchoupo', extrait: 'Attestation reçue et en cours de vérification.', quand: 'hier' },
+            { id: 'c1', titre: 'Équipe Conduite Projet', avatar: photoDemoCatalogue('U-201'), extrait: 'Le procès-verbal de LIA-2026-027 est établi à 100 %.', quand: '15:12', nonLus: 1 },
+            { id: 'c2', titre: 'Essais de LIA-2026-030', sousTitre: 'Responsable, Équipe, Officier', extrait: 'Le blocage est déclaré sur la liaison.', quand: '15:40', nonLus: 2 },
+            { id: 'c3', titre: 'Officier Sécurité Groupe', extrait: 'Attestation reçue et en cours de vérification.', quand: 'hier' },
           ]}
         />
       </div>
@@ -22,9 +22,9 @@ export default function Apercu() {
           titre="Essais de LIA-2026-030"
           sousTitre="4 membres · liaison LIA-2026-030"
           messages={[
-            { id: 'm1', auteur: 'Rachel Biyong Mengue', avatar: photoDemoCatalogue('u-sna'), quand: '09:10', contenu: 'Les essais sont suspendus : l’élément de sécurité du participant doit être renouvelé.', etiquettes: <a className="gm-link" href="#">LIA-2026-030</a>, pieces: [{ id: 'p1', nom: 'rapport-essais.pdf', taille: '84 Ko' }] },
-            { id: 'm2', auteur: 'Hervé Kamga Tchoupo', avatar: photoDemoCatalogue('u-rssi'), quand: '13:55', contenu: 'Je prends contact avec le correspondant pour la nouvelle cérémonie.' },
-            { id: 'm3', auteur: 'Paul Mbarga Atangana', quand: '15:40', contenu: 'Merci, tenez-moi informé.', mine: true },
+            { id: 'm1', auteur: 'Responsable SNA', avatar: photoDemoCatalogue('u-sna'), quand: '09:10', contenu: 'Les essais sont suspendus : l’élément de sécurité du participant doit être renouvelé.', etiquettes: <a className="gm-link" href="#">LIA-2026-030</a>, pieces: [{ id: 'p1', nom: 'rapport-essais.pdf', taille: '84 Ko' }] },
+            { id: 'm2', auteur: 'Officier Sécurité Groupe', avatar: photoDemoCatalogue('u-rssi'), quand: '13:55', contenu: 'Je prends contact avec le correspondant pour la nouvelle cérémonie.' },
+            { id: 'm3', auteur: 'Chef Département DES', quand: '15:40', contenu: 'Merci, tenez-moi informé.', mine: true },
           ]}
           saisie={<MessageComposer value={texte} onChange={setTexte} fichiers={fichiers} onFichiers={setFichiers} onSend={() => setTexte('')} />}
         />

@@ -9,24 +9,24 @@ afterEach(cleanup)
 describe('PageHeader', () => {
   it('titre, rubrique, description, ligne de contexte, personne connectée et actions', () => {
     render(<PageHeader title="Tableau de bord" overline="Registre" subtitle="Votre travail du jour." meta={<Tag>Chef de la DDRM</Tag>}
-      user={{ name: 'Awa Ndiaye', roles: ['Chef de la DDRM', 'RSSI'] }} actions={<Button>Ouvrir une liaison</Button>} back={{ href: '/des', label: 'Retour' }} />)
+      user={{ name: 'Cheffe DDRM', roles: ['Chef de la DDRM', 'RSSI'] }} actions={<Button>Ouvrir une liaison</Button>} back={{ href: '/des', label: 'Retour' }} />)
     expect(screen.getByRole('heading', { level: 1, name: 'Tableau de bord' })).toBeTruthy()
     expect(screen.getByText('Registre').className).toBe('gm-pagehead-sur')
     expect(screen.getByText('Votre travail du jour.').className).toBe('gm-pagehead-sous')
-    expect(screen.getByText('Awa Ndiaye').className).toBe('gm-pagehead-nom')
+    expect(screen.getByText('Cheffe DDRM').className).toBe('gm-pagehead-nom')
     // Personne et profils en texte simple : ni avatar, ni puces.
-    expect(screen.getByText('Awa Ndiaye').parentElement?.textContent).toBe('Awa Ndiaye · Chef de la DDRM, RSSI')
+    expect(screen.getByText('Cheffe DDRM').parentElement?.textContent).toBe('Cheffe DDRM · Chef de la DDRM, RSSI')
     expect(document.querySelector('.gm-avatar')).toBeNull()
     expect(screen.getByRole('button', { name: 'Ouvrir une liaison' })).toBeTruthy()
     expect(screen.getByRole('link', { name: '← Retour' })).toBeTruthy()
   })
   it('titre seul : ni rubrique, ni description, ni colonne de droite', () => {
-    const { container } = render(<PageHeader title="Liaisons" className="x" user={{ name: 'Awa Ndiaye' }} />)
+    const { container } = render(<PageHeader title="Liaisons" className="x" user={{ name: 'Cheffe DDRM' }} />)
     expect(container.querySelector('header')?.className).toBe('gm-pagehead x')
     expect(container.querySelector('.gm-pagehead-sur')).toBeNull()
     expect(container.querySelector('.gm-pagehead-sous')).toBeNull()
     expect(container.querySelector('.gm-pagehead-actions')).toBeNull()
-    expect(container.querySelector('.gm-pagehead-user')?.textContent).toBe('Awa Ndiaye')
+    expect(container.querySelector('.gm-pagehead-user')?.textContent).toBe('Cheffe DDRM')
   })
 })
 

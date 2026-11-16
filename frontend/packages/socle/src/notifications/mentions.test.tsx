@@ -24,9 +24,9 @@ afterEach(() => {
 })
 
 const mention = (cid: string, mid: string, type: 'MENTION' | 'REPONSE' = 'MENTION'): ArriveeNotification => ({
-  type, titre: type === 'MENTION' ? 'Hervé vous a mentionné' : 'Hervé a répondu à votre message', sousTitre: null,
+  type, titre: type === 'MENTION' ? 'Officier vous a mentionné' : 'Officier a répondu à votre message', sousTitre: null,
   lien: `/des/messagerie?conversation=${cid}&message=${mid}`, reference: { service: 'collaboration', type: 'MESSAGE', id: mid }, conversationId: cid,
-  acteur: { id: 'u-rssi', nomAffiche: 'Hervé' },
+  acteur: { id: 'u-rssi', nomAffiche: 'Officier' },
 })
 
 describe('notifications de mention et de réponse', () => {
@@ -83,8 +83,8 @@ describe('notifications de mention et de réponse', () => {
     // Sous charge (suites lancées ensemble), le premier rendu de l'enveloppe dépasse la seconde d'attente par défaut.
     const attente = { timeout: 10_000 }
     fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 2 non lues' }, attente))
-    expect(await screen.findByRole('button', { name: 'Mention : Hervé vous a mentionné, non lue' }, attente)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Réponse : Hervé a répondu à votre message, non lue' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Mention : Officier vous a mentionné, non lue' }, attente)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Réponse : Officier a répondu à votre message, non lue' })).toBeTruthy()
     await waitFor(() => expect(screen.getAllByText('Pouvez-vous valider ?').length).toBe(2), attente)
   })
 })

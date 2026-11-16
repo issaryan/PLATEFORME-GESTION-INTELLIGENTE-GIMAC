@@ -354,7 +354,7 @@ describe('Services de connexion', () => {
 
   it('politique : violations locales et violations portées par une erreur', () => {
     expect(violationsMotDePasse('abc')).toEqual(['LONGUEUR', 'MAJUSCULE', 'CHIFFRE', 'SPECIAL'])
-    expect(violationsMotDePasse('Ateba-2026-Secret', 'ateba')).toEqual(['IDENTIFIANT'])
+    expect(violationsMotDePasse('Pilote-2026-Secret', 'pilote')).toEqual(['IDENTIFIANT'])
     expect(violationsDe(new ApiError(400, 'IAM_PASSWORD_POLICY', '', '', { violations: ['invalidPasswordMinLengthMessage'] }))).toEqual(['invalidPasswordMinLengthMessage'])
     expect(violationsDe(new ApiError(400, 'IAM_PASSWORD_POLICY', '', ''))).toEqual([])
     expect(violationsDe(new Error('x'))).toEqual([])
@@ -418,8 +418,8 @@ describe('PageConnexion : aiguillage vers l’application du compte', () => {
   })
 
   it('arrivée par aiguillage : motif affiché et identifiant prérempli', () => {
-    monter('/connexion?motif=aiguillage&depuis=portail&identifiant=p.mbarga')
+    monter('/connexion?motif=aiguillage&depuis=portail&identifiant=chef.des')
     expect(screen.getByText(/Le portail des participants vous a conduit ici/)).toBeTruthy()
-    expect((document.querySelector('input[name="identifiant"]') as HTMLInputElement).value).toBe('p.mbarga')
+    expect((document.querySelector('input[name="identifiant"]') as HTMLInputElement).value).toBe('chef.des')
   })
 })
