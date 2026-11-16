@@ -28,8 +28,8 @@ public final class ApprobationPolicy {
 
     private ApprobationPolicy() {}
 
-    /** Modèles des types de projet (D-91) ; un type créé hérite de l'un d'eux. */
-    public static final List<String> MODELES = List.of("CARTE_INTERBANCAIRE", "PAIEMENT_MOBILE", "DELEGATAIRE", "GENERIQUE");
+    /** Modèles des types de projet (D-91) ; un type créé hérite de l'un d'eux. MOBILE_ISO20022 : D-148. */
+    public static final List<String> MODELES = List.of("CARTE_INTERBANCAIRE", "PAIEMENT_MOBILE", "DELEGATAIRE", "GENERIQUE", "MOBILE_ISO20022");
 
     /**
      * Modèle du type de projet (D-91) : celui transmis par MS-HOMOLOGATION, sinon celui du type repris de même code
@@ -48,13 +48,14 @@ public final class ApprobationPolicy {
 
     /**
      * Attestations exigées (rangs 21 et 22) selon le modèle du type de projet (D-91) : PCI DSS pour la carte
-     * interbancaire et le délégataire, ISO 27001 et GSMA pour le paiement mobile, aucune pour le modèle générique ;
+     * interbancaire et le délégataire, ISO 27001 et GSMA pour le paiement mobile (ISO 20022 compris, D-148), aucune pour
+     * le modèle générique ;
      * conformité COBAC en plus pour une fintech. Le code d'un type repris vaut son modèle.
      */
     public static List<TypeAttestation> attestationsExigees(String modele, boolean fintech) {
         List<TypeAttestation> l = new ArrayList<>(
             switch (modele(modele, modele)) {
-                case "PAIEMENT_MOBILE" -> List.of(TypeAttestation.ISO_27001, TypeAttestation.GSMA);
+                case "PAIEMENT_MOBILE", "MOBILE_ISO20022" -> List.of(TypeAttestation.ISO_27001, TypeAttestation.GSMA);
                 case "GENERIQUE" -> List.<TypeAttestation>of();
                 default -> List.of(TypeAttestation.PCI_DSS);
             }

@@ -66,6 +66,30 @@ class CatalogueTypesFonctionsTest {
     }
 
     @Test
+    @DisplayName("D-148 : modèle MOBILE_ISO20022, mobile restreint aux services de préfixe ISO., annexe A du paiement mobile")
+    void modeleIso20022() {
+        ModeleTypeProjet iso = ModeleTypeProjet.MOBILE_ISO20022;
+        assertThat(iso.libelle()).isEqualTo("Paiement mobile ISO 20022");
+        assertThat(iso.attestationsExigees(false)).containsExactly(TypeAttestation.ISO_27001, TypeAttestation.GSMA);
+        assertThat(iso.attestationsExigees(true)).containsExactly(TypeAttestation.ISO_27001, TypeAttestation.GSMA, TypeAttestation.COBAC);
+        assertThat(iso.catalogueServices()).containsExactly("ISO.W2W", "ISO.R2P");
+        assertThat(iso.plateformeEssais()).isEqualTo(PlateformeExecution.SIMULATEUR);
+        assertThat(iso.avancementSimulateur()).isTrue();
+        assertThat(iso.annexeA()).contains(TypeProjet.PAIEMENT_MOBILE);
+        assertThat(iso.retient("ISO.W2W")).isTrue();
+        assertThat(iso.retient("W2W")).isFalse();
+        assertThat(iso.retient("CRT.NET")).isFalse();
+        assertThat(iso.retient(null)).isFalse();
+        assertThat(ModeleTypeProjet.PAIEMENT_MOBILE.retient("W2W")).isTrue();
+        assertThat(ModeleTypeProjet.GENERIQUE.retient("CRT.NET")).isTrue();
+        assertThat(ModeleTypeProjet.DELEGATAIRE.plateformeEssais()).isNull();
+        assertThat(ModeleTypeProjet.DELEGATAIRE.avancementSimulateur()).isFalse();
+        assertThat(ModeleTypeProjet.parDefaut(TypeProjet.valueOf("MOBILE_ISO20022"))).isEqualTo(ModeleTypeProjet.GENERIQUE);
+        assertThat(CatalogueServices.libelle("ISO.W2W")).isEqualTo("Transfert ISO 20022 (pacs.008)");
+        assertThat(CatalogueServices.libelle("MOBILE_ISO20022")).isEqualTo("Paiement mobile ISO 20022");
+    }
+
+    @Test
     @DisplayName("Fonctions reprises : seize, profils, externes, libellés, profils des sessions")
     void fonctionsReprises() {
         assertThat(Fonction.values()).hasSize(16).startsWith(Fonction.DDRM).endsWith(Fonction.PERSONNALISATEUR);

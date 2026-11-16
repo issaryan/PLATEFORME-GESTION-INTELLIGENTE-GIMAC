@@ -81,7 +81,14 @@ class ContratEvenementsLiaisonSandboxTest {
     @Test
     @DisplayName("Schémas : les charges sérialisées respectent les schémas publiés des deux événements")
     void schemas() {
-        assertThat(SchemaContrat.charger("sandbox/homologation.liaison-opened.v1.schema.json").ecarts(json(ouverture()))).isEmpty();
+        SchemaContrat ouverte = SchemaContrat.charger("sandbox/homologation.liaison-opened.v1.schema.json");
+        assertThat(ouverte.ecarts(json(ouverture()))).isEmpty();
+        // D-148 : référence d'origine facultative (absente, nulle ou texte) ; une valeur d'un autre type est refusée.
+        assertThat(ouverte.ecarts(json(ouverture().avecReferenceOrigine("SBX-2026-0001")))).isEmpty();
+        tools.jackson.databind.node.ObjectNode sansReference = (tools.jackson.databind.node.ObjectNode) json(ouverture());
+        sansReference.remove("referenceOrigine");
+        assertThat(ouverte.ecarts(sansReference)).isEmpty();
+        assertThat(ouverte.ecarts(sansReference.put("referenceOrigine", 12))).isNotEmpty();
         SchemaContrat changement = SchemaContrat.charger("sandbox/homologation.liaison-status-changed.v1.schema.json");
         assertThat(changement.ecarts(json(changement("OUVERTE", null, 1)))).isEmpty();
         assertThat(changement.ecarts(json(changement("GELEE", "OUVERTE", 2)))).isEmpty();

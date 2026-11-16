@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        D-148 (demande de l'utilisateur du 16/11/2026) : type de projet MOBILE_ISO20022, « Paiement mobile ISO 20022 ».
+        1. Le modèle MOBILE_ISO20022 s'ajoute aux modèles admis (contrainte de D-91 remplacée, valeurs existantes gardées).
+        2. Le type naît actif, de modèle MOBILE_ISO20022 : périmètre TRANSVERSE et services souscrits de préfixe ISO.,
+           sinon le catalogue ISO 20022 (ModeleTypeProjet).
+        3. Son référentiel : copie publiée (version 1) de la version publiée du paiement mobile (ReferentielMobileIso20022),
+           hors contexte de test comme les reprises de référentiel. Idempotente.
+        Aucun changeset appliqué n'est modifié, aucune ligne existante n'est changée.
+    -->
+    <changeSet id="d148-modele-mobile-iso20022" author="homologation">
+        <sql>ALTER TABLE type_projet DROP CONSTRAINT ck_type_projet_modele;</sql>
+        <sql>ALTER TABLE type_projet ADD CONSTRAINT ck_type_projet_modele CHECK (modele IN ('CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE', 'GENERIQUE', 'MOBILE_ISO20022'));</sql>
+    </changeSet>
+
+    <changeSet id="d148-type-projet-mobile-iso20022" author="homologation">
+        <sql>
+            INSERT INTO type_projet (code, libelle, description, modele, actif, cree_le, version)
+            SELECT 'MOBILE_ISO20022', 'Paiement mobile ISO 20022', 'Paiement mobile par l''interface ISO 20022 : services de préfixe ISO. (D-143, D-148).', 'MOBILE_ISO20022', true, TIMESTAMP '2026-11-16 00:00:00', 0
+            WHERE NOT EXISTS (SELECT 1 FROM type_projet WHERE code = 'MOBILE_ISO20022');
+        </sql>
+    </changeSet>
+
+    <changeSet id="d148-referentiel-mobile-iso20022" author="homologation" context="!test">
+        <customChange class="cm.gimac.des.homologation.config.liquibase.ReferentielMobileIso20022"/>
+    </changeSet>
+</databaseChangeLog>

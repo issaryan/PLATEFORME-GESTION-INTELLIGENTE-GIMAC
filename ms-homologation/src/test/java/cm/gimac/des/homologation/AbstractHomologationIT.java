@@ -62,8 +62,8 @@ public abstract class AbstractHomologationIT {
         jdbc.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) c -> {
             try (var st = c.createStatement()) {
                 st.execute("truncate table liaison, referential_version, outbox_event, demande_tache_pilotage cascade");
-                // Types de projet et fonctions créés par un scénario (D-91) : seuls les enregistrements repris restent.
-                st.execute("delete from type_projet where code not in ('CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE')");
+                // Types de projet et fonctions créés par un scénario (D-91) : seuls les enregistrements repris et MOBILE_ISO20022 (D-148) restent.
+                st.execute("delete from type_projet where code not in ('CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE', 'MOBILE_ISO20022')");
                 st.execute("update type_projet set actif = true where actif = false");
                 st.execute(
                     "delete from referentiel_fonction where code not in ('DDRM', 'CHEF_DDRM', 'CHEF_DES', 'CHEFS_DEPARTEMENT', 'CONDUCTEUR', 'SNA', " +
