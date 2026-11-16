@@ -259,11 +259,20 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
         return perimetre(cm.gimac.des.homologation.domain.parcours.ModeleTypeProjet.parDefaut(type), institution);
     }
 
-    /** Périmètre selon le modèle du type (D-91) : le modèle générique n'a pas de catalogue de services. */
+    /**
+     * Périmètre selon le modèle du type (D-91) : le modèle générique n'a pas de catalogue de services ; le modèle ISO
+     * 20022 ne retient que les services souscrits de préfixe ISO., sinon son catalogue (D-148).
+     */
     static List<String> perimetre(cm.gimac.des.homologation.domain.parcours.ModeleTypeProjet modele, InstitutionView institution) {
         List<String> codes = new ArrayList<>();
         codes.add(TRANSVERSE);
-        institution.servicesSouscrits().stream().map(InstitutionView.ServiceSouscrit::code).filter(c -> c != null && !c.isBlank() && !TRANSVERSE.equals(c)).distinct().forEach(codes::add);
+        institution
+            .servicesSouscrits()
+            .stream()
+            .map(InstitutionView.ServiceSouscrit::code)
+            .filter(c -> c != null && !c.isBlank() && !TRANSVERSE.equals(c) && modele.retient(c))
+            .distinct()
+            .forEach(codes::add);
         if (codes.size() == 1) {
             codes.addAll(modele.catalogueServices());
         }

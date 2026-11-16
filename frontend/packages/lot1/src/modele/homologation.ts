@@ -55,8 +55,8 @@ export type PositionNoeud = { x: number; y: number }
 export type SignatureReferentiel = { code: string; libelle: string; signataire: Fonction | null; ordre: number; porte: string[] }
 
 /** Modèle d'un type de projet (D-91 §1) : comportements hérités (attestations, services, plateforme d'essai). */
-export type ModeleTypeProjet = 'CARTE_INTERBANCAIRE' | 'PAIEMENT_MOBILE' | 'DELEGATAIRE' | 'GENERIQUE'
-export const MODELES_TYPE_PROJET: ModeleTypeProjet[] = ['CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE', 'GENERIQUE']
+export type ModeleTypeProjet = 'CARTE_INTERBANCAIRE' | 'PAIEMENT_MOBILE' | 'DELEGATAIRE' | 'GENERIQUE' | 'MOBILE_ISO20022'
+export const MODELES_TYPE_PROJET: ModeleTypeProjet[] = ['CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE', 'GENERIQUE', 'MOBILE_ISO20022']
 /** Type de projet servi (GET /types-projet, D-91 §5.2). */
 export type TypeProjetVue = {
   code: string; libelle: string; description: string | null; modele: ModeleTypeProjet; libelleModele?: string; actif: boolean

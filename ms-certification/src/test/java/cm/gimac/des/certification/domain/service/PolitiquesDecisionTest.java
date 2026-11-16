@@ -129,6 +129,8 @@ class PolitiquesDecisionTest {
         assertThat(ApprobationPolicy.attestationsExigees("GENERIQUE", false)).isEmpty();
         assertThat(ApprobationPolicy.attestationsExigees("GENERIQUE", true)).containsExactly(TypeAttestation.COBAC);
         assertThat(ApprobationPolicy.attestationsExigees("MONNAIE_ELECTRONIQUE", false)).isEmpty();
+        assertThat(ApprobationPolicy.attestationsExigees("MOBILE_ISO20022", false)).containsExactly(TypeAttestation.ISO_27001, TypeAttestation.GSMA);
+        assertThat(ApprobationPolicy.modele("MOBILE_ISO20022", "MOBILE_ISO20022")).isEqualTo("MOBILE_ISO20022");
         assertThat(ApprobationPolicy.attestationsExigees(null, false)).containsExactly(TypeAttestation.PCI_DSS);
         assertThat(ApprobationPolicy.modele("PAIEMENT_MOBILE", "MONNAIE_ELECTRONIQUE")).isEqualTo("PAIEMENT_MOBILE");
         assertThat(ApprobationPolicy.modele(null, "DELEGATAIRE")).isEqualTo("DELEGATAIRE");

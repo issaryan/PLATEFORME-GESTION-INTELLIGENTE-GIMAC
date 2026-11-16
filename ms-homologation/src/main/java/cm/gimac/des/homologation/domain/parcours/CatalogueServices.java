@@ -19,9 +19,12 @@ public final class CatalogueServices {
         Map.entry("REMITTANCE", "Rémittence entrante"),
         Map.entry("FACTURE", "Paiement de facture"),
         Map.entry("CASH_IN", "Cash-in agent"),
+        Map.entry("ISO.W2W", "Transfert ISO 20022 (pacs.008)"),
+        Map.entry("ISO.R2P", "Demande de paiement ISO 20022 (pain.013, pain.014)"),
         Map.entry("CARTE_INTERBANCAIRE", "Carte interbancaire"),
         Map.entry("PAIEMENT_MOBILE", "Paiement mobile"),
-        Map.entry("DELEGATAIRE", "Délégataire")
+        Map.entry("DELEGATAIRE", "Délégataire"),
+        Map.entry("MOBILE_ISO20022", "Paiement mobile ISO 20022")
     );
 
     private CatalogueServices() {}

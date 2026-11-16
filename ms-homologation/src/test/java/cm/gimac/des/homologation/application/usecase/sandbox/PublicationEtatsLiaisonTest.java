@@ -97,6 +97,7 @@ class PublicationEtatsLiaisonTest {
         assertThat(o.codeParticipant()).isEqualTo("99001");
         assertThat(o.versionEtat()).isEqualTo(1L);
         assertThat(o.typeProjet()).isEqualTo("PAIEMENT_MOBILE");
+        assertThat(o.referenceOrigine()).isNull();
         LiaisonStatusChangedPayload s = changement();
         assertThat(s.liaisonId()).isEqualTo(l.getId());
         assertThat(s.institutionId()).isEqualTo(INSTITUTION);
@@ -108,6 +109,21 @@ class PublicationEtatsLiaisonTest {
         assertThat(s.versionEtat()).isEqualTo(1L);
         assertThat(s.survenuLe()).isEqualTo(T);
         verify(participants, never()).getInstitution(any());
+    }
+
+    @Test
+    @DisplayName("D-148 : liaison-opened porte la référence d'origine de la liaison, recopiée de la liaison et non de la charge")
+    void ouvertureAvecReferenceOrigine() {
+        Liaison l = liaison(EtatLiaison.OUVERTE).referenceOrigine("SBX-2026-0001");
+        publication.ouverture(l, "99001", charge(l));
+
+        ArgumentCaptor<Object> ouverte = ArgumentCaptor.forClass(Object.class);
+        verify(outbox).publish(eq("liaison"), eq(l.getId()), eq(LiaisonOpenedPayload.TYPE), ouverte.capture(), eq(INSTITUTION.toString()));
+        LiaisonOpenedPayload o = (LiaisonOpenedPayload) ouverte.getValue();
+        assertThat(o.referenceOrigine()).isEqualTo("SBX-2026-0001");
+        assertThat(o.codeParticipant()).isEqualTo("99001");
+        assertThat(o.versionEtat()).isEqualTo(1L);
+        assertThat(changement().referenceOrigine()).isEqualTo("SBX-2026-0001");
     }
 
     @Test

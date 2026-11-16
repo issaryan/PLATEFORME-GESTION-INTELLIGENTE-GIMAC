@@ -27,7 +27,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * l'outbox, dans la transaction du geste :
  * <ul>
  * <li>ouverture (cadrage, reprise de l'existant, service supplémentaire) : homologation.liaison-opened.v1 complété du
- * code participant et de la version d'état 1, puis homologation.liaison-status-changed.v1 de version 1 ;</li>
+ * code participant, de la version d'état 1 et de la référence d'origine (D-148), puis
+ * homologation.liaison-status-changed.v1 de version 1 ;</li>
  * <li>toute liaison chargée pour une écriture est observée ; avant la validation, si son statut vu par la sandbox
  * (ouverte, gelée, close) a changé depuis la dernière publication, homologation.liaison-status-changed.v1 part avec
  * une version d'état strictement supérieure. Une liaison ouverte avant US-EXI-16 reçoit sa version 1 à sa première
@@ -57,7 +58,7 @@ public class PublicationEtatsLiaison {
     public void ouverture(Liaison l, String codeParticipant, LiaisonOpenedPayload charge) {
         String code = codeParticipant != null ? codeParticipant : code(l);
         EtatLiaisonSandbox e = etats.save(new EtatLiaisonSandbox(l.getId(), code, StatutSandbox.de(l.getEtat()), clock.instant()));
-        outbox.publish(AGREGAT, l.getId(), LiaisonOpenedPayload.TYPE, charge.avecEtat(code, e.getVersionEtat()), l.getInstitutionId().toString());
+        outbox.publish(AGREGAT, l.getId(), LiaisonOpenedPayload.TYPE, charge.avecEtat(code, e.getVersionEtat()).avecReferenceOrigine(l.getReferenceOrigine()), l.getInstitutionId().toString());
         publier(l, e, null);
         observer(l);
     }

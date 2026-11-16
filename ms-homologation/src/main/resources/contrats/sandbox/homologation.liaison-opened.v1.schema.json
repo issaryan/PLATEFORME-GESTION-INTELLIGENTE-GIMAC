@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://gimac.cm/contrats/homologation/homologation.liaison-opened.v1",
   "title": "homologation.liaison-opened.v1",
-  "description": "Données (data) de l'événement CloudEvents 1.0 publié par MS-HOMOLOGATION sur le sujet homologation.liaison à l'ouverture d'une liaison (cadrage, reprise de l'existant, service supplémentaire). Lu par MS-PARTICIPANT, MS-AUDIT, SBX-CAMPAGNE et SBX-LECTURE (US-EXI-16, D-122). Extension CloudEvents institutionid : identifiant de l'institution.",
+  "description": "Données (data) de l'événement CloudEvents 1.0 publié par MS-HOMOLOGATION sur le sujet homologation.liaison à l'ouverture d'une liaison (cadrage, reprise de l'existant, service supplémentaire). Lu par MS-PARTICIPANT, MS-AUDIT, SBX-CAMPAGNE et SBX-LECTURE (US-EXI-16, D-122). Extension CloudEvents institutionid : identifiant de l'institution. Champ facultatif referenceOrigine ajouté par D-148 (ajout compatible, version v1 inchangée).",
   "type": "object",
   "required": ["liaisonId", "institutionId", "typeProjet", "versionId", "versionNumero", "chefDeProjetId", "perimetre", "ouvertPar", "modeleTypeProjet", "codeParticipant", "versionEtat"],
   "properties": {
@@ -17,6 +17,7 @@
     "ouvertPar": { "type": "string", "format": "uuid" },
     "modeleTypeProjet": { "type": "string" },
     "codeParticipant": { "type": ["string", "null"], "description": "Code du participant au registre de MS-PARTICIPANT ; null seulement si le registre était injoignable." },
-    "versionEtat": { "type": "integer", "minimum": 1, "description": "Version d'état de la liaison, 1 à l'ouverture." }
+    "versionEtat": { "type": "integer", "minimum": 1, "description": "Version d'état de la liaison, 1 à l'ouverture." },
+    "referenceOrigine": { "type": ["string", "null"], "maxLength": 50, "description": "Référence du projet dans l'outil d'origine (D-104, normalisée par la reprise D-107), ajoutée par D-148 comme dans homologation.liaison-status-changed.v1 (D-133) : rattachement à sa liaison d'une campagne reprise par SBX-CAMPAGNE. Facultative : absente ou nulle pour une liaison sans référence d'origine (service supplémentaire, ouverture sans référence)." }
   }
 }

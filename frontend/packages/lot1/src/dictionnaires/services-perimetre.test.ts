@@ -37,6 +37,8 @@ describe('table des services du périmètre', () => {
   })
   it('interface du type de projet, puis famille ; code inconnu dans « Autres services »', () => {
     expect(interfacesDuType('CARTE_INTERBANCAIRE')).toEqual(['CARTE_ISO8583'])
+    expect(interfacesDuType('MOBILE_ISO20022')).toEqual(['MOBILE_ISO20022'])
+    expect(decrire('ISO.W2W', 'MOBILE_ISO20022', 'es')).toMatchObject({ interface: 'MOBILE_ISO20022', libelle: 'Transferencia ISO 20022 (pacs.008)' })
     expect(interfacesDuType('DELEGATAIRE')).toHaveLength(3)
     expect(decrire('TRANSFERT', 'PAIEMENT_MOBILE', 'fr')).toMatchObject({ interface: 'MOBILE_PROPRIETAIRE', famille: 'TRANSFERTS_PAIEMENT_MARCHAND' })
     expect(decrire('TRANSFERT', 'CARTE_INTERBANCAIRE', 'en')).toMatchObject({ interface: 'CARTE_ISO8583', famille: AUTRES, libelle: 'Transfer' })

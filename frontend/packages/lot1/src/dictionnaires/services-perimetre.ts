@@ -21,6 +21,7 @@ export const TRANSVERSE = 'TRANSVERSE'
 export function interfacesDuType(type: Liaison['typeProjet'] | string): string[] {
   if (type === 'CARTE_INTERBANCAIRE') return ['CARTE_ISO8583']
   if (type === 'PAIEMENT_MOBILE') return ['MOBILE_PROPRIETAIRE', 'MOBILE_ISO20022']
+  if (type === 'MOBILE_ISO20022') return ['MOBILE_ISO20022']
   return TABLE.interfaces.map((i) => i.code)
 }
 
