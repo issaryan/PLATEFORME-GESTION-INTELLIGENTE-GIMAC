@@ -95,6 +95,8 @@ services:
       GIMAC_SERVICE_CLIENT_SECRET: ${GIMAC_SECRET_NOTIFICATION_SERVICE:?à définir dans .env}
       GIMAC_SERVICES_IAM_URL: http://iam:8081
       GIMAC_SERVICES_COLLABORATION_URL: http://collaboration:8093
+      # Portail de la sandbox : adresse de base du lien de retrait d'un identifiant d'accès de test (vide : chemin relatif).
+      GIMAC_NOTIFICATION_SANDBOX_ADRESSE_PORTAIL: ${GIMAC_URL_PORTAIL_SANDBOX:-}
   participant:
     <<: *application
     environment:
