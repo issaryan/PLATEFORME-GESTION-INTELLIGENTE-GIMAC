@@ -66,7 +66,7 @@ controler "npm run build" npm run build
 # comptes et profils de démonstration) ne doit figurer dans les fichiers servis. Marqueurs tirés des jeux simulés.
 sans_donnees_fictives() {
   local trouve=0 m
-  for m in 'Gimac-Demo-2026' 'Établissement de microfinance C' 'Aïcha Mahamat Nour' 'u-super-admin' 'Brice Nzeng Mba' 'LIA-2026-030'; do
+  for m in 'Gimac-Demo-2026' 'Établissement de microfinance C' 'Équipe Conduite Projet' 'u-super-admin' 'Agent Délégué' 'LIA-2026-030'; do
     if grep -rlF -- "$m" apps/departement/dist apps/portail/dist apps/console/dist 2>/dev/null; then
       echo "    donnée de démonstration « $m » trouvée dans une construction de production"; trouve=1
     fi

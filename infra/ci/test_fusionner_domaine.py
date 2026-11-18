@@ -94,13 +94,13 @@ class FusionDomaine(unittest.TestCase):
         self.assertEqual(sorted(r["ROLE_X"]["composites"]["realm"]), ["A", "B"])
 
     def test_comptes_conserves_roles_disparus_retires(self):
-        compte = {"username": "awa", "realmRoles": ["ROLE_X", "ROLE_DISPARU"], "groups": [], "clientRoles": {}}
+        compte = {"username": "cheffe", "realmRoles": ["ROLE_X", "ROLE_DISPARU"], "groups": [], "clientRoles": {}}
         service = domaine(PERMS + [role("ROLE_X", ["A"])], users=[compte, {"username": "service-account-x", "serviceAccountClientId": "x"}])
         depot = domaine(PERMS + [role("ROLE_X", ["A"])], users=[{"username": "demo"}])
         d = self.fusion(depot, service, domaine(PERMS + [role("ROLE_X", ["A"]), role("ROLE_DISPARU")]))
         comptes = {u["username"]: u for u in d["users"]}
-        self.assertEqual(sorted(comptes), ["awa", "demo"])
-        self.assertEqual(comptes["awa"]["realmRoles"], ["ROLE_X"])
+        self.assertEqual(sorted(comptes), ["cheffe", "demo"])
+        self.assertEqual(comptes["cheffe"]["realmRoles"], ["ROLE_X"])
 
     def test_politique_modifiee_dans_la_console_conservee(self):
         base = domaine(PERMS, passwordPolicy="length(12)", otpPolicyDigits=6, otpPolicyPeriod=30,
