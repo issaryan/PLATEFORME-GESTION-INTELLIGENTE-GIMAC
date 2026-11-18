@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 class RegistreSandboxQueriesTest {
 
     static final UUID ID = UUID.randomUUID();
-    static final RegistreLecture.Correspondant CORRESPONDANT = new RegistreLecture.Correspondant(UUID.randomUUID(), UUID.randomUUID(), "Awa Ndiaye", "MONETIQUE");
+    static final RegistreLecture.Correspondant CORRESPONDANT = new RegistreLecture.Correspondant(UUID.randomUUID(), UUID.randomUUID(), "Cheffe DDRM", "MONETIQUE");
 
     final List<String> codesLus = new ArrayList<>();
     final VersionsStatutMemoire versions = new VersionsStatutMemoire();

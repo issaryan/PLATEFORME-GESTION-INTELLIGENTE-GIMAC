@@ -28,7 +28,7 @@ autre. Une notification de message est marquée lue quand le destinataire ouvre 
 
 ```jsonc
 { "id": "…", "type": "MESSAGE" | "TACHE" | "RAPPORT" | "DEMANDE" | "MENTION" | "REPONSE" | "PROCESSUS",
-  "titre": "Carine Ebongue Ndjock",              // expéditeur, ou titre de la tâche, ou « Rapport de … »
+  "titre": "Officière Console Sécurité",              // expéditeur, ou titre de la tâche, ou « Rapport de … »
   "sousTitre": "Groupe Cadrage L-12" | null,     // conversation de groupe ; pour une tâche : échéance
   "lien": "/des/messagerie?conversation=c-1",    // chemin relatif dans la couche
   "reference": { "service": "collaboration", "type": "CONVERSATION", "id": "c-1" },

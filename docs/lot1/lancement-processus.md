@@ -195,7 +195,7 @@ ces chemins, cas de test ajoutés), `@PreAuthorize(PIL_ACTIVITY_OWN)`.
 ### 7.6 Démonstration
 
 - MS-PILOTAGE (profil dev, `gimac.demonstration.processus=true`) : l'organisation simulée gagne le service des ressources
-  humaines `RH` (cheffe Solange Ateba Mvondo, gestionnaire Thierry Bekolo Ngoa portant `ROLE_COLLABORATEUR`) ; deux versions
+  humaines `RH` (cheffe Cheffe Ressources Humaines, gestionnaire Gestionnaire RH Démo portant `ROLE_COLLABORATEUR`) ; deux versions
   publiées, initiateurs `TOUT_LE_GIMAC` :
   - `DEMANDE_CONGE` « Demande de congé » (RH) : formulaire période (obligatoire), motif (texte long, obligatoire), pièce
     justificative facultative (PDF ou image) ; étapes ANALYSE « Vérification des droits à congé » (gestionnaire RH, solde de
@@ -537,8 +537,8 @@ La prise et l'attribution par la voie des tâches sont contrôlées par un évé
 
 ### 9.4 Démonstration
 
-- Comptes de démonstration du service RH (QUO-01) : Thierry Bekolo Ngoa (`t.bekolo`, gestionnaire, profil collaborateur)
-  et Solange Ateba Mvondo (`s.ateba`, cheffe du service, profil responsable de service), tirés de l'organisation simulée
+- Comptes de démonstration du service RH (QUO-01) : Gestionnaire RH Démo (`gestionnaire.rh`, gestionnaire, profil collaborateur)
+  et Cheffe Ressources Humaines (`cheffe.rh`, cheffe du service, profil responsable de service), tirés de l'organisation simulée
   (aucun nom de profil codé).
 - Notifications (QUO-05) : le moteur simulé produit, comme MS-NOTIFICATION, « Étape à réaliser », « Étape à prendre »,
   « Validation attendue », « Signature attendue », « Étape renvoyée », « Étape réaffectée », « Votre demande avance » et
@@ -727,7 +727,7 @@ et le lance sans dériver une nouvelle version.
 
 - Historique de la définition (ajout seul) : action `PUBLIC_MODIFIE`, auteur, date, détail « Public de la version N
   modifié : <motif> ; avant : <résumé> ; après : <résumé> » suivi, le cas échéant, de la mention « (au titre de …) » des
-  autres actes de définition. Résumé : règles et paramètres, personnes nommées (« PERSONNES (Clarisse Bilong) »,
+  autres actes de définition. Résumé : règles et paramètres, personnes nommées (« PERSONNES (Responsable Sécurité SI) »,
   « UNITES (POLE_RESEAU) »). `modifieLe` et `modifiePar` de la version sont mis à jour.
 - Aucun événement d'outbox : les modifications de définition n'en émettent pas (seule la publication émet
   `pilotage.process-published.v1`, que MS-NOTIFICATION consomme) ; un changement de public n'est pas une publication.

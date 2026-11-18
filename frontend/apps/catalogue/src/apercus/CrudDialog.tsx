@@ -5,7 +5,7 @@ import { Scene } from '../outils/Scene'
 // Modale CRUD standard, contexte « modification » : sous-titre de contexte (l'objet concerné), formulaire,
 // pied Annuler et action principale ; un formulaire modifié demande confirmation avant l'abandon.
 export default function Apercu() {
-  const [nom, setNom] = useState('Carine Ebongue Ndjock')
+  const [nom, setNom] = useState('Officière Console Sécurité')
   const [langue, setLangue] = useState('fr')
   return (
     <Scene hauteur={520} titre="Comptes">
@@ -13,10 +13,10 @@ export default function Apercu() {
         inline
         context="edit"
         title="Modifier la fiche"
-        subject="c.ebongue · Carine Ebongue Ndjock"
+        subject="officiere.console · Officière Console Sécurité"
         description="Données descriptives du compte ; l'identifiant n'est pas modifiable."
         submitLabel="Enregistrer la fiche"
-        dirty={nom !== 'Carine Ebongue Ndjock' || langue !== 'fr'}
+        dirty={nom !== 'Officière Console Sécurité' || langue !== 'fr'}
         onSubmit={() => undefined}
         onClose={() => undefined}
       >

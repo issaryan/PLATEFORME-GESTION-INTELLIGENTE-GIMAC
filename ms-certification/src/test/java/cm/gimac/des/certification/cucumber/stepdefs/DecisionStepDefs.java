@@ -39,7 +39,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  */
 public class DecisionStepDefs extends StepDefs {
 
-    static final RequestPostProcessor CONDUCTEUR = agent("u-conducteur", "Aminata Ngono", "CER_DOSSIER_READ", "CER_PV_ESTABLISH");
+    static final RequestPostProcessor CONDUCTEUR = agent("u-conducteur", "Conductrice Projet A", "CER_DOSSIER_READ", "CER_PV_ESTABLISH");
     static final RequestPostProcessor CHEF_DES = agent("u-chef-des", "Chef du DES", "CER_DOSSIER_READ", "CER_QUITUS_TECHNIQUE_SIGN");
     static final RequestPostProcessor PRODUCTION = agent("u-prod", "Production monétique", "CER_DOSSIER_READ", "CER_CHANGE_RECORD_LINK");
     static final RequestPostProcessor RSSI = agent("u-rssi", "Sécurité des SI", "CER_DOSSIER_READ", "CER_SECURITY_VERIFY");
@@ -91,7 +91,7 @@ public class DecisionStepDefs extends StepDefs {
                 true,
                 List.of("RETRAIT", "PAIEMENT", "TRANSFERT", "COMMERCE_ELECTRONIQUE").subList(0, taux / 25),
                 "u-conducteur",
-                "Aminata Ngono"
+                "Conductrice Projet A"
             )
         );
     }

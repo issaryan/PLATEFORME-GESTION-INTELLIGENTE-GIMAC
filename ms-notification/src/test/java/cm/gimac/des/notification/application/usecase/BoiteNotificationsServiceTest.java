@@ -78,8 +78,8 @@ class BoiteNotificationsServiceTest {
         service = new BoiteNotificationsService(notifications, preferences, annuaire, conversations, outbox, new ReglesNotifications(), Clock.fixed(T, ZoneOffset.UTC));
         lenient().when(notifications.save(any())).thenAnswer(i -> i.getArgument(0));
         lenient().when(preferences.findById(anyString())).thenReturn(Optional.empty());
-        lenient().when(annuaire.nomAffiche("paul")).thenReturn(Optional.of("Paul Mbarga Atangana"));
-        lenient().when(annuaire.nomAffiche("serge")).thenReturn(Optional.of("Serge Ndzana"));
+        lenient().when(annuaire.nomAffiche("pilote")).thenReturn(Optional.of("Chef Département DES"));
+        lenient().when(annuaire.nomAffiche("super")).thenReturn(Optional.of("Agent Homologation SNA"));
         lenient().when(conversations.conversation(anyString())).thenReturn(Optional.empty());
         lenient().when(notifications.nonLuePour(anyString(), any(), anyString(), anyString(), anyString())).thenReturn(Optional.empty());
     }
@@ -100,45 +100,45 @@ class BoiteNotificationsServiceTest {
     @DisplayName("Message : une notification par destinataire, jamais l'auteur ; événement publié au seul destinataire")
     void messageParDestinataireSansAuteur() {
         when(conversations.conversation("c-1")).thenReturn(Optional.of(new ConversationsPort.Conversation("c-1", "GROUPE", "Groupe Cadrage L-12", List.of())));
-        int n = service.messageEnvoye(new MessageEnvoye("c-1", "m-1", "paul", List.of("aminata", "paul", "serge", "aminata"), T, null));
+        int n = service.messageEnvoye(new MessageEnvoye("c-1", "m-1", "pilote", List.of("conductrice", "pilote", "super", "conductrice"), T, null));
         assertThat(n).isEqualTo(2);
         List<NotificationUtilisateur> l = enregistrees(2);
-        assertThat(l).extracting(NotificationUtilisateur::getDestinataireId).containsExactly("aminata", "serge");
+        assertThat(l).extracting(NotificationUtilisateur::getDestinataireId).containsExactly("conductrice", "super");
         NotificationUtilisateur a = l.get(0);
         assertThat(a.getType()).isEqualTo(TypeNotification.MESSAGE);
-        assertThat(a.getTitre()).isEqualTo("Paul Mbarga Atangana");
+        assertThat(a.getTitre()).isEqualTo("Chef Département DES");
         assertThat(a.getSousTitre()).isEqualTo("Groupe Cadrage L-12");
         assertThat(a.getLien()).isEqualTo("/des/messagerie?conversation=c-1");
         assertThat(a.getReference()).isEqualTo(Reference.conversation("c-1"));
-        assertThat(a.getActeurId()).isEqualTo("paul");
+        assertThat(a.getActeurId()).isEqualTo("pilote");
         assertThat(a.getNombre()).isEqualTo(1);
         List<NotificationCreeePayload> p = publiees(2);
-        assertThat(p).extracting(NotificationCreeePayload::destinataires).containsExactly(List.of("aminata"), List.of("serge"));
+        assertThat(p).extracting(NotificationCreeePayload::destinataires).containsExactly(List.of("conductrice"), List.of("super"));
         assertThat(p.get(0).type()).isEqualTo("MESSAGE");
         assertThat(p.get(0).referenceId()).isEqualTo("c-1");
-        verify(annuaire, times(1)).nomAffiche("paul");
+        verify(annuaire, times(1)).nomAffiche("pilote");
     }
 
     @Test
     @DisplayName("Consolidation : la notification non lue de la conversation est incrémentée et remontée, pas recréée")
     void consolidation() {
         NotificationUtilisateur existante = new NotificationUtilisateur(
-            "aminata",
+            "conductrice",
             TypeNotification.MESSAGE,
-            "Paul Mbarga Atangana",
+            "Chef Département DES",
             null,
             "/des/messagerie?conversation=c-1",
             Reference.conversation("c-1"),
-            "paul",
-            "Paul Mbarga Atangana",
+            "pilote",
+            "Chef Département DES",
             T.minusSeconds(60)
         );
-        when(notifications.nonLuePour("aminata", TypeNotification.MESSAGE, "collaboration", "CONVERSATION", "c-1")).thenReturn(Optional.of(existante));
-        service.messageEnvoye(new MessageEnvoye("c-1", "m-2", "serge", List.of("aminata"), T, null));
+        when(notifications.nonLuePour("conductrice", TypeNotification.MESSAGE, "collaboration", "CONVERSATION", "c-1")).thenReturn(Optional.of(existante));
+        service.messageEnvoye(new MessageEnvoye("c-1", "m-2", "super", List.of("conductrice"), T, null));
         NotificationUtilisateur n = enregistrees(1).get(0);
         assertThat(n).isSameAs(existante);
         assertThat(n.getNombre()).isEqualTo(2);
-        assertThat(n.getTitre()).isEqualTo("Serge Ndzana");
+        assertThat(n.getTitre()).isEqualTo("Agent Homologation SNA");
         assertThat(n.getMisAJourLe()).isEqualTo(T);
         assertThat(publiees(1).get(0).nombre()).isEqualTo(2);
     }
@@ -146,7 +146,7 @@ class BoiteNotificationsServiceTest {
     @Test
     @DisplayName("Événement de groupe (ajout, retrait, renommage) : aucune notification")
     void evenementDeGroupeIgnore() {
-        assertThat(service.messageEnvoye(new MessageEnvoye("c-1", "m-1", "paul", List.of("aminata"), T, "MEMBRES_AJOUTES"))).isZero();
+        assertThat(service.messageEnvoye(new MessageEnvoye("c-1", "m-1", "pilote", List.of("conductrice"), T, "MEMBRES_AJOUTES"))).isZero();
         verify(notifications, never()).save(any());
         verify(outbox, never()).publish(anyString(), any(UUID.class), anyString(), any());
     }
@@ -154,19 +154,19 @@ class BoiteNotificationsServiceTest {
     @Test
     @DisplayName("Préférences : un type désactivé ne crée plus de notification pour ce destinataire")
     void typeDesactive() {
-        PreferencesNotification p = PreferencesNotification.defauts("aminata", T);
+        PreferencesNotification p = PreferencesNotification.defauts("conductrice", T);
         p.modifier(null, null, Map.of(TypeNotification.MESSAGE, false), T);
-        when(preferences.findById("aminata")).thenReturn(Optional.of(p));
-        assertThat(service.messageEnvoye(new MessageEnvoye("c-1", "m-1", "paul", List.of("aminata", "serge"), T, null))).isEqualTo(1);
-        assertThat(enregistrees(1).get(0).getDestinataireId()).isEqualTo("serge");
+        when(preferences.findById("conductrice")).thenReturn(Optional.of(p));
+        assertThat(service.messageEnvoye(new MessageEnvoye("c-1", "m-1", "pilote", List.of("conductrice", "super"), T, null))).isEqualTo(1);
+        assertThat(enregistrees(1).get(0).getDestinataireId()).isEqualTo("super");
     }
 
     @Test
     @DisplayName("Annuaire et messagerie injoignables : notification créée avec un titre neutre, sans sous-titre")
     void degradation() {
-        when(annuaire.nomAffiche("paul")).thenThrow(NotificationException.indisponible("NOT_ANNUAIRE_INDISPONIBLE", "x"));
+        when(annuaire.nomAffiche("pilote")).thenThrow(NotificationException.indisponible("NOT_ANNUAIRE_INDISPONIBLE", "x"));
         when(conversations.conversation("c-1")).thenThrow(NotificationException.indisponible("NOT_COLLABORATION_INDISPONIBLE", "x"));
-        service.messageEnvoye(new MessageEnvoye("c-1", "m-1", "paul", List.of("aminata"), T, null));
+        service.messageEnvoye(new MessageEnvoye("c-1", "m-1", "pilote", List.of("conductrice"), T, null));
         NotificationUtilisateur n = enregistrees(1).get(0);
         assertThat(n.getTitre()).isEqualTo("Nouveau message");
         assertThat(n.getSousTitre()).isNull();
@@ -175,19 +175,19 @@ class BoiteNotificationsServiceTest {
     @Test
     @DisplayName("Tâche : au nouveau responsable, sauf s'il est l'acteur ; rapport : au destinataire, jamais à l'auteur")
     void tacheEtRapport() {
-        assertThat(service.tacheAffectee(new TacheAffectee("t-1", "paul", "paul", T, null, null))).isZero();
-        assertThat(service.tacheAffectee(new TacheAffectee("t-1", null, "paul", T, null, null))).isZero();
-        assertThat(service.tacheAffectee(new TacheAffectee("t-1", "aminata", "paul", T, null, "2026-10-09"))).isEqualTo(1);
-        assertThat(service.rapportSoumis(new RapportSoumis("r-1", "QUOTIDIEN", "2026-10-05", "serge", null, "serge", T))).isZero();
-        assertThat(service.rapportSoumis(new RapportSoumis("r-1", "QUOTIDIEN", "2026-10-05", "serge", "serge", "serge", T))).isZero();
-        assertThat(service.rapportSoumis(new RapportSoumis("r-1", "QUOTIDIEN", "2026-10-05", "serge", "paul", "serge", T))).isEqualTo(1);
+        assertThat(service.tacheAffectee(new TacheAffectee("t-1", "pilote", "pilote", T, null, null))).isZero();
+        assertThat(service.tacheAffectee(new TacheAffectee("t-1", null, "pilote", T, null, null))).isZero();
+        assertThat(service.tacheAffectee(new TacheAffectee("t-1", "conductrice", "pilote", T, null, "2026-10-09"))).isEqualTo(1);
+        assertThat(service.rapportSoumis(new RapportSoumis("r-1", "QUOTIDIEN", "2026-10-05", "super", null, "super", T))).isZero();
+        assertThat(service.rapportSoumis(new RapportSoumis("r-1", "QUOTIDIEN", "2026-10-05", "super", "super", "super", T))).isZero();
+        assertThat(service.rapportSoumis(new RapportSoumis("r-1", "QUOTIDIEN", "2026-10-05", "super", "pilote", "super", T))).isEqualTo(1);
         List<NotificationUtilisateur> l = enregistrees(2);
         assertThat(l.get(0).getType()).isEqualTo(TypeNotification.TACHE);
-        assertThat(l.get(0).getTitre()).isEqualTo("Tâche confiée par Paul Mbarga Atangana");
+        assertThat(l.get(0).getTitre()).isEqualTo("Tâche confiée par Chef Département DES");
         assertThat(l.get(0).getSousTitre()).isEqualTo("Échéance : 2026-10-09");
         assertThat(l.get(0).getLien()).isEqualTo("/des/taches?tache=t-1");
-        assertThat(l.get(1).getDestinataireId()).isEqualTo("paul");
-        assertThat(l.get(1).getTitre()).isEqualTo("Rapport de Serge Ndzana");
+        assertThat(l.get(1).getDestinataireId()).isEqualTo("pilote");
+        assertThat(l.get(1).getTitre()).isEqualTo("Rapport de Agent Homologation SNA");
         assertThat(l.get(1).getReference()).isEqualTo(Reference.rapport("r-1"));
         verify(notifications, never()).nonLuePour(anyString(), eq(TypeNotification.TACHE), anyString(), anyString(), anyString());
     }
@@ -196,20 +196,20 @@ class BoiteNotificationsServiceTest {
     @DisplayName("Lecture : notification d'un autre en 404 ; marquage par type et objet ; référence incomplète refusée")
     void lecture() {
         UUID id = UUID.randomUUID();
-        when(notifications.findByIdAndDestinataireId(id, "aminata")).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.marquerLue("aminata", id)).isInstanceOf(NotificationException.class).extracting("code").isEqualTo("NOT_NOTIFICATION_INTROUVABLE");
+        when(notifications.findByIdAndDestinataireId(id, "conductrice")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.marquerLue("conductrice", id)).isInstanceOf(NotificationException.class).extracting("code").isEqualTo("NOT_NOTIFICATION_INTROUVABLE");
 
-        NotificationUtilisateur c1 = new NotificationUtilisateur("aminata", TypeNotification.MESSAGE, "P", null, "/", Reference.conversation("c-1"), "paul", "P", T).dansConversation("c-1");
-        NotificationUtilisateur c2 = new NotificationUtilisateur("aminata", TypeNotification.MESSAGE, "P", null, "/", Reference.conversation("c-2"), "paul", "P", T).dansConversation("c-2");
-        NotificationUtilisateur t1 = new NotificationUtilisateur("aminata", TypeNotification.TACHE, "T", null, "/", Reference.tache("t-1"), "paul", "P", T);
-        when(notifications.findByDestinataireIdAndLueLeIsNull("aminata")).thenReturn(List.of(c1, c2, t1));
-        when(notifications.findByDestinataireIdAndConversationIdAndLueLeIsNull("aminata", "c-1")).thenReturn(List.of(c1));
-        assertThat(service.marquerLues("aminata", "MESSAGE", new ReferenceSaisie("collaboration", "CONVERSATION", "c-1"))).isEqualTo(1);
+        NotificationUtilisateur c1 = new NotificationUtilisateur("conductrice", TypeNotification.MESSAGE, "P", null, "/", Reference.conversation("c-1"), "pilote", "P", T).dansConversation("c-1");
+        NotificationUtilisateur c2 = new NotificationUtilisateur("conductrice", TypeNotification.MESSAGE, "P", null, "/", Reference.conversation("c-2"), "pilote", "P", T).dansConversation("c-2");
+        NotificationUtilisateur t1 = new NotificationUtilisateur("conductrice", TypeNotification.TACHE, "T", null, "/", Reference.tache("t-1"), "pilote", "P", T);
+        when(notifications.findByDestinataireIdAndLueLeIsNull("conductrice")).thenReturn(List.of(c1, c2, t1));
+        when(notifications.findByDestinataireIdAndConversationIdAndLueLeIsNull("conductrice", "c-1")).thenReturn(List.of(c1));
+        assertThat(service.marquerLues("conductrice", "MESSAGE", new ReferenceSaisie("collaboration", "CONVERSATION", "c-1"))).isEqualTo(1);
         assertThat(c1.estLue()).isTrue();
         assertThat(c2.estLue()).isFalse();
-        assertThat(service.marquerLues("aminata", "TACHE", null)).isEqualTo(1);
+        assertThat(service.marquerLues("conductrice", "TACHE", null)).isEqualTo(1);
         assertThat(t1.estLue()).isTrue();
-        assertThatThrownBy(() -> service.marquerLues("aminata", null, new ReferenceSaisie("collaboration", null, "c-1")))
+        assertThatThrownBy(() -> service.marquerLues("conductrice", null, new ReferenceSaisie("collaboration", null, "c-1")))
             .isInstanceOf(NotificationException.class)
             .extracting("code")
             .isEqualTo("NOT_REQUETE_INVALIDE");
@@ -225,10 +225,10 @@ class BoiteNotificationsServiceTest {
     @Test
     @DisplayName("Tâche à prendre : une notification TACHE par membre de l'unité, sauf l'acteur, lien vers les tâches à prendre")
     void tacheOfferte() {
-        int n = service.tacheOfferte(new TacheOfferte("t-1", "Sauvegardes", "POLE_RESEAU", List.of("aminata", "paul", "serge"), "paul", T));
+        int n = service.tacheOfferte(new TacheOfferte("t-1", "Sauvegardes", "POLE_RESEAU", List.of("conductrice", "pilote", "super"), "pilote", T));
         assertThat(n).isEqualTo(2);
         List<NotificationUtilisateur> l = enregistrees(2);
-        assertThat(l).extracting(NotificationUtilisateur::getDestinataireId).containsExactly("aminata", "serge");
+        assertThat(l).extracting(NotificationUtilisateur::getDestinataireId).containsExactly("conductrice", "super");
         assertThat(l.get(0).getType()).isEqualTo(TypeNotification.TACHE);
         assertThat(l.get(0).getTitre()).isEqualTo("Sauvegardes");
         assertThat(l.get(0).getSousTitre()).isEqualTo("À prendre : POLE_RESEAU");
@@ -256,46 +256,46 @@ class BoiteNotificationsServiceTest {
     @DisplayName("D-116 : rapport reçu, rapport de 8 h attendu ou en retard : notification MONITORING par destinataire, sauf l'acteur ; lien du module")
     void monitoring() {
         int n = service.demandeMonitoring(
-            new DemandeMonitoring(List.of("serge", "paul"), "INFORMATION", "RAPPORT_RECU", "r-1", "Bilan de nuit", "Pour visa", "/des/exploitation/rapports?rapport=r-1", "paul", T)
+            new DemandeMonitoring(List.of("super", "pilote"), "INFORMATION", "RAPPORT_RECU", "r-1", "Bilan de nuit", "Pour visa", "/des/exploitation/rapports?rapport=r-1", "pilote", T)
         );
         assertThat(n).isEqualTo(1);
         NotificationUtilisateur r = enregistrees(1).get(0);
-        assertThat(r.getDestinataireId()).isEqualTo("serge");
+        assertThat(r.getDestinataireId()).isEqualTo("super");
         assertThat(r.getType()).isEqualTo(TypeNotification.MONITORING);
         assertThat(r.getTitre()).isEqualTo("Rapport reçu : Bilan de nuit");
-        assertThat(r.getSousTitre()).isEqualTo("Paul Mbarga Atangana : Pour visa");
+        assertThat(r.getSousTitre()).isEqualTo("Chef Département DES : Pour visa");
         assertThat(r.getLien()).isEqualTo("/des/exploitation/rapports?rapport=r-1");
         assertThat(r.getReference()).isEqualTo(Reference.monitoring("RAPPORT_RECU", "r-1"));
-        assertThat(service.demandeMonitoring(new DemandeMonitoring(List.of("aminata"), "URGENT", "RAPPORT_QUOTIDIEN_ATTENDU", "2026-10-19", "2026-10-19", null, "https://ailleurs", null, T))).isEqualTo(1);
+        assertThat(service.demandeMonitoring(new DemandeMonitoring(List.of("conductrice"), "URGENT", "RAPPORT_QUOTIDIEN_ATTENDU", "2026-10-19", "2026-10-19", null, "https://ailleurs", null, T))).isEqualTo(1);
         NotificationUtilisateur q = enregistrees(2).get(1);
         assertThat(q.getTitre()).isEqualTo("Rapport de monitoring attendu avant 8 h : 2026-10-19");
         assertThat(q.getSousTitre()).isEqualTo("Monitoring et astreintes");
         assertThat(q.getLien()).isEqualTo("/des/exploitation/rapports");
-        assertThat(service.demandeMonitoring(new DemandeMonitoring(List.of("aminata"), "INFORMATION", "", null, null, null, null, null, T))).isZero();
+        assertThat(service.demandeMonitoring(new DemandeMonitoring(List.of("conductrice"), "INFORMATION", "", null, null, null, null, null, T))).isZero();
         assertThat(service.demandeMonitoring(new DemandeMonitoring(null, "INFORMATION", "RAPPORT_RECU", null, null, null, null, null, T))).isZero();
     }
 
     @Test
     @DisplayName("Relance : notification TACHE au responsable, lien vers la tâche ; relance de soi-même : rien")
     void tacheRelancee() {
-        assertThat(service.tacheRelancee(new TacheRelancee("t-2", "Sauvegardes", "serge", "paul", T))).isEqualTo(1);
+        assertThat(service.tacheRelancee(new TacheRelancee("t-2", "Sauvegardes", "super", "pilote", T))).isEqualTo(1);
         NotificationUtilisateur n = enregistrees(1).get(0);
-        assertThat(n.getDestinataireId()).isEqualTo("serge");
+        assertThat(n.getDestinataireId()).isEqualTo("super");
         assertThat(n.getTitre()).isEqualTo("Relance : Sauvegardes");
-        assertThat(n.getSousTitre()).isEqualTo("Relancée par Paul Mbarga Atangana");
+        assertThat(n.getSousTitre()).isEqualTo("Relancée par Chef Département DES");
         assertThat(n.getLien()).isEqualTo("/des/taches?tache=t-2");
-        assertThat(service.tacheRelancee(new TacheRelancee("t-3", "x", "paul", "paul", T))).isZero();
+        assertThat(service.tacheRelancee(new TacheRelancee("t-3", "x", "pilote", "pilote", T))).isZero();
     }
 
     @Test
     @DisplayName("Demande soumise : notification DEMANDE à l'administration (sauf le demandeur), lien vers les demandes à traiter")
     void demandeSoumise() {
-        int n = service.demandeSoumise(new DemandeSoumise("d-1", "CREATION_COMPTE", "paul", List.of("admin", "rssi", "paul"), T));
+        int n = service.demandeSoumise(new DemandeSoumise("d-1", "CREATION_COMPTE", "pilote", List.of("admin", "rssi", "pilote"), T));
         assertThat(n).isEqualTo(2);
         List<NotificationUtilisateur> l = enregistrees(2);
         assertThat(l).extracting(NotificationUtilisateur::getDestinataireId).containsExactly("admin", "rssi");
         assertThat(l.get(0).getType()).isEqualTo(TypeNotification.DEMANDE);
-        assertThat(l.get(0).getTitre()).isEqualTo("Demande de Paul Mbarga Atangana");
+        assertThat(l.get(0).getTitre()).isEqualTo("Demande de Chef Département DES");
         assertThat(l.get(0).getSousTitre()).isEqualTo("Création de compte");
         assertThat(l.get(0).getLien()).isEqualTo("/des/administration/demandes?demande=d-1");
         assertThat(l.get(0).getReference()).isEqualTo(Reference.demande("d-1"));
@@ -305,38 +305,38 @@ class BoiteNotificationsServiceTest {
     @Test
     @DisplayName("Demande décidée : notification DEMANDE au demandeur, lien vers ses demandes ; type DEMANDE désactivé : rien")
     void demandeDecidee() {
-        assertThat(service.demandeDecidee(new DemandeDecidee("d-1", "PROFILS", "ACCEPTEE", "serge", List.of("paul"), T))).isEqualTo(1);
+        assertThat(service.demandeDecidee(new DemandeDecidee("d-1", "PROFILS", "ACCEPTEE", "super", List.of("pilote"), T))).isEqualTo(1);
         NotificationUtilisateur n = enregistrees(1).get(0);
-        assertThat(n.getDestinataireId()).isEqualTo("paul");
+        assertThat(n.getDestinataireId()).isEqualTo("pilote");
         assertThat(n.getTitre()).isEqualTo("Demande acceptée");
         assertThat(n.getLien()).isEqualTo("/des/equipe/demandes?demande=d-1");
-        assertThat(n.getActeurNom()).isEqualTo("Serge Ndzana");
-        PreferencesNotification p = PreferencesNotification.defauts("aminata", T);
+        assertThat(n.getActeurNom()).isEqualTo("Agent Homologation SNA");
+        PreferencesNotification p = PreferencesNotification.defauts("conductrice", T);
         p.modifier(null, null, Map.of(TypeNotification.DEMANDE, false), T);
-        when(preferences.findById("aminata")).thenReturn(Optional.of(p));
-        assertThat(service.demandeDecidee(new DemandeDecidee("d-2", "STATUT", "REFUSEE", "serge", List.of("aminata"), T))).isZero();
+        when(preferences.findById("conductrice")).thenReturn(Optional.of(p));
+        assertThat(service.demandeDecidee(new DemandeDecidee("d-2", "STATUT", "REFUSEE", "super", List.of("conductrice"), T))).isZero();
     }
 
     @Test
     @DisplayName("DDR-08 : proposition de statut refusée puis prononcée, notifiée à son proposant (jamais à l'approbateur), lien vers les propositions")
     void transitionTranchee() {
         String lien = "/des/institutions/i-1?onglet=transitions";
-        assertThat(service.transitionTranchee(new TransitionTranchee("i-1", "t-1", "Banque Atlantique", "ADHERENT", "REJETEE", "Statuts à jour exigés", "aminata", "paul", lien, T))).isEqualTo(1);
-        assertThat(service.transitionTranchee(new TransitionTranchee("i-1", "t-2", "Banque Atlantique", "ADHERENT", "APPROUVEE", null, "aminata", "paul", "https://ailleurs/x", T))).isEqualTo(1);
+        assertThat(service.transitionTranchee(new TransitionTranchee("i-1", "t-1", "Banque Atlantique", "ADHERENT", "REJETEE", "Statuts à jour exigés", "conductrice", "pilote", lien, T))).isEqualTo(1);
+        assertThat(service.transitionTranchee(new TransitionTranchee("i-1", "t-2", "Banque Atlantique", "ADHERENT", "APPROUVEE", null, "conductrice", "pilote", "https://ailleurs/x", T))).isEqualTo(1);
         List<NotificationUtilisateur> l = enregistrees(2);
-        assertThat(l).extracting(NotificationUtilisateur::getDestinataireId).containsOnly("aminata");
+        assertThat(l).extracting(NotificationUtilisateur::getDestinataireId).containsOnly("conductrice");
         assertThat(l.get(0).getType()).isEqualTo(TypeNotification.DEMANDE);
         assertThat(l.get(0).getTitre()).isEqualTo("Proposition de statut refusée : Banque Atlantique");
         assertThat(l.get(0).getSousTitre()).isEqualTo("Motif : Statuts à jour exigés");
         assertThat(l.get(0).getLien()).isEqualTo(lien);
         assertThat(l.get(0).getReference()).isEqualTo(Reference.transition("t-1"));
-        assertThat(l.get(0).getActeurNom()).isEqualTo("Paul Mbarga Atangana");
+        assertThat(l.get(0).getActeurNom()).isEqualTo("Chef Département DES");
         assertThat(l.get(1).getTitre()).isEqualTo("Adhésion prononcée : Banque Atlantique");
         assertThat(l.get(1).getSousTitre()).isNull();
         // Lien hors de l'application interne : la fiche de l'institution le remplace.
         assertThat(l.get(1).getLien()).isEqualTo(lien);
         // Le proposant qui trancherait lui-même (impossible : maker-checker) ne serait pas notifié.
-        assertThat(service.transitionTranchee(new TransitionTranchee("i-1", "t-3", "B", "ADHERENT", "APPROUVEE", null, "paul", "paul", lien, T))).isZero();
+        assertThat(service.transitionTranchee(new TransitionTranchee("i-1", "t-3", "B", "ADHERENT", "APPROUVEE", null, "pilote", "pilote", lien, T))).isZero();
     }
 
     // ------------------------------------------------------------------ mentions et réponses (D-82)
@@ -345,47 +345,47 @@ class BoiteNotificationsServiceTest {
     @DisplayName("Mention : notification MENTION non regroupée, en plus du message ; titre, sous-titre du groupe, lien et référence du message")
     void mention() {
         when(conversations.conversation("c-1")).thenReturn(Optional.of(new ConversationsPort.Conversation("c-1", "GROUPE", "Groupe Cadrage L-12", List.of())));
-        int n = service.messageEnvoye(new MessageEnvoye("c-1", "m-1", "paul", List.of("aminata", "serge"), T, null, null, List.of("serge")));
+        int n = service.messageEnvoye(new MessageEnvoye("c-1", "m-1", "pilote", List.of("conductrice", "super"), T, null, null, List.of("super")));
         assertThat(n).isEqualTo(3);
         List<NotificationUtilisateur> l = enregistrees(3);
         assertThat(l).extracting(NotificationUtilisateur::getType).containsExactly(TypeNotification.MESSAGE, TypeNotification.MESSAGE, TypeNotification.MENTION);
         NotificationUtilisateur m = l.get(2);
-        assertThat(m.getDestinataireId()).isEqualTo("serge");
-        assertThat(m.getTitre()).isEqualTo("Paul Mbarga Atangana vous a mentionné");
+        assertThat(m.getDestinataireId()).isEqualTo("super");
+        assertThat(m.getTitre()).isEqualTo("Chef Département DES vous a mentionné");
         assertThat(m.getSousTitre()).isEqualTo("Groupe Cadrage L-12");
         assertThat(m.getLien()).isEqualTo("/des/messagerie?conversation=c-1&message=m-1");
         assertThat(m.getReference()).isEqualTo(Reference.message("m-1"));
         assertThat(m.getConversationId()).isEqualTo("c-1");
-        assertThat(m.getActeurId()).isEqualTo("paul");
+        assertThat(m.getActeurId()).isEqualTo("pilote");
         assertThat(m.getNombre()).isEqualTo(1);
         assertThat(l.get(0).getConversationId()).isEqualTo("c-1");
         List<NotificationCreeePayload> p = publiees(3);
         assertThat(p.get(2).type()).isEqualTo("MENTION");
-        assertThat(p.get(2).destinataires()).containsExactly("serge");
+        assertThat(p.get(2).destinataires()).containsExactly("super");
         assertThat(p.get(2).referenceType()).isEqualTo("MESSAGE");
         assertThat(p.get(2).referenceId()).isEqualTo("m-1");
         // Jamais regroupée : aucune recherche de notification non lue pour ce type.
         verify(notifications, never()).nonLuePour(anyString(), eq(TypeNotification.MENTION), anyString(), anyString(), anyString());
-        verify(annuaire, times(1)).nomAffiche("paul");
+        verify(annuaire, times(1)).nomAffiche("pilote");
         verify(conversations, times(1)).conversation("c-1");
     }
 
     @Test
     @DisplayName("Réponse : REPONSE à l'auteur cité ; cumul mention et réponse : une seule notification, MENTION ; deux messages : deux notifications")
     void reponseEtCumul() {
-        service.messageEnvoye(new MessageEnvoye("c-1", "m-1", "paul", List.of("aminata", "serge"), T, null, "aminata", List.of()));
-        service.messageEnvoye(new MessageEnvoye("c-1", "m-2", "paul", List.of("aminata", "serge"), T.plusSeconds(1), null, "aminata", List.of("aminata", "serge")));
+        service.messageEnvoye(new MessageEnvoye("c-1", "m-1", "pilote", List.of("conductrice", "super"), T, null, "conductrice", List.of()));
+        service.messageEnvoye(new MessageEnvoye("c-1", "m-2", "pilote", List.of("conductrice", "super"), T.plusSeconds(1), null, "conductrice", List.of("conductrice", "super")));
         List<NotificationUtilisateur> propres = enregistrees(7).stream().filter(n -> n.getType() != TypeNotification.MESSAGE).toList();
         assertThat(propres).hasSize(3);
         NotificationUtilisateur r = propres.get(0);
         assertThat(r.getType()).isEqualTo(TypeNotification.REPONSE);
-        assertThat(r.getDestinataireId()).isEqualTo("aminata");
-        assertThat(r.getTitre()).isEqualTo("Paul Mbarga Atangana a répondu à votre message");
+        assertThat(r.getDestinataireId()).isEqualTo("conductrice");
+        assertThat(r.getTitre()).isEqualTo("Chef Département DES a répondu à votre message");
         assertThat(r.getSousTitre()).isNull();
         assertThat(r.getLien()).isEqualTo("/des/messagerie?conversation=c-1&message=m-1");
         assertThat(propres.subList(1, 3)).extracting(NotificationUtilisateur::getDestinataireId, NotificationUtilisateur::getType).containsExactly(
-            org.assertj.core.groups.Tuple.tuple("aminata", TypeNotification.MENTION),
-            org.assertj.core.groups.Tuple.tuple("serge", TypeNotification.MENTION)
+            org.assertj.core.groups.Tuple.tuple("conductrice", TypeNotification.MENTION),
+            org.assertj.core.groups.Tuple.tuple("super", TypeNotification.MENTION)
         );
         assertThat(propres).extracting(NotificationUtilisateur::getReference).containsExactly(Reference.message("m-1"), Reference.message("m-2"), Reference.message("m-2"));
     }
@@ -394,45 +394,45 @@ class BoiteNotificationsServiceTest {
     @DisplayName("Mention et réponse : jamais l'auteur ; événement de groupe ignoré ; ancien événement : message seul ; non-membre écarté")
     void exclusions() {
         // Réponse à soi et mention de soi : rien de plus que le message.
-        assertThat(service.messageEnvoye(new MessageEnvoye("c-1", "m-1", "paul", List.of("aminata"), T, null, "paul", List.of("paul")))).isEqualTo(1);
+        assertThat(service.messageEnvoye(new MessageEnvoye("c-1", "m-1", "pilote", List.of("conductrice"), T, null, "pilote", List.of("pilote")))).isEqualTo(1);
         // Événement de groupe : rien, même avec des champs D-82.
-        assertThat(service.messageEnvoye(new MessageEnvoye("c-1", "m-2", "paul", List.of("aminata"), T, "MEMBRES_AJOUTES", "aminata", List.of("aminata")))).isZero();
+        assertThat(service.messageEnvoye(new MessageEnvoye("c-1", "m-2", "pilote", List.of("conductrice"), T, "MEMBRES_AJOUTES", "conductrice", List.of("conductrice")))).isZero();
         // Ancien événement (sans les champs) : message seul.
-        assertThat(service.messageEnvoye(new MessageEnvoye("c-1", "m-3", "paul", List.of("aminata"), T, null))).isEqualTo(1);
+        assertThat(service.messageEnvoye(new MessageEnvoye("c-1", "m-3", "pilote", List.of("conductrice"), T, null))).isEqualTo(1);
         // Mention d'un compte qui n'est pas destinataire : écartée.
-        assertThat(service.messageEnvoye(new MessageEnvoye("c-1", "m-4", "paul", List.of("aminata"), T, null, "rachel", List.of("rachel")))).isEqualTo(1);
+        assertThat(service.messageEnvoye(new MessageEnvoye("c-1", "m-4", "pilote", List.of("conductrice"), T, null, "resp", List.of("resp")))).isEqualTo(1);
         assertThat(enregistrees(3)).extracting(NotificationUtilisateur::getType).containsOnly(TypeNotification.MESSAGE);
     }
 
     @Test
     @DisplayName("Préférences : MENTION désactivé, rien pour la mention mais le message reste ; MESSAGE désactivé, la mention reste")
     void preferencesMentionReponse() {
-        PreferencesNotification a = PreferencesNotification.defauts("aminata", T);
+        PreferencesNotification a = PreferencesNotification.defauts("conductrice", T);
         a.modifier(null, null, Map.of(TypeNotification.MENTION, false, TypeNotification.REPONSE, false), T);
-        PreferencesNotification s = PreferencesNotification.defauts("serge", T);
+        PreferencesNotification s = PreferencesNotification.defauts("super", T);
         s.modifier(null, null, Map.of(TypeNotification.MESSAGE, false), T);
-        when(preferences.findById("aminata")).thenReturn(Optional.of(a));
-        when(preferences.findById("serge")).thenReturn(Optional.of(s));
-        assertThat(service.messageEnvoye(new MessageEnvoye("c-1", "m-1", "paul", List.of("aminata", "serge"), T, null, "aminata", List.of("aminata", "serge")))).isEqualTo(2);
+        when(preferences.findById("conductrice")).thenReturn(Optional.of(a));
+        when(preferences.findById("super")).thenReturn(Optional.of(s));
+        assertThat(service.messageEnvoye(new MessageEnvoye("c-1", "m-1", "pilote", List.of("conductrice", "super"), T, null, "conductrice", List.of("conductrice", "super")))).isEqualTo(2);
         assertThat(enregistrees(2)).extracting(NotificationUtilisateur::getDestinataireId, NotificationUtilisateur::getType).containsExactly(
-            org.assertj.core.groups.Tuple.tuple("aminata", TypeNotification.MESSAGE),
-            org.assertj.core.groups.Tuple.tuple("serge", TypeNotification.MENTION)
+            org.assertj.core.groups.Tuple.tuple("conductrice", TypeNotification.MESSAGE),
+            org.assertj.core.groups.Tuple.tuple("super", TypeNotification.MENTION)
         );
     }
 
     @Test
     @DisplayName("Lecture d'une conversation : marque aussi ses mentions et réponses ; le filtre de type reste appliqué")
     void lectureConversation() {
-        NotificationUtilisateur msg = new NotificationUtilisateur("aminata", TypeNotification.MESSAGE, "P", null, "/", Reference.conversation("c-1"), "paul", "P", T).dansConversation("c-1");
-        NotificationUtilisateur men = new NotificationUtilisateur("aminata", TypeNotification.MENTION, "P", null, "/", Reference.message("m-1"), "paul", "P", T).dansConversation("c-1");
-        NotificationUtilisateur rep = new NotificationUtilisateur("aminata", TypeNotification.REPONSE, "P", null, "/", Reference.message("m-2"), "paul", "P", T).dansConversation("c-1");
-        when(notifications.findByDestinataireIdAndConversationIdAndLueLeIsNull("aminata", "c-1")).thenReturn(List.of(msg, men, rep));
-        assertThat(service.marquerLues("aminata", "MENTION", new ReferenceSaisie("collaboration", "CONVERSATION", "c-1"))).isEqualTo(1);
+        NotificationUtilisateur msg = new NotificationUtilisateur("conductrice", TypeNotification.MESSAGE, "P", null, "/", Reference.conversation("c-1"), "pilote", "P", T).dansConversation("c-1");
+        NotificationUtilisateur men = new NotificationUtilisateur("conductrice", TypeNotification.MENTION, "P", null, "/", Reference.message("m-1"), "pilote", "P", T).dansConversation("c-1");
+        NotificationUtilisateur rep = new NotificationUtilisateur("conductrice", TypeNotification.REPONSE, "P", null, "/", Reference.message("m-2"), "pilote", "P", T).dansConversation("c-1");
+        when(notifications.findByDestinataireIdAndConversationIdAndLueLeIsNull("conductrice", "c-1")).thenReturn(List.of(msg, men, rep));
+        assertThat(service.marquerLues("conductrice", "MENTION", new ReferenceSaisie("collaboration", "CONVERSATION", "c-1"))).isEqualTo(1);
         assertThat(men.estLue()).isTrue();
-        assertThat(service.marquerLues("aminata", null, new ReferenceSaisie("collaboration", "CONVERSATION", "c-1"))).isEqualTo(2);
+        assertThat(service.marquerLues("conductrice", null, new ReferenceSaisie("collaboration", "CONVERSATION", "c-1"))).isEqualTo(2);
         assertThat(msg.estLue()).isTrue();
         assertThat(rep.estLue()).isTrue();
-        verify(notifications, never()).findByDestinataireIdAndLueLeIsNull("aminata");
+        verify(notifications, never()).findByDestinataireIdAndLueLeIsNull("conductrice");
     }
 
     // ------------------------------------------------------------------ processus d'unité (D-87)
@@ -455,18 +455,18 @@ class BoiteNotificationsServiceTest {
     @Test
     @DisplayName("D-87 : étape soumise, une notification PROCESSUS par destinataire (jamais l'acteur), titre, sous-titre, lien rendu tel quel, référence de l'instance, non regroupée")
     void processusEtapeSoumise() {
-        int n = service.evenementProcessus(processus(NatureProcessus.ETAPE_SOUMISE, "SIGNATURE", "paul", List.of("serge", "paul", "aminata", "serge")));
+        int n = service.evenementProcessus(processus(NatureProcessus.ETAPE_SOUMISE, "SIGNATURE", "pilote", List.of("super", "pilote", "conductrice", "super")));
         assertThat(n).isEqualTo(2);
         List<NotificationUtilisateur> l = enregistrees(2);
-        assertThat(l).extracting(NotificationUtilisateur::getDestinataireId).containsExactly("serge", "aminata");
+        assertThat(l).extracting(NotificationUtilisateur::getDestinataireId).containsExactly("super", "conductrice");
         NotificationUtilisateur s = l.get(0);
         assertThat(s.getType()).isEqualTo(TypeNotification.PROCESSUS);
         assertThat(s.getTitre()).isEqualTo("Signature attendue : Analyse de la demande");
-        assertThat(s.getSousTitre()).isEqualTo("Flux vers la banque X, soumise par Paul Mbarga Atangana");
+        assertThat(s.getSousTitre()).isEqualTo("Flux vers la banque X, soumise par Chef Département DES");
         assertThat(s.getLien()).isEqualTo(LIEN);
         assertThat(s.getReference()).isEqualTo(Reference.processus(INSTANCE));
-        assertThat(s.getActeurId()).isEqualTo("paul");
-        assertThat(s.getActeurNom()).isEqualTo("Paul Mbarga Atangana");
+        assertThat(s.getActeurId()).isEqualTo("pilote");
+        assertThat(s.getActeurNom()).isEqualTo("Chef Département DES");
         assertThat(s.getNombre()).isEqualTo(1);
         assertThat(publiees(2)).allSatisfy(p -> {
             assertThat(p.type()).isEqualTo("PROCESSUS");
@@ -481,40 +481,40 @@ class BoiteNotificationsServiceTest {
     @Test
     @DisplayName("D-87 : étape activée (sans acteur) ; départ avec nom de la personne partie ; instance close au lanceur ; lien étranger remplacé")
     void processusAutresNatures() {
-        assertThat(service.evenementProcessus(processus(NatureProcessus.ETAPE_ACTIVEE, null, null, List.of("aminata")))).isEqualTo(1);
+        assertThat(service.evenementProcessus(processus(NatureProcessus.ETAPE_ACTIVEE, null, null, List.of("conductrice")))).isEqualTo(1);
         var depart = new EvenementProcessus(
             INSTANCE,
             new FaitsProcessus(NatureProcessus.ETAPE_REAFFECTEE, "OUVERTURE_FLUX_RESEAU", "Flux vers la banque X", "MISE_EN_OEUVRE", null, "DEPART", false, false, null),
             null,
-            "serge",
-            List.of("aminata", "chef"),
+            "super",
+            List.of("conductrice", "chef"),
             "https://ailleurs.example/piege",
             T
         );
         assertThat(service.evenementProcessus(depart)).isEqualTo(2);
-        assertThat(service.evenementProcessus(processus(NatureProcessus.INSTANCE_CLOSE, "ANNULEE", "serge", List.of("paul")))).isEqualTo(1);
+        assertThat(service.evenementProcessus(processus(NatureProcessus.INSTANCE_CLOSE, "ANNULEE", "super", List.of("pilote")))).isEqualTo(1);
         List<NotificationUtilisateur> l = enregistrees(4);
         assertThat(l.get(0).getTitre()).isEqualTo("Étape à réaliser : Analyse de la demande");
         assertThat(l.get(0).getSousTitre()).isEqualTo("Flux vers la banque X, échéance 2026-10-09");
         assertThat(l.get(0).getActeurId()).isNull();
         assertThat(l.get(1).getTitre()).isEqualTo("Étape à reprendre : MISE_EN_OEUVRE");
-        assertThat(l.get(1).getSousTitre()).isEqualTo("Flux vers la banque X, après le départ de Serge Ndzana");
+        assertThat(l.get(1).getSousTitre()).isEqualTo("Flux vers la banque X, après le départ de Agent Homologation SNA");
         assertThat(l.get(1).getLien()).isEqualTo("/des/processus/instances/" + INSTANCE);
-        assertThat(l.get(3).getDestinataireId()).isEqualTo("paul");
+        assertThat(l.get(3).getDestinataireId()).isEqualTo("pilote");
         assertThat(l.get(3).getTitre()).isEqualTo("Processus annulé : Flux vers la banque X");
-        assertThat(l.get(3).getSousTitre()).isEqualTo("OUVERTURE_FLUX_RESEAU, annulé par Serge Ndzana");
+        assertThat(l.get(3).getSousTitre()).isEqualTo("OUVERTURE_FLUX_RESEAU, annulé par Agent Homologation SNA");
     }
 
     @Test
     @DisplayName("D-87 : type PROCESSUS désactivé, acteur seul destinataire, ou instance absente : aucune notification")
     void processusSansNotification() {
-        PreferencesNotification p = PreferencesNotification.defauts("aminata", T);
+        PreferencesNotification p = PreferencesNotification.defauts("conductrice", T);
         p.modifier(null, null, Map.of(TypeNotification.PROCESSUS, false), T);
-        when(preferences.findById("aminata")).thenReturn(Optional.of(p));
-        assertThat(service.evenementProcessus(processus(NatureProcessus.ETAPE_ACTIVEE, null, null, List.of("aminata")))).isZero();
-        assertThat(service.evenementProcessus(processus(NatureProcessus.ETAPE_SIGNEE, "TERMINEE", "paul", List.of("paul")))).isZero();
-        assertThat(service.evenementProcessus(new EvenementProcessus(null, null, null, null, List.of("serge"), LIEN, T))).isZero();
-        assertThat(service.evenementProcessus(new EvenementProcessus(" ", null, null, null, List.of("serge"), LIEN, T))).isZero();
+        when(preferences.findById("conductrice")).thenReturn(Optional.of(p));
+        assertThat(service.evenementProcessus(processus(NatureProcessus.ETAPE_ACTIVEE, null, null, List.of("conductrice")))).isZero();
+        assertThat(service.evenementProcessus(processus(NatureProcessus.ETAPE_SIGNEE, "TERMINEE", "pilote", List.of("pilote")))).isZero();
+        assertThat(service.evenementProcessus(new EvenementProcessus(null, null, null, null, List.of("super"), LIEN, T))).isZero();
+        assertThat(service.evenementProcessus(new EvenementProcessus(" ", null, null, null, List.of("super"), LIEN, T))).isZero();
         verify(notifications, never()).save(any());
     }
 }

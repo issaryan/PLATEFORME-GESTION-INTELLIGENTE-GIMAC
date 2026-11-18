@@ -97,7 +97,7 @@ class RegistreSandboxIT extends AbstractParticipantIT {
     void lectureDeLaFiche() throws Exception {
         Institution i = institution("99001", InstitutionStatus.EN_HOMOLOGATION);
         UUID compte = UUID.randomUUID();
-        Correspondent actif = correspondant(i, "Awa Ndiaye", true, compte);
+        Correspondent actif = correspondant(i, "Cheffe DDRM", true, compte);
         correspondant(i, "Ancien Correspondant", false, null);
         service(i, "MOBILE", SubscriptionState.ACTIF);
         service(i, "CARTE", SubscriptionState.ACTIF);

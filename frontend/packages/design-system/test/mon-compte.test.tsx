@@ -243,8 +243,8 @@ describe('avatars de la messagerie et des destinataires', () => {
   it('destinataires : avatar dans les suggestions et les jetons choisis, y compris hors résultats', () => {
     const changer = vi.fn()
     const { container } = render(
-      <MultiSelect label="Destinataires" suggestions value={['u-1', 'u-9']} onChange={changer} labels={{ 'u-9': 'Mireille Obame' }}
-        avatars={{ 'u-9': { name: 'Mireille Obame', src: 'data:image/png;base64,M' } }}
+      <MultiSelect label="Destinataires" suggestions value={['u-1', 'u-9']} onChange={changer} labels={{ 'u-9': 'Agent Qualité' }}
+        avatars={{ 'u-9': { name: 'Agent Qualité', src: 'data:image/png;base64,M' } }}
         options={[{ value: 'u-1', label: 'Responsable SNA', avatar: { name: 'Responsable SNA', src: 'data:image/png;base64,R' } }, { value: 'u-2', label: 'Superviseur Opérations', avatar: { name: 'Superviseur Opérations' } }, { value: 'u-3', label: 'Sans avatar' }]} />,
     )
     expect(container.querySelectorAll('.gm-tag-personne img')).toHaveLength(2)

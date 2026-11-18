@@ -88,7 +88,7 @@ describe('service http des notifications', () => {
 describe('service simulé des notifications', () => {
   it('consolidation par conversation, tri par misAJourLe, compteur, lecture par référence', async () => {
     const s = notificationsSimulees({ latenceMs: 0 })
-    s.recevoir(message('c-1', 'Carine', { le: '2026-10-05T08:00:00Z' }))
+    s.recevoir(message('c-1', 'Officière', { le: '2026-10-05T08:00:00Z' }))
     s.recevoir(tache('t-1', { le: '2026-10-05T09:00:00Z' }))
     const regroupee = s.recevoir(message('c-1', 'Pilote', { le: '2026-10-05T10:00:00Z' }))
     expect(regroupee).toMatchObject({ nombre: 2, titre: 'Pilote', misAJourLe: '2026-10-05T10:00:00Z' })
@@ -107,7 +107,7 @@ describe('service simulé des notifications', () => {
   })
 
   it('marquer lue (404 inconnue), pagination (400), préférences (champ absent gardé, type inconnu 400, type désactivé)', async () => {
-    const s = notificationsSimulees({ latenceMs: 0, initiales: [message('c-1', 'Carine'), tache('t-1', { lueLe: '2026-10-01T00:00:00Z' })] })
+    const s = notificationsSimulees({ latenceMs: 0, initiales: [message('c-1', 'Officière'), tache('t-1', { lueLe: '2026-10-01T00:00:00Z' })] })
     const [n] = (await s.lister({ etat: 'non-lues' })).contenu
     await s.marquerLue(n.id)
     await s.marquerLue(n.id)
@@ -192,7 +192,7 @@ function monter(s: ServiceNotificationsSimule, o: { chemin?: string; actif?: boo
 
 describe('cloche de la barre du haut', () => {
   it('sans notifications dans la couche : cloche inerte, sans pastille', () => {
-    monter(notificationsSimulees({ latenceMs: 0, initiales: [message('c-1', 'Carine')] }), { actif: false })
+    monter(notificationsSimulees({ latenceMs: 0, initiales: [message('c-1', 'Officière')] }), { actif: false })
     expect(screen.getByRole('button', { name: 'Notifications' }).getAttribute('aria-haspopup')).toBeNull()
     expect(document.querySelector('.gm-topbar-pastille')).toBeNull()
   })
@@ -206,20 +206,20 @@ describe('cloche de la barre du haut', () => {
 
   it('panneau : type, titre, sous-titre, aperçu, nombre ; clic = lien et lue ; tout marquer comme lu ; voir tout', async () => {
     const s = notificationsSimulees({ latenceMs: 0, initiales: [
-      message('c-1', 'Carine Ebongue', { sousTitre: 'Groupe Cadrage L-12', nombre: 3, le: '2026-10-05T10:00:00Z' }),
+      message('c-1', 'Officière Console', { sousTitre: 'Groupe Cadrage L-12', nombre: 3, le: '2026-10-05T10:00:00Z' }),
       tache('t-1', { le: '2026-10-05T09:00:00Z' }),
-      { type: 'RAPPORT', titre: 'Rapport de Joël', sousTitre: 'Rapport quotidien 2026-10-04', lien: '/des/rapports?vue=recus&rapport=r-1', reference: { service: 'pilotage', type: 'RAPPORT', id: 'r-1' }, acteur: null, le: '2026-10-04T09:00:00Z', lueLe: '2026-10-04T10:00:00Z' },
+      { type: 'RAPPORT', titre: 'Rapport de Agent', sousTitre: 'Rapport quotidien 2026-10-04', lien: '/des/rapports?vue=recus&rapport=r-1', reference: { service: 'pilotage', type: 'RAPPORT', id: 'r-1' }, acteur: null, le: '2026-10-04T09:00:00Z', lueLe: '2026-10-04T10:00:00Z' },
     ] })
     monter(s)
     await waitFor(() => expect(document.querySelector('.gm-topbar-pastille')?.textContent).toBe('2'))
     fireEvent.click(screen.getByRole('button', { name: 'Notifications, 2 non lues' }))
     const panneau = screen.getByRole('dialog', { name: 'Centre de notifications' })
-    await within(panneau).findByText('Carine Ebongue')
+    await within(panneau).findByText('Officière Console')
     expect(within(panneau).getByText('Groupe Cadrage L-12')).toBeTruthy()
-    expect(await within(panneau).findByText('Dernier message de Carine Ebongue')).toBeTruthy()
+    expect(await within(panneau).findByText('Dernier message de Officière Console')).toBeTruthy()
     expect(within(panneau).getByText('3 messages')).toBeTruthy()
     expect(within(panneau).getByText('Échéance : 2026-10-09')).toBeTruthy()
-    expect(within(panneau).getByRole('button', { name: 'Rapport : Rapport de Joël' })).toBeTruthy()
+    expect(within(panneau).getByRole('button', { name: 'Rapport : Rapport de Agent' })).toBeTruthy()
     expect(within(panneau).getByText('2 non lues')).toBeTruthy()
     fireEvent.click(within(panneau).getByRole('button', { name: 'Tâche : Tâche confiée par Pilote, non lue' }))
     expect(screen.getByTestId('ici').textContent).toBe('/des/taches?tache=t-1')
@@ -291,11 +291,11 @@ describe('fenêtres surgissantes', () => {
     await waitFor(() => expect(document.querySelector('.gm-topbar-pastille')?.textContent).toBe('1'))
     // L'état connu au chargement ne surgit pas.
     expect(screen.queryByRole('region', { name: 'Notifications reçues' })).toBeNull()
-    act(() => void s.recevoir(message('c-1', 'Carine Ebongue', { sousTitre: 'Groupe Cadrage' })))
+    act(() => void s.recevoir(message('c-1', 'Officière Console', { sousTitre: 'Groupe Cadrage' })))
     const region = await screen.findByRole('region', { name: 'Notifications reçues' })
-    expect(await within(region).findByText('Carine Ebongue')).toBeTruthy()
+    expect(await within(region).findByText('Officière Console')).toBeTruthy()
     expect(within(region).getByText('Groupe Cadrage')).toBeTruthy()
-    expect(await within(region).findByText('Dernier message de Carine Ebongue')).toBeTruthy()
+    expect(await within(region).findByText('Dernier message de Officière Console')).toBeTruthy()
     act(() => void s.recevoir(tache('t-1')))
     await within(region).findByText('Tâche confiée par Pilote')
     act(() => void s.recevoir(message('c-2', 'Pilote')))
@@ -303,7 +303,7 @@ describe('fenêtres surgissantes', () => {
     act(() => void s.recevoir(message('c-3', 'Responsable')))
     await within(region).findByText('Responsable')
     expect(region.querySelectorAll('.gm-toast')).toHaveLength(SURGISSANTES_MAX)
-    expect(within(region).queryByText('Carine Ebongue')).toBeNull()
+    expect(within(region).queryByText('Officière Console')).toBeNull()
     // Regroupement : la notification de la même conversation surgit de nouveau, avec son nombre.
     act(() => void s.recevoir(message('c-3', 'Responsable')))
     await within(region).findByText('Responsable (2)')
@@ -322,7 +322,7 @@ describe('fenêtres surgissantes', () => {
       monter(s)
       await waitFor(() => expect(screen.getByRole('button', { name: 'Notifications' })).toBeTruthy())
       await act(async () => { await vi.advanceTimersByTimeAsync(50) })
-      act(() => void s.recevoir(message('c-1', 'Carine')))
+      act(() => void s.recevoir(message('c-1', 'Officière')))
       await screen.findByRole('region', { name: 'Notifications reçues' })
       await act(async () => { await vi.advanceTimersByTimeAsync(6_100) })
       expect(screen.queryByRole('region', { name: 'Notifications reçues' })).toBeNull()
@@ -337,7 +337,7 @@ describe('fenêtres surgissantes', () => {
     monter(s, { chemin: '/des/messagerie?conversation=c-1', contenu: <><Aller /><Lecture id="c-1" /></> })
     await waitFor(() => expect(lues).toHaveBeenCalledWith({ reference: referenceConversation('c-1') }))
     await waitFor(() => expect(document.querySelector('.gm-topbar-pastille')?.textContent).toBe('1'))
-    act(() => void s.recevoir(message('c-1', 'Carine')))
+    act(() => void s.recevoir(message('c-1', 'Officière')))
     await waitFor(async () => expect(await s.compteur()).toEqual({ nonLues: 1 }))
     expect(screen.queryByRole('region', { name: 'Notifications reçues' })).toBeNull()
     // Une autre conversation surgit.
@@ -364,10 +364,10 @@ describe('fenêtres surgissantes', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Notifications' })).toBeTruthy())
     await act(async () => { await new Promise((r) => setTimeout(r, 30)) })
     Object.defineProperty(document, 'hidden', { value: true, configurable: true })
-    act(() => void s.recevoir(message('c-1', 'Carine')))
+    act(() => void s.recevoir(message('c-1', 'Officière')))
     await waitFor(() => expect(creees).toHaveLength(1))
-    expect(creees[0].titre).toBe('Carine')
-    expect(creees[0].o).toMatchObject({ body: 'Dernier message de Carine', tag: expect.stringMatching(/^NOT-/) })
+    expect(creees[0].titre).toBe('Officière')
+    expect(creees[0].o).toMatchObject({ body: 'Dernier message de Officière', tag: expect.stringMatching(/^NOT-/) })
     expect(screen.queryByRole('region', { name: 'Notifications reçues' })).toBeNull()
     act(() => creees[0].onclick!())
     expect(focus).toHaveBeenCalled()

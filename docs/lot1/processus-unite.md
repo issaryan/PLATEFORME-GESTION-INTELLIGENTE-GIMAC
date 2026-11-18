@@ -291,7 +291,7 @@ membre actif de l'unité portant le profil) ; valider : le validateur, jamais l'
   signatures, validateur en JSONB), `processus_historique` (ajout seul, déclencheur) ; `tache.profil_requis`
   (changelog `20261007090000_pil_processus_unite.xml`).
 - Démonstration : avec `gimac.demonstration.processus=true` (profil dev), l'organisation simulée gagne le pôle réseau
-  (chef Brice Onana, ingénieurs portant `ROLE_POLE_RESEAU`) et le processus publié `OUVERTURE_FLUX_RESEAU` v1
+  (chef Agent Accueil, ingénieurs portant `ROLE_POLE_RESEAU`) et le processus publié `OUVERTURE_FLUX_RESEAU` v1
   « Ouverture d'un flux réseau » : DEMANDE (LANCEUR, champs SOURCE, DESTINATION, PORT, PROTOCOLE, DATE_SOUHAITEE),
   ANALYSE (PROFIL `ROLE_POLE_RESEAU`, validée par CHEF_UNITE, note d'analyse), MISE_EN_OEUVRE (AU_LANCEMENT,
   remplacement `ROLE_POLE_RESEAU`, configuration), RECETTE (PROFIL, procès-verbal signé par CHEF_UNITE, signature

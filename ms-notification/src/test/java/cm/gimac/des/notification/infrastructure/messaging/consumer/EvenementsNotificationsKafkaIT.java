@@ -93,7 +93,7 @@ class EvenementsNotificationsKafkaIT extends AbstractNotificationIT {
         assertThat(compter("select count(*) from notification_utilisateur where reference_id = ? and destinataire_id = ?", conversation, CHEF_DES)).isZero();
         assertThat(compter("select coalesce(max(nombre), 0) from notification_utilisateur where reference_id = ?", conversation)).isEqualTo(1);
         assertThat(jdbc.queryForObject("select titre from notification_utilisateur where reference_id = ? and destinataire_id = ?", String.class, conversation, CONDUCTEUR)).isEqualTo(
-            "Paul Mbarga Atangana"
+            "Chef Département DES"
         );
 
         String notification = jdbc.queryForObject(
@@ -216,7 +216,7 @@ class EvenementsNotificationsKafkaIT extends AbstractNotificationIT {
         String m1 = UUID.randomUUID().toString();
         String m2 = UUID.randomUUID().toString();
         String m3 = UUID.randomUUID().toString();
-        // m1 : Paul répond à Aminata et mentionne Serge ; m2 : Paul répond à Aminata en la mentionnant (une MENTION) ;
+        // m1 : Chef répond à Conductrice et mentionne Super ; m2 : Chef répond à Conductrice en la mentionnant (une MENTION) ;
         // m3 : ancien événement sans les champs D-82 ; événement de groupe avec champs : ignoré.
         String reponseEtMention =
             """
@@ -241,7 +241,7 @@ class EvenementsNotificationsKafkaIT extends AbstractNotificationIT {
         publier("collaboration.message", conversation, reponseEtMention, reponseEtMention, cumul, ancien, groupe);
         consommateurs.getListenerContainer(EvenementsNotificationsConsumer.GROUPE).start();
 
-        // Messages : Aminata et Serge (regroupés), Paul (m3) ; m1 : REPONSE Aminata, MENTION Serge ; m2 : MENTION Aminata.
+        // Messages : Conductrice et Super (regroupés), Chef (m3) ; m1 : REPONSE Conductrice, MENTION Super ; m2 : MENTION Conductrice.
         assertThat(attendre("select count(*) from notification_utilisateur where conversation_id = ?", 6, conversation)).isEqualTo(6);
         assertThat(attendre("select count(*) from notification_utilisateur where reference_id = ? and type = 'MESSAGE' and nombre = 2", 2, conversation)).isEqualTo(2);
         Thread.sleep(1000);
@@ -254,7 +254,7 @@ class EvenementsNotificationsKafkaIT extends AbstractNotificationIT {
         assertThat(compter("select count(*) from notification_utilisateur where reference_id = ?", m3)).isZero();
         assertThat(compter("select count(*) from notification_utilisateur where conversation_id = ? and destinataire_id = ? and type <> 'MESSAGE'", conversation, CHEF_DES)).isZero();
         assertThat(jdbc.queryForObject("select titre from notification_utilisateur where reference_id = ? and destinataire_id = ?", String.class, m1, INGENIEUR)).isEqualTo(
-            "Paul Mbarga Atangana vous a mentionné"
+            "Chef Département DES vous a mentionné"
         );
         assertThat(jdbc.queryForObject("select lien from notification_utilisateur where reference_id = ? and destinataire_id = ?", String.class, m1, CONDUCTEUR)).isEqualTo(
             "/des/messagerie?conversation=" + conversation + "&message=" + m1
@@ -312,7 +312,7 @@ class EvenementsNotificationsKafkaIT extends AbstractNotificationIT {
         publier("pilotage.process", instance, publiee, lancee, lancee, activee, signee, close);
         consommateurs.getListenerContainer(EvenementsNotificationsConsumer.GROUPE).start();
 
-        // Lancée : le chef (pas le lanceur) ; activée : Serge ; signée : Serge ; close : Aminata (lanceuse).
+        // Lancée : le chef (pas le lanceur) ; activée : Super ; signée : Super ; close : Conductrice (lanceuse).
         assertThat(attendre("select count(*) from notification_utilisateur where reference_id = ? and type = 'PROCESSUS'", 4, instance)).isEqualTo(4);
         Thread.sleep(1000);
         assertThat(compter("select count(*) from notification_utilisateur where reference_id = ?", instance)).isEqualTo(4);
@@ -321,13 +321,13 @@ class EvenementsNotificationsKafkaIT extends AbstractNotificationIT {
         assertThat(compter("select count(*) from notification_utilisateur where reference_id = ? and destinataire_id = ?", instance, INGENIEUR)).isEqualTo(2);
         assertThat(
             jdbc.queryForMap("select titre, sous_titre, lien from notification_utilisateur where reference_id = ? and destinataire_id = ?", instance, CHEF_DES)
-        ).containsEntry("titre", "Processus lancé : Flux vers la banque X").containsEntry("sous_titre", "OUVERTURE_FLUX_RESEAU, lancé par Aminata Ngono").containsEntry("lien", lien);
+        ).containsEntry("titre", "Processus lancé : Flux vers la banque X").containsEntry("sous_titre", "OUVERTURE_FLUX_RESEAU, lancé par Conductrice Projet A").containsEntry("lien", lien);
         assertThat(
             jdbc.queryForMap("select titre, sous_titre, lien from notification_utilisateur where reference_id = ? and destinataire_id = ? and titre like 'Étape à prendre%'", instance, INGENIEUR)
         ).containsEntry("titre", "Étape à prendre : Analyse de la demande").containsEntry("sous_titre", "Flux vers la banque X, échéance 2026-10-09").containsEntry("lien", lien + "?etape=ANALYSE");
         assertThat(
             jdbc.queryForMap("select titre, sous_titre from notification_utilisateur where reference_id = ? and destinataire_id = ? and titre like 'Étape signée%'", instance, INGENIEUR)
-        ).containsEntry("titre", "Étape signée : RECETTE").containsEntry("sous_titre", "Flux vers la banque X, signée par Paul Mbarga Atangana");
+        ).containsEntry("titre", "Étape signée : RECETTE").containsEntry("sous_titre", "Flux vers la banque X, signée par Chef Département DES");
         assertThat(
             jdbc.queryForMap("select titre, sous_titre from notification_utilisateur where reference_id = ? and destinataire_id = ?", instance, CONDUCTEUR)
         ).containsEntry("titre", "Processus terminé : Flux vers la banque X").containsEntry("sous_titre", "OUVERTURE_FLUX_RESEAU");

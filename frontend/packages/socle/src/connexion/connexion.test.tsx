@@ -33,7 +33,7 @@ afterEach(() => {
 
 const session = (identifiant: string): Session => ({ sujet: identifiant, nom: identifiant, identifiant, roles: [], permissions: [], institutionId: '', acr: '2', doubleFacteur: true })
 const COMPTES: CompteConnexionDemo[] = [
-  { identifiant: 'c.ateba', couches: ['des', 'console'], role: 'ROLE_CHEF_DDRM', session: session('c.ateba') },
+  { identifiant: 'c.rh', couches: ['des', 'console'], role: 'ROLE_CHEF_DDRM', session: session('c.rh') },
   { identifiant: 'nouveau', couches: ['des'], etat: 'PREMIER_ACCES', role: 'ROLE_SNA', session: session('nouveau') },
   { identifiant: 'ancien', couches: ['des'], etat: 'INACTIF', session: session('ancien') },
   { identifiant: 'correspondant-a', motDePasse: 'Propre-Mdp-2026!', couches: ['portail'], session: session('correspondant-a') },
@@ -80,11 +80,11 @@ describe('PageConnexion : identifiant, mot de passe, puis code', () => {
 
   it('CODE_REQUIS puis CONNECTE : code à six chiffres, mot de passe effacé, retour à la page demandée', async () => {
     const vers = monter('/connexion?retour=%2Fdes%2Fliaisons')
-    saisir('identifiant', 'c.ateba')
+    saisir('identifiant', 'c.rh')
     saisir('motDePasse', MOT_DE_PASSE_DEMO)
     cliquer('Se connecter')
     expect(await screen.findByLabelText(/^Code à six chiffres/)).toBeTruthy()
-    expect(screen.getByText(/Mot de passe vérifié pour c.ateba/)).toBeTruthy()
+    expect(screen.getByText(/Mot de passe vérifié pour c.rh/)).toBeTruthy()
     expect(document.querySelector('input[name="motDePasse"]')).toBeNull()
     saisir('code', '12a34')
     expect((document.querySelector('input[name="code"]') as HTMLInputElement).value).toBe('1234')
@@ -93,14 +93,14 @@ describe('PageConnexion : identifiant, mot de passe, puis code', () => {
     saisir('code', '000000')
     cliquer('Vérifier le code')
     await waitFor(() => expect(vers).toHaveBeenCalledWith('/des/liaisons'))
-    expect(lireSessionDemo()).toEqual({ identifiant: 'c.ateba', role: 'ROLE_CHEF_DDRM', premierAcces: false })
+    expect(lireSessionDemo()).toEqual({ identifiant: 'c.rh', role: 'ROLE_CHEF_DDRM', premierAcces: false })
   })
 
   it('code refusé : message dédié, code effacé ; « Changer d’identifiant » efface le mot de passe', async () => {
     const service = sim()
     const connecter = vi.spyOn(service, 'connecter')
     monter('/connexion', service)
-    saisir('identifiant', 'c.ateba')
+    saisir('identifiant', 'c.rh')
     saisir('motDePasse', MOT_DE_PASSE_DEMO)
     cliquer('Se connecter')
     await screen.findByLabelText(/^Code à six chiffres/)
@@ -116,7 +116,7 @@ describe('PageConnexion : identifiant, mot de passe, puis code', () => {
     expect(await screen.findByText(/Code incorrect ou expiré/)).toBeTruthy()
     cliquer("Changer d'identifiant")
     expect((document.querySelector('input[name="motDePasse"]') as HTMLInputElement).value).toBe('')
-    expect((document.querySelector('input[name="identifiant"]') as HTMLInputElement).value).toBe('c.ateba')
+    expect((document.querySelector('input[name="identifiant"]') as HTMLInputElement).value).toBe('c.rh')
   })
 
   it('PREMIER_ACCES : session restreinte ouverte, tableau de bord de la couche (l’assistant s’y ouvre)', async () => {
@@ -129,7 +129,7 @@ describe('PageConnexion : identifiant, mot de passe, puis code', () => {
   })
 
   it.each([
-    ['c.ateba', 'mauvais', 'Identifiant ou mot de passe incorrect.'],
+    ['c.rh', 'mauvais', 'Identifiant ou mot de passe incorrect.'],
     ['inconnu', MOT_DE_PASSE_DEMO, 'Identifiant ou mot de passe incorrect.'],
     ['ancien', MOT_DE_PASSE_DEMO, /Ce compte est désactivé/],
   ])('refus : %s → message par code', async (identifiant, mdp, attendu) => {
@@ -144,7 +144,7 @@ describe('PageConnexion : identifiant, mot de passe, puis code', () => {
   it('trop de tentatives (429) après cinq échecs en une minute', async () => {
     monter()
     for (let i = 0; i < 5; i++) {
-      saisir('identifiant', 'c.ateba')
+      saisir('identifiant', 'c.rh')
       saisir('motDePasse', 'faux')
       cliquer('Se connecter')
       await screen.findByText('Identifiant ou mot de passe incorrect.')
@@ -180,7 +180,7 @@ describe('PageConnexion : identifiant, mot de passe, puis code', () => {
 
   it('destination imposée ; retour hors de l’application ignoré', async () => {
     const vers = monter('/connexion?retour=https%3A%2F%2Fevil.example', sim(), { destination: '/des/parcours' })
-    saisir('identifiant', 'c.ateba')
+    saisir('identifiant', 'c.rh')
     saisir('motDePasse', MOT_DE_PASSE_DEMO)
     cliquer('Se connecter')
     await screen.findByLabelText(/^Code à six chiffres/)
@@ -258,7 +258,7 @@ describe('Mot de passe oublié', () => {
   it('trop de demandes : message par code', async () => {
     const service = { ...sim(), motDePasseOublie: vi.fn().mockRejectedValue(new ApiError(429, 'CNX_TROP_DE_TENTATIVES', '', '')) }
     monter('/connexion/mot-de-passe-oublie', service)
-    saisir('identifiant', 'c.ateba')
+    saisir('identifiant', 'c.rh')
     cliquer('Recevoir un lien de réinitialisation')
     expect(await screen.findByText(/Trop de tentatives/)).toBeTruthy()
   })

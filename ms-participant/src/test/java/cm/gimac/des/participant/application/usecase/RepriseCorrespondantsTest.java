@@ -88,7 +88,7 @@ class RepriseCorrespondantsTest {
     }
 
     static CorrespondantRepris ligne(String code) {
-        return new CorrespondantRepris(code, UUID.randomUUID(), "Awa Fictive", null, null, null, null, null);
+        return new CorrespondantRepris(code, UUID.randomUUID(), "Correspondante Fictive", null, null, null, null, null);
     }
 
     @Test
@@ -140,13 +140,13 @@ class RepriseCorrespondantsTest {
     @DisplayName("Existant : inchangé, puis mis à jour et réactivé ; institution inconnue ou close refusée")
     void existantEtRefus() {
         UUID compte = UUID.randomUUID();
-        Correspondent c = new Correspondent().fullName("Awa Fictive").duty(cm.gimac.des.participant.domain.enumeration.CorrespondentFunction.MONETIQUE).channels("messagerie").onCall247(false).active(true).userId(compte);
+        Correspondent c = new Correspondent().fullName("Correspondante Fictive").duty(cm.gimac.des.participant.domain.enumeration.CorrespondentFunction.MONETIQUE).channels("messagerie").onCall247(false).active(true).userId(compte);
         c.setId(UUID.randomUUID());
         when(correspondants.findAll(any(Specification.class))).thenReturn(List.of(c));
-        CorrespondantRepris meme = new CorrespondantRepris("99001", compte, "Awa Fictive", null, null, null, null, null);
+        CorrespondantRepris meme = new CorrespondantRepris("99001", compte, "Correspondante Fictive", null, null, null, null, null);
         assertThat(reprise.importer(List.of(meme), false, null, REPRISE).lignes().get(0).resultat()).isEqualTo(Resultat.INCHANGE);
         c.setActive(false);
-        CorrespondantRepris change = new CorrespondantRepris("99001", compte, "Awa Fictive", "DIRECTION", "a@b.invalid", "+237 1", "messagerie", true);
+        CorrespondantRepris change = new CorrespondantRepris("99001", compte, "Correspondante Fictive", "DIRECTION", "a@b.invalid", "+237 1", "messagerie", true);
         var l = reprise.importer(List.of(change), false, null, REPRISE).lignes().get(0);
         assertThat(l.resultat()).isEqualTo(Resultat.MIS_A_JOUR);
         assertThat(l.changements()).containsExactly("fonction", "astreinte247", "actif", "email", "telephone");

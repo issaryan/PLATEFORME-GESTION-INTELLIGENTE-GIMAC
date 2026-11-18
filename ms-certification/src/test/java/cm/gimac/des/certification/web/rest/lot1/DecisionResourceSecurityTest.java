@@ -178,7 +178,7 @@ class DecisionResourceSecurityTest {
                 "SIGNE_GIMAC",
                 CouvertureVue.de(100, 3, 3),
                 List.of("RETRAIT"),
-                "Aminata Ngono",
+                "Conductrice Projet A",
                 LocalDate.parse("2026-09-29"),
                 "e".repeat(64),
                 new SignatureVue("Chef du DES", "CHEF_DES", LocalDate.parse("2026-09-30"), h),

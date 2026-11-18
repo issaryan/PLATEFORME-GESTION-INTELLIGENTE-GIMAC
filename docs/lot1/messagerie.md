@@ -157,7 +157,7 @@ référence) les marque lues avec la notification de message ; préférences `ty
 
 ```jsonc
 // Personne de l'annuaire
-{ "id": "…", "nom": "Paul Mbarga Atangana", "fonction": "Chef du DES", "profils": ["ROLE_CHEF_DES"] }
+{ "id": "…", "nom": "Chef Département DES", "fonction": "Chef du DES", "profils": ["ROLE_CHEF_DES"] }
 
 // Conversation (liste et détail)
 {
@@ -165,7 +165,7 @@ référence) les marque lues avec la notification de message ; préférences `ty
   "liaison": { "liaisonId": "uuid", "reference": "LIA-2026-027" } | null,
   "membres": [ { "id": "…", "nom": "…", "fonction": "…", "administrateur": false } ],
   "dernierMessage": { "id": "uuid", "auteurNom": "…", "extrait": "120 premiers caractères", "envoyeLe": "ISO-8601", "piecesJointes": 1,
-                      "evenement": { "type": "MEMBRES_AJOUTES", "cibles": ["Rachel Biyong Mengue"] } | null } | null,
+                      "evenement": { "type": "MEMBRES_AJOUTES", "cibles": ["Responsable SNA"] } | null } | null,
   "nonLus": 3, "misAJourLe": "ISO-8601", "creeeLe": "ISO-8601"
 }
 

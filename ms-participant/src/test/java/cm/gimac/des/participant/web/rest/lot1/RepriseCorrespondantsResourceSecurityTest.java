@@ -40,7 +40,7 @@ import tech.jhipster.config.JHipsterProperties;
 @EnableConfigurationProperties(JHipsterProperties.class)
 class RepriseCorrespondantsResourceSecurityTest {
 
-    static final String CORPS = "{\"correspondants\":[{\"codeMembre\":\"BQ-1\",\"compteId\":\"0a0b0c0d-0e0f-4a1b-8c2d-3e4f5a6b7c8d\",\"nom\":\"Awa Fictive\"}]}";
+    static final String CORPS = "{\"correspondants\":[{\"codeMembre\":\"BQ-1\",\"compteId\":\"0a0b0c0d-0e0f-4a1b-8c2d-3e4f5a6b7c8d\",\"nom\":\"Correspondante Fictive\"}]}";
 
     @Autowired
     MockMvc mvc;

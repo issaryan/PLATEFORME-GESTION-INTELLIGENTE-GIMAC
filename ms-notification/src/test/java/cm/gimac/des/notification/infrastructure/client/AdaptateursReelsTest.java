@@ -58,12 +58,12 @@ class AdaptateursReelsTest {
         serveur
             .expect(requestTo(IAM + "/api/v1/interne/collaborateurs/c1"))
             .andExpect(header("Authorization", "Bearer jeton-de-service"))
-            .andRespond(withSuccess("{\"id\":\"c1\",\"nomAffiche\":\"Carine Ebongue Ndjock\",\"profils\":[],\"actif\":true}", MediaType.APPLICATION_JSON));
+            .andRespond(withSuccess("{\"id\":\"c1\",\"nomAffiche\":\"Officière Console Sécurité\",\"profils\":[],\"actif\":true}", MediaType.APPLICATION_JSON));
         serveur.expect(requestTo(IAM + "/api/v1/interne/collaborateurs/inconnu")).andRespond(withStatus(HttpStatus.NOT_FOUND));
         serveur.expect(requestTo(IAM + "/api/v1/interne/collaborateurs/panne")).andRespond(withServerError());
         IamAnnuaireAdapter a = new IamAnnuaireAdapter(builder, jeton, IAM, 300);
-        assertThat(a.nomAffiche("c1")).contains("Carine Ebongue Ndjock");
-        assertThat(a.nomAffiche("c1")).contains("Carine Ebongue Ndjock");
+        assertThat(a.nomAffiche("c1")).contains("Officière Console Sécurité");
+        assertThat(a.nomAffiche("c1")).contains("Officière Console Sécurité");
         assertThat(a.nomAffiche("inconnu")).isEmpty();
         assertThatThrownBy(() -> a.nomAffiche("panne")).isInstanceOf(NotificationException.class).extracting("code").isEqualTo("NOT_ANNUAIRE_INDISPONIBLE");
         serveur.verify();
@@ -93,7 +93,7 @@ class AdaptateursReelsTest {
     @DisplayName("Adaptateurs de substitution : noms connus, panne simulée, groupes déclarés")
     void substitution() {
         AnnuaireStubAdapter annuaire = new AnnuaireStubAdapter();
-        assertThat(annuaire.nomAffiche(AnnuaireStubAdapter.CHEF_DES)).contains("Paul Mbarga Atangana");
+        assertThat(annuaire.nomAffiche(AnnuaireStubAdapter.CHEF_DES)).contains("Chef Département DES");
         annuaire.rendreIndisponible(true);
         assertThatThrownBy(() -> annuaire.nomAffiche(AnnuaireStubAdapter.CHEF_DES)).isInstanceOf(NotificationException.class);
         annuaire.reinitialiser();

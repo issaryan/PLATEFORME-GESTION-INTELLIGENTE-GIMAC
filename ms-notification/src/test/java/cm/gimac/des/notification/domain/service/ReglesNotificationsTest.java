@@ -49,14 +49,14 @@ class ReglesNotificationsTest {
     @Test
     @DisplayName("Titres, sous-titres et liens du contrat §2 ; libellés neutres sans nom")
     void titresEtLiens() {
-        assertThat(regles.titreMessage("Carine Ebongue Ndjock")).isEqualTo("Carine Ebongue Ndjock");
+        assertThat(regles.titreMessage("Officière Console Sécurité")).isEqualTo("Officière Console Sécurité");
         assertThat(regles.titreMessage(null)).isEqualTo("Nouveau message");
-        assertThat(regles.titreTache(null, "Paul")).isEqualTo("Tâche confiée par Paul");
-        assertThat(regles.titreTache("Préparer le dossier", "Paul")).isEqualTo("Préparer le dossier");
+        assertThat(regles.titreTache(null, "Chef")).isEqualTo("Tâche confiée par Chef");
+        assertThat(regles.titreTache("Préparer le dossier", "Chef")).isEqualTo("Préparer le dossier");
         assertThat(regles.titreTache(null, null)).isEqualTo("Nouvelle tâche confiée");
         assertThat(regles.sousTitreTache("2026-10-09")).isEqualTo("Échéance : 2026-10-09");
         assertThat(regles.sousTitreTache(null)).isNull();
-        assertThat(regles.titreRapport("Serge")).isEqualTo("Rapport de Serge");
+        assertThat(regles.titreRapport("Super")).isEqualTo("Rapport de Super");
         assertThat(regles.sousTitreRapport("QUOTIDIEN", "2026-10-05")).isEqualTo("Rapport quotidien 2026-10-05");
         assertThat(regles.sousTitreRapport("HEBDOMADAIRE", "2026-W40")).isEqualTo("Rapport hebdomadaire 2026-W40");
         assertThat(regles.lienConversation("c-1")).isEqualTo("/des/messagerie?conversation=c-1");
@@ -79,7 +79,7 @@ class ReglesNotificationsTest {
         assertThat(regles.lienTacheOfferte("/des/a b")).isEqualTo("/des/taches?vue=unite");
         assertThat(regles.lienTacheOfferte("/des/a\u0007")).isEqualTo("/des/taches?vue=unite");
         assertThat(regles.lienTacheOfferte("/des/" + "x".repeat(600))).isEqualTo("/des/taches?vue=unite");
-        assertThat(regles.titreDemandeSoumise("Paul")).isEqualTo("Demande de Paul");
+        assertThat(regles.titreDemandeSoumise("Chef")).isEqualTo("Demande de Chef");
         assertThat(regles.titreDemandeSoumise(null)).isEqualTo("Nouvelle demande à traiter");
         assertThat(regles.titreDemandeDecidee("ACCEPTEE")).isEqualTo("Demande acceptée");
         assertThat(regles.titreDemandeDecidee("REFUSEE")).isEqualTo("Demande refusée");
@@ -88,37 +88,37 @@ class ReglesNotificationsTest {
         assertThat(regles.titreTacheOfferte(null)).isEqualTo("Tâche à prendre");
         assertThat(regles.sousTitreTacheOfferte("POLE_RESEAU")).isEqualTo("À prendre : POLE_RESEAU");
         assertThat(regles.titreRelance("Sauvegardes")).isEqualTo("Relance : Sauvegardes");
-        assertThat(regles.sousTitreRelance("Paul")).isEqualTo("Relancée par Paul");
+        assertThat(regles.sousTitreRelance("Chef")).isEqualTo("Relancée par Chef");
         assertThat(regles.type("demande", "type")).isEqualTo(TypeNotification.DEMANDE);
     }
 
     @Test
     @DisplayName("Mentions et réponse (D-82) : membres seulement, jamais l'auteur, mention prioritaire sur la réponse")
     void mentionsEtReponse() {
-        List<String> membres = List.of("aminata", "serge", "rachel");
+        List<String> membres = List.of("conductrice", "super", "resp");
         // Mention et réponse distinctes ; ordre : mentions puis auteur cité.
-        assertThat(regles.mentionsEtReponse(membres, List.of("serge"), "aminata", "paul")).containsExactly(
-            Map.entry("serge", TypeNotification.MENTION),
-            Map.entry("aminata", TypeNotification.REPONSE)
+        assertThat(regles.mentionsEtReponse(membres, List.of("super"), "conductrice", "pilote")).containsExactly(
+            Map.entry("super", TypeNotification.MENTION),
+            Map.entry("conductrice", TypeNotification.REPONSE)
         );
         // Mentionné et auteur cité : une seule notification, MENTION.
-        assertThat(regles.mentionsEtReponse(membres, List.of("aminata"), "aminata", "paul")).containsExactly(Map.entry("aminata", TypeNotification.MENTION));
+        assertThat(regles.mentionsEtReponse(membres, List.of("conductrice"), "conductrice", "pilote")).containsExactly(Map.entry("conductrice", TypeNotification.MENTION));
         // L'auteur n'est jamais retenu (réponse à soi, mention de soi) ; non-membre écarté ; doublons et vides ignorés.
-        assertThat(regles.mentionsEtReponse(membres, Arrays.asList("paul", "inconnu", "serge", "serge", " ", null), "paul", "paul")).containsExactly(
-            Map.entry("serge", TypeNotification.MENTION)
+        assertThat(regles.mentionsEtReponse(membres, Arrays.asList("pilote", "inconnu", "super", "super", " ", null), "pilote", "pilote")).containsExactly(
+            Map.entry("super", TypeNotification.MENTION)
         );
         // Anciens événements : ni réponse ni mention.
-        assertThat(regles.mentionsEtReponse(membres, List.of(), null, "paul")).isEmpty();
-        assertThat(regles.mentionsEtReponse(membres, null, " ", "paul")).isEmpty();
-        assertThat(regles.mentionsEtReponse(List.of("aminata"), null, "rachel", "paul")).isEmpty();
+        assertThat(regles.mentionsEtReponse(membres, List.of(), null, "pilote")).isEmpty();
+        assertThat(regles.mentionsEtReponse(membres, null, " ", "pilote")).isEmpty();
+        assertThat(regles.mentionsEtReponse(List.of("conductrice"), null, "resp", "pilote")).isEmpty();
     }
 
     @Test
     @DisplayName("Mentions et réponses (D-82) : titres, libellés neutres, lien vers le message ; types nommés")
     void titresMentionsEtReponses() {
-        assertThat(regles.titreMention("Paul Mbarga Atangana")).isEqualTo("Paul Mbarga Atangana vous a mentionné");
+        assertThat(regles.titreMention("Chef Département DES")).isEqualTo("Chef Département DES vous a mentionné");
         assertThat(regles.titreMention(null)).isEqualTo("Vous avez été mentionné");
-        assertThat(regles.titreReponse("Paul Mbarga Atangana")).isEqualTo("Paul Mbarga Atangana a répondu à votre message");
+        assertThat(regles.titreReponse("Chef Département DES")).isEqualTo("Chef Département DES a répondu à votre message");
         assertThat(regles.titreReponse(" ")).isEqualTo("Réponse à votre message");
         assertThat(regles.lienMessage("c-1", "m-1")).isEqualTo("/des/messagerie?conversation=c-1&message=m-1");
         assertThat(regles.type("mention", "type")).isEqualTo(TypeNotification.MENTION);
@@ -164,11 +164,11 @@ class ReglesNotificationsTest {
     @Test
     @DisplayName("Regroupement : nombre incrémenté, remontée en tête, titre du dernier expéditeur ; lecture unique")
     void regroupement() {
-        NotificationUtilisateur n = new NotificationUtilisateur("u1", TypeNotification.MESSAGE, "Paul", "Groupe", "/des/messagerie?conversation=c", Reference.conversation("c"), "p", "Paul", T);
-        n.regrouper("Serge", "Groupe", "s", "Serge", T.plusSeconds(5));
-        n.regrouper("Paul", "Groupe", "p", "Paul", T.plusSeconds(3));
+        NotificationUtilisateur n = new NotificationUtilisateur("u1", TypeNotification.MESSAGE, "Chef", "Groupe", "/des/messagerie?conversation=c", Reference.conversation("c"), "p", "Chef", T);
+        n.regrouper("Super", "Groupe", "s", "Super", T.plusSeconds(5));
+        n.regrouper("Chef", "Groupe", "p", "Chef", T.plusSeconds(3));
         assertThat(n.getNombre()).isEqualTo(3);
-        assertThat(n.getTitre()).isEqualTo("Paul");
+        assertThat(n.getTitre()).isEqualTo("Chef");
         assertThat(n.getMisAJourLe()).isEqualTo(T.plusSeconds(5));
         assertThat(n.getCreeLe()).isEqualTo(T);
         assertThat(n.marquerLue(T.plusSeconds(10))).isTrue();
@@ -219,12 +219,12 @@ class ReglesNotificationsTest {
     @Test
     @DisplayName("D-87 : sous-titres PROCESSUS (instance, échéance, acteur, départ) ; liens rendus tels quels sous /des/processus/, sinon page de l'instance")
     void sousTitresEtLiensProcessus() {
-        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.INSTANCE_LANCEE, null, false, false, null), "Awa Mballa", null)).isEqualTo("OUVERTURE_FLUX_RESEAU, lancé par Awa Mballa");
+        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.INSTANCE_LANCEE, null, false, false, null), "Correspondante Institution", null)).isEqualTo("OUVERTURE_FLUX_RESEAU, lancé par Correspondante Institution");
         assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_ACTIVEE, null, false, false, "2026-10-09"), null, null)).isEqualTo("Flux vers la banque X, échéance 2026-10-09");
         assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_ACTIVEE, null, false, false, null), null, null)).isEqualTo("Flux vers la banque X");
-        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_SOUMISE, "SIGNATURE", false, false, null), "Bob Ndi", null)).isEqualTo("Flux vers la banque X, soumise par Bob Ndi");
-        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_SIGNEE, "A_VALIDER", false, false, null), "Brice Onana", null)).isEqualTo("Flux vers la banque X, signée par Brice Onana");
-        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_REAFFECTEE, "REAFFECTATION", false, false, null), "Brice Onana", null)).isEqualTo("Flux vers la banque X, réaffectée par Brice Onana");
+        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_SOUMISE, "SIGNATURE", false, false, null), "Opérateur Bureau", null)).isEqualTo("Flux vers la banque X, soumise par Opérateur Bureau");
+        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_SIGNEE, "A_VALIDER", false, false, null), "Agent Accueil", null)).isEqualTo("Flux vers la banque X, signée par Agent Accueil");
+        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_REAFFECTEE, "REAFFECTATION", false, false, null), "Agent Accueil", null)).isEqualTo("Flux vers la banque X, réaffectée par Agent Accueil");
         assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_REAFFECTEE, "DEPART", false, false, null), null, "Jean Parti")).isEqualTo("Flux vers la banque X, après le départ de Jean Parti");
         assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_REAFFECTEE, "DEPART", false, false, null), null, null)).isEqualTo("Flux vers la banque X, après un départ");
         // D-93 §9.3 : changements d'organisation.
@@ -235,13 +235,13 @@ class ReglesNotificationsTest {
             "Flux vers la banque X, après le retrait d'un profil de Jean Parti"
         );
         assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_REAFFECTEE, "CHANGEMENT_UNITE", false, false, null), null, null)).isEqualTo("Flux vers la banque X, après un changement d'unité");
-        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_REAFFECTEE, "CHANGEMENT_CHEF", false, false, null), "Brice Onana", null)).isEqualTo(
+        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_REAFFECTEE, "CHANGEMENT_CHEF", false, false, null), "Agent Accueil", null)).isEqualTo(
             "Flux vers la banque X, après un changement de chef d'unité"
         );
-        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.INSTANCE_CLOSE, "ANNULEE", false, false, null), "Brice Onana", null)).isEqualTo("OUVERTURE_FLUX_RESEAU, annulé par Brice Onana");
-        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.INSTANCE_CLOSE, "CLOSE", false, false, null), "Bob Ndi", null)).isEqualTo("OUVERTURE_FLUX_RESEAU");
+        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.INSTANCE_CLOSE, "ANNULEE", false, false, null), "Agent Accueil", null)).isEqualTo("OUVERTURE_FLUX_RESEAU, annulé par Agent Accueil");
+        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.INSTANCE_CLOSE, "CLOSE", false, false, null), "Opérateur Bureau", null)).isEqualTo("OUVERTURE_FLUX_RESEAU");
         // Instance sans intitulé : le code nomme déjà l'instance dans le titre.
-        assertThat(regles.sousTitreProcessus(new FaitsProcessus(NatureProcessus.INSTANCE_LANCEE, "OUVERTURE", null, null, null, null, false, false, null), "Awa Mballa", null)).isEqualTo("Lancé par Awa Mballa");
+        assertThat(regles.sousTitreProcessus(new FaitsProcessus(NatureProcessus.INSTANCE_LANCEE, "OUVERTURE", null, null, null, null, false, false, null), "Correspondante Institution", null)).isEqualTo("Lancé par Correspondante Institution");
         assertThat(regles.sousTitreProcessus(new FaitsProcessus(NatureProcessus.INSTANCE_CLOSE, "OUVERTURE", null, null, null, "CLOSE", false, false, null), null, null)).isNull();
         assertThat(regles.sousTitreProcessus(new FaitsProcessus(NatureProcessus.ETAPE_SOUMISE, null, null, "E", null, "SIGNATURE", false, false, null), null, null)).isNull();
 

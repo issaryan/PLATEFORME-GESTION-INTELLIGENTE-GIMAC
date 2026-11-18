@@ -42,7 +42,7 @@ class RepriseCorrespondantsIT extends AbstractParticipantIT {
         Map<String, Object> c = new LinkedHashMap<>();
         c.put("codeMembre", code);
         c.put("compteId", compte == null ? null : compte.toString());
-        c.put("nom", "Awa Fictive");
+        c.put("nom", "Correspondante Fictive");
         for (int k = 0; k < cleValeur.length; k += 2) {
             c.put((String) cleValeur[k], cleValeur[k + 1]);
         }
@@ -97,7 +97,7 @@ class RepriseCorrespondantsIT extends AbstractParticipantIT {
             .andExpect(jsonPath("$.lignes[0].resultat").value("CREE"));
         Map<String, Object> c = jdbc.queryForMap("select full_name, duty, channels, reachability, active, user_id, email, on_call_247 from correspondent");
         assertThat(c)
-            .containsEntry("full_name", "Awa Fictive")
+            .containsEntry("full_name", "Correspondante Fictive")
             .containsEntry("duty", "MONETIQUE")
             .containsEntry("channels", "messagerie")
             .containsEntry("reachability", "NON_VERIFIE")

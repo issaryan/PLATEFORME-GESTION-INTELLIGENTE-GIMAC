@@ -15,8 +15,8 @@ Profils :
 
 | Profil | Compte de démonstration | Application |
 |---|---|---|
-| Chargé de la DDRM (ROLE_CHARGE_DDRM) | f.abakar, Fatimé Abakar Hissein | interne |
-| Chef de la DDRM (ROLE_CHEF_DDRM) | b.nguema, Bertrand Nguema Obiang | interne |
+| Chargé de la DDRM (ROLE_CHARGE_DDRM) | f.abakar, Responsable Unité Démo | interne |
+| Chef de la DDRM (ROLE_CHEF_DDRM) | responsable.ddrm, Responsable DDRM | interne |
 | Correspondant du participant (ROLE_CORRESPONDANT) | correspondant-a, Établissement de paiement A (INST-0042) | portail |
 | Conducteur de projet (ROLE_CONDUCTEUR_PROJET) | acteur d'appui seulement (renvoi et validation des opérations du cadrage) | interne |
 
@@ -245,7 +245,7 @@ certification). Captures 052, 067.
 Cause probable : `frontend/packages/lot1/src/services/notifications.ts` (seules les décisions à prononcer sont émises).
 
 **DDR-09 (majeure) : tâches confiées perdues entre acteurs.**
-Étapes : chef, Tâches, « Nouvelle tâche » confiée à Fatimé Abakar Hissein, puis une tâche à l'unité DDRM (visibles dans
+Étapes : chef, Tâches, « Nouvelle tâche » confiée à Responsable Unité Démo, puis une tâche à l'unité DDRM (visibles dans
 Confiées) ; passer à la chargée. Résultat : ni « Mes tâches » ni « À prendre » ne les contiennent ; de même une tâche de
 décision prise par le chef disparaît de ses tâches après rechargement. Captures 082, 083, 084.
 Cause probable : pilotage simulé hors de la démonstration continue (`services/simule/index.ts`, `persistanceDemo` limitée à
@@ -301,12 +301,12 @@ enregistré : un nouvel enregistrement l'efface. Cause : `formulaires.tsx`, vale
 Capture 020.
 
 **DDR-20 (mineure)** : notifications de démonstration identiques pour tous les profils internes : la chargée reçoit « Rapport
-de Joël Ekotto Mballa » (rapports reçus, sans PIL_TEAM_READ) et « Action attendue : Atelier comptabilisation » (fonction
-Exploitation) ; « Tâche confiée par Paul Mbarga Atangana » ouvre la liste des tâches sans la tâche, absente de la liste.
+de Agent Exploitation » (rapports reçus, sans PIL_TEAM_READ) et « Action attendue : Atelier comptabilisation » (fonction
+Exploitation) ; « Tâche confiée par Chef Département DES » ouvre la liste des tâches sans la tâche, absente de la liste.
 Captures 085, 086.
 
 **DDR-21 (mineure)** : données de tâches contradictoires : « Mettre à jour la fiche de procédure du service » est à la fois
-dans « Mes tâches » du chef (confiée par Jean-Baptiste Ella Mintsa) et dans ses « Confiées » (responsable Fatimé Abakar
+dans « Mes tâches » du chef (confiée par Agent Conformité) et dans ses « Confiées » (responsable Responsable Unité
 Hissein). Captures 039, 082.
 
 **DDR-22 (mineure)** : portail : la notification « Action attendue : Paramétrage d'essai » mène à « Ce livrable ne vous est pas

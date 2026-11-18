@@ -29,10 +29,10 @@ public class AnnuaireStubAdapter implements AnnuairePort {
 
     public final void reinitialiser() {
         noms.clear();
-        noms.put(CHEF_DES, "Paul Mbarga Atangana");
-        noms.put(CONDUCTEUR, "Aminata Ngono");
-        noms.put(INGENIEUR, "Serge Ndzana");
-        noms.put(RSSI, "Clarisse Bilong");
+        noms.put(CHEF_DES, "Chef Département DES");
+        noms.put(CONDUCTEUR, "Conductrice Projet A");
+        noms.put(INGENIEUR, "Agent Homologation SNA");
+        noms.put(RSSI, "Responsable Sécurité SI");
         indisponible = false;
     }
 

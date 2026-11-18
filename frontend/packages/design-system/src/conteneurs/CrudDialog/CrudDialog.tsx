@@ -25,7 +25,7 @@ export interface CrudDialogProps {
   context?: CrudContext
   /** Titre : verbe et objet (« Modifier la fiche », « Supprimer le compte »). */
   title: string
-  /** Sous-titre de contexte : l'objet concerné (« Compte c.ndong · Carine Ebongue »). */
+  /** Sous-titre de contexte : l'objet concerné (« Compte directeur.unite · Officière Console »). */
   subject?: ReactNode
   description?: string
   /** Petite (440 px), moyenne (560 px) ou large (720 px) ; par défaut selon le contexte. */

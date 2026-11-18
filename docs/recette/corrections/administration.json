@@ -27,7 +27,7 @@
     "statut": "corrigée",
     "avant": "docs/recette/captures/administration/109-rssi-echec-priv-fiche.png",
     "apres": "docs/recette/captures/administration/corrections/ADM-02-apres.png",
-    "correctif": "Compte admin.systeme (Thierry Abessolo Nkoulou, u-admin-systeme) ajouté à l’annuaire simulé de la console, rattaché au Service Production informatique.",
+    "correctif": "Compte admin.systeme (Agent Direction Générale, u-admin-systeme) ajouté à l’annuaire simulé de la console, rattaché au Service Production informatique.",
     "fichiers": [
       "frontend/packages/administration/src/services/simule/donnees.ts"
     ],
@@ -104,7 +104,7 @@
     "statut": "corrigée",
     "avant": "docs/recette/captures/administration/056-superadmin-profil-composition-arbre-apercu-clair.png",
     "apres": "docs/recette/captures/administration/corrections/ADM-07-apres.png",
-    "correctif": "Règle générale d'élision et de contraction de « de » (formateur i18next « de » du socle) appliquée aux libellés français à nom variable : « Droits d’Agenda », « Pouvoirs d’Aïssatou Ngo Mbarga », « Membres du … ».",
+    "correctif": "Règle générale d'élision et de contraction de « de » (formateur i18next « de » du socle) appliquée aux libellés français à nom variable : « Droits d’Agenda », « Pouvoirs d’Analyste Numérique », « Membres du … ».",
     "fichiers": [
       "frontend/packages/socle/src/i18n/elision.ts",
       "frontend/packages/socle/src/i18n/i18n.ts",

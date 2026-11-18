@@ -66,25 +66,25 @@ class BoiteNotificationsIT extends AbstractNotificationIT {
             // Récentes d'abord : le groupe (T+60), la directe (T+30), la tâche (T-60).
             .andExpect(jsonPath("$.contenu[0].id").value(id))
             .andExpect(jsonPath("$.contenu[0].type").value("MESSAGE"))
-            .andExpect(jsonPath("$.contenu[0].titre").value("Serge Ndzana"))
+            .andExpect(jsonPath("$.contenu[0].titre").value("Agent Homologation SNA"))
             .andExpect(jsonPath("$.contenu[0].sousTitre").value("Groupe Cadrage L-12"))
             .andExpect(jsonPath("$.contenu[0].lien").value("/des/messagerie?conversation=c-groupe"))
             .andExpect(jsonPath("$.contenu[0].reference.service").value("collaboration"))
             .andExpect(jsonPath("$.contenu[0].reference.type").value("CONVERSATION"))
             .andExpect(jsonPath("$.contenu[0].reference.id").value("c-groupe"))
             .andExpect(jsonPath("$.contenu[0].acteur.id").value(INGENIEUR))
-            .andExpect(jsonPath("$.contenu[0].acteur.nomAffiche").value("Serge Ndzana"))
+            .andExpect(jsonPath("$.contenu[0].acteur.nomAffiche").value("Agent Homologation SNA"))
             .andExpect(jsonPath("$.contenu[0].nombre").value(2))
             .andExpect(jsonPath("$.contenu[0].creeLe").value("2026-10-05T08:00:00Z"))
             .andExpect(jsonPath("$.contenu[0].misAJourLe").value("2026-10-05T08:01:00Z"))
             .andExpect(jsonPath("$.contenu[0].lueLe").value(org.hamcrest.Matchers.nullValue()))
-            .andExpect(jsonPath("$.contenu[1].titre").value("Paul Mbarga Atangana"))
+            .andExpect(jsonPath("$.contenu[1].titre").value("Chef Département DES"))
             .andExpect(jsonPath("$.contenu[1].sousTitre").value(org.hamcrest.Matchers.nullValue()))
             .andExpect(jsonPath("$.contenu[1].nombre").value(1))
             .andExpect(jsonPath("$.contenu[2].type").value("TACHE"))
-            .andExpect(jsonPath("$.contenu[2].titre").value("Tâche confiée par Paul Mbarga Atangana"))
+            .andExpect(jsonPath("$.contenu[2].titre").value("Tâche confiée par Chef Département DES"))
             .andExpect(jsonPath("$.contenu[2].reference.service").value("pilotage"));
-        // L'auteur n'est jamais notifié de son propre message ; Paul l'est du message de Serge.
+        // L'auteur n'est jamais notifié de son propre message ; Chef l'est du message de Super.
         assertThat(compter("select count(*) from notification_utilisateur where destinataire_id = ? and acteur_id = ?", CHEF_DES, CHEF_DES)).isZero();
         mvc.perform(get("/api/v1/notifications/compteur").with(interne(CONDUCTEUR))).andExpect(status().isOk()).andExpect(jsonPath("$.nonLues").value(3));
 
@@ -122,7 +122,7 @@ class BoiteNotificationsIT extends AbstractNotificationIT {
         mvc.perform(get("/api/v1/notifications/compteur").with(interne(CONDUCTEUR))).andExpect(jsonPath("$.nonLues").value(2));
         mvc.perform(post("/api/v1/notifications/lecture").with(interne(CONDUCTEUR))).andExpect(status().isNoContent());
         mvc.perform(get("/api/v1/notifications/compteur").with(interne(CONDUCTEUR))).andExpect(jsonPath("$.nonLues").value(0));
-        // La boîte de Paul n'a pas été touchée.
+        // La boîte de Chef n'a pas été touchée.
         mvc.perform(get("/api/v1/notifications/compteur").with(interne(CHEF_DES))).andExpect(jsonPath("$.nonLues").value(1));
 
         // Requêtes invalides : 400 avec code.
@@ -227,7 +227,7 @@ class BoiteNotificationsIT extends AbstractNotificationIT {
             .perform(get("/api/v1/notifications").with(interne(CONDUCTEUR)))
             .andExpect(jsonPath("$.total").value(1))
             .andExpect(jsonPath("$.contenu[0].type").value("RAPPORT"))
-            .andExpect(jsonPath("$.contenu[0].titre").value("Rapport de Serge Ndzana"))
+            .andExpect(jsonPath("$.contenu[0].titre").value("Rapport de Agent Homologation SNA"))
             .andExpect(jsonPath("$.contenu[0].sousTitre").value("Rapport quotidien 2026-10-05"));
 
         mvc
@@ -240,7 +240,7 @@ class BoiteNotificationsIT extends AbstractNotificationIT {
     @DisplayName("Mentions et réponses (D-82) : forme exacte, en plus du message, non regroupées, préférences, lues à l'ouverture de la conversation")
     void mentionsEtReponses() throws Exception {
         conversations.groupe("c-d82", "Groupe Cadrage L-12", List.of(CHEF_DES, CONDUCTEUR, INGENIEUR));
-        // Paul répond à Aminata et mentionne Serge ; puis Serge mentionne Aminata en répondant à son message (une seule MENTION).
+        // Chef répond à Conductrice et mentionne Super ; puis Super mentionne Conductrice en répondant à son message (une seule MENTION).
         evenements.messageEnvoye(new MessageEnvoye("c-d82", "m-1", CHEF_DES, List.of(CONDUCTEUR, INGENIEUR), T, null, CONDUCTEUR, List.of(INGENIEUR)));
         evenements.messageEnvoye(new MessageEnvoye("c-d82", "m-2", INGENIEUR, List.of(CONDUCTEUR, CHEF_DES), T.plusSeconds(60), null, CONDUCTEUR, List.of(CONDUCTEUR)));
         // Événement de groupe : rien.
@@ -253,7 +253,7 @@ class BoiteNotificationsIT extends AbstractNotificationIT {
             .andExpect(jsonPath("$.total").value(3))
             .andExpect(jsonPath("$.contenu[?(@.type == 'MESSAGE')].nombre").value(org.hamcrest.Matchers.contains(2)))
             .andExpect(jsonPath("$.contenu[?(@.type == 'MESSAGE')].conversationId").value(org.hamcrest.Matchers.contains("c-d82")))
-            .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].titre").value(org.hamcrest.Matchers.contains("Serge Ndzana vous a mentionné")))
+            .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].titre").value(org.hamcrest.Matchers.contains("Agent Homologation SNA vous a mentionné")))
             .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].sousTitre").value(org.hamcrest.Matchers.contains("Groupe Cadrage L-12")))
             .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].lien").value(org.hamcrest.Matchers.contains("/des/messagerie?conversation=c-d82&message=m-2")))
             .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].reference.service").value(org.hamcrest.Matchers.contains("collaboration")))
@@ -262,13 +262,13 @@ class BoiteNotificationsIT extends AbstractNotificationIT {
             .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].conversationId").value(org.hamcrest.Matchers.contains("c-d82")))
             .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].acteur.id").value(org.hamcrest.Matchers.contains(INGENIEUR)))
             .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].nombre").value(org.hamcrest.Matchers.contains(1)))
-            .andExpect(jsonPath("$.contenu[?(@.type == 'REPONSE')].titre").value(org.hamcrest.Matchers.contains("Paul Mbarga Atangana a répondu à votre message")))
+            .andExpect(jsonPath("$.contenu[?(@.type == 'REPONSE')].titre").value(org.hamcrest.Matchers.contains("Chef Département DES a répondu à votre message")))
             .andExpect(jsonPath("$.contenu[?(@.type == 'REPONSE')].lien").value(org.hamcrest.Matchers.contains("/des/messagerie?conversation=c-d82&message=m-1")));
         mvc
             .perform(get("/api/v1/notifications").with(interne(INGENIEUR)))
             .andExpect(jsonPath("$.total").value(2))
-            .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].titre").value(org.hamcrest.Matchers.contains("Paul Mbarga Atangana vous a mentionné")));
-        // Jamais pour l'auteur : Paul n'a que le message de Serge.
+            .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].titre").value(org.hamcrest.Matchers.contains("Chef Département DES vous a mentionné")));
+        // Jamais pour l'auteur : Chef n'a que le message de Super.
         assertThat(compter("select count(*) from notification_utilisateur where destinataire_id = ? and type in ('MENTION', 'REPONSE')", CHEF_DES)).isZero();
 
         // Ouvrir la conversation (référence de la conversation, sans type) lit message, mention et réponse.
@@ -314,7 +314,7 @@ class BoiteNotificationsIT extends AbstractNotificationIT {
             .andExpect(jsonPath("$.total").value(2))
             .andExpect(jsonPath("$.contenu[0].type").value("PROCESSUS"))
             .andExpect(jsonPath("$.contenu[0].titre").value("Validation attendue : Analyse de la demande"))
-            .andExpect(jsonPath("$.contenu[0].sousTitre").value("Flux vers la banque X, soumise par Serge Ndzana"))
+            .andExpect(jsonPath("$.contenu[0].sousTitre").value("Flux vers la banque X, soumise par Agent Homologation SNA"))
             .andExpect(jsonPath("$.contenu[0].lien").value(lien))
             .andExpect(jsonPath("$.contenu[0].nombre").value(1));
         mvc

@@ -272,7 +272,7 @@ class BancDecision {
     }
 
     static Acteur conducteur() {
-        return new Acteur("u-conducteur", "Aminata Ngono", Set.of("CER_DOSSIER_READ", "CER_PV_ESTABLISH"), null);
+        return new Acteur("u-conducteur", "Conductrice Projet A", Set.of("CER_DOSSIER_READ", "CER_PV_ESTABLISH"), null);
     }
 
     static Acteur chefDes() {

@@ -194,7 +194,7 @@
     "statut": "corrigée",
     "avant": "docs/recette/captures/homologation/080-conducteur-dossier-onglet-gouvernance-clair.png",
     "apres": "docs/recette/captures/homologation/corrections/HOM-04-apres-prise.png",
-    "correctif": "Intervenants, conducteurs et pilotes simulés nommés comme les comptes de démonstration (Aïcha Mahamat Nour, Fatimé Abakar Hissein, Joël Ekotto Mballa…), tests et scénarios mis à jour ; RSSI, conformité, DG et exploitation gardent leur désignation de fonction.",
+    "correctif": "Intervenants, conducteurs et pilotes simulés nommés comme les comptes de démonstration (Équipe Conduite Projet, Responsable Unité Démo, Agent Exploitation…), tests et scénarios mis à jour ; RSSI, conformité, DG et exploitation gardent leur désignation de fonction.",
     "fichiers": [
       "frontend/packages/lot1/src/services/simule/parcours.ts",
       "frontend/packages/lot1/src/services/simule/referentiels.ts",

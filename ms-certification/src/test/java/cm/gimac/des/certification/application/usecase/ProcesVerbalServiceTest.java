@@ -84,7 +84,7 @@ class ProcesVerbalServiceTest {
         UUID id = banc.liaison("CARTE_INTERBANCAIRE", false, 100, true).liaisonId();
         ProcesVerbalVue v = banc.procesVerbaux.etablir(id, conducteur());
         assertThat(v.etat()).isEqualTo("ETABLI");
-        assertThat(v.etabliPar()).isEqualTo("Aminata Ngono");
+        assertThat(v.etabliPar()).isEqualTo("Conductrice Projet A");
         assertThat(v.etabliLe()).hasToString("2026-09-30");
         assertThat(v.empreinte()).matches("[0-9a-f]{64}");
         assertThat(v.servicesCouverts()).containsExactly("RETRAIT", "PAIEMENT");
@@ -92,7 +92,7 @@ class ProcesVerbalServiceTest {
         BancDecision.Evenement e = banc.evenements.get(0);
         assertThat(e.type()).isEqualTo(DecisionEvenements.PV_ETABLI);
         assertThat(e.institution()).isEqualTo(INSTITUTION);
-        assertThat(e.charge()).isEqualTo(new DecisionEvenements.ProcesVerbalEtabli(id, "Aminata Ngono", "u-conducteur", v.empreinte()));
+        assertThat(e.charge()).isEqualTo(new DecisionEvenements.ProcesVerbalEtabli(id, "Conductrice Projet A", "u-conducteur", v.empreinte()));
         refus(() -> banc.procesVerbaux.etablir(id, conducteur()), 409, "CER_PV_NOT_READY");
         assertThat(banc.procesVerbaux.consulter(id, chefDes()).actionsPermises()).containsExactly("SIGNER_GIMAC");
     }

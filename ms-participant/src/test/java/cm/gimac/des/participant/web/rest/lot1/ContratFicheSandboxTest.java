@@ -30,7 +30,7 @@ class ContratFicheSandboxTest {
                 new Correspondant(
                     UUID.fromString("6f1c2a3e-1111-4a6b-9c1d-000000000001"),
                     UUID.fromString("6f1c2a3e-2222-4a6b-9c1d-000000000002"),
-                    "Awa Ndiaye",
+                    "Cheffe DDRM",
                     "MONETIQUE"
                 )
             ),

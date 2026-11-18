@@ -68,7 +68,7 @@
     "statut": "corrigée",
     "avant": "docs/recette/captures/acces/018-rssi-console-tableau-de-bord-clair.png",
     "apres": "docs/recette/captures/acces/corrections/ACC-05-apres.png",
-    "correctif": "La console reprend l'identité des comptes communs aux trois applications (h.kamga, Hervé Kamga Tchoupo pour le RSSI) et la composition du domaine pour chaque profil privilégié ; l'annuaire simulé de la console suit.",
+    "correctif": "La console reprend l'identité des comptes communs aux trois applications (officier.securite, Officier Sécurité Groupe pour le RSSI) et la composition du domaine pour chaque profil privilégié ; l'annuaire simulé de la console suit.",
     "fichiers": [
       "frontend/packages/administration/src/profilsDemo.ts",
       "frontend/packages/administration/src/services/simule/donnees.ts",

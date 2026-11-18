@@ -17,14 +17,14 @@ Profils :
 
 | Profil | Compte de démonstration | Rôle dans la recette |
 |---|---|---|
-| Ingénieur d'homologation (ROLE_INGENIEUR_HOMOLOGATION) | Joël Ekotto Mballa | référentiels, modélisateur, types de projet, fonctions, administration de tous les domaines (REF_METIER_ADMIN) |
+| Ingénieur d'homologation (ROLE_INGENIEUR_HOMOLOGATION) | Agent Exploitation | référentiels, modélisateur, types de projet, fonctions, administration de tous les domaines (REF_METIER_ADMIN) |
 | Chargé d'homologation | n'existe pas comme profil : le domaine Keycloak et D-89 confondent « chargé d'homologation » et ingénieur d'homologation | sans objet |
-| Conducteur de projet (ROLE_CONDUCTEUR_PROJET) | Aïcha Mahamat Nour | dossier de liaison, gouvernance, renvoi, validations, procès-verbal, signature ordonnée |
-| Normes et Agréments (ROLE_SNA) | Rachel Biyong Mengue | essais, constat de couverture, première signature ordonnée, refus RACI |
-| Pôle réseau (ROLE_POLE_RESEAU) | Idriss Mahamat Saleh | vue filtrée, opération à prendre (fonction à affecter) |
-| Pôle système (ROLE_POLE_SYSTEME) | Chantal Ngo Bassong | vue filtrée, refus RACI |
-| Production monétique (ROLE_PRODUCTION_MONETIQUE) | Serge Ondoua Essomba | dossier et fiche de changement, bascule en production |
-| Chef de service (ROLE_RESPONSABLE_SERVICE) | Gaston Ndzana Ebode | vue de son unité, édition du référentiel sans publication |
+| Conducteur de projet (ROLE_CONDUCTEUR_PROJET) | Équipe Conduite Projet | dossier de liaison, gouvernance, renvoi, validations, procès-verbal, signature ordonnée |
+| Normes et Agréments (ROLE_SNA) | Responsable SNA | essais, constat de couverture, première signature ordonnée, refus RACI |
+| Pôle réseau (ROLE_POLE_RESEAU) | Agent Pôle Réseau | vue filtrée, opération à prendre (fonction à affecter) |
+| Pôle système (ROLE_POLE_SYSTEME) | Agent Pôle Système | vue filtrée, refus RACI |
+| Production monétique (ROLE_PRODUCTION_MONETIQUE) | Superviseur Opérations Groupe | dossier et fiche de changement, bascule en production |
+| Chef de service (ROLE_RESPONSABLE_SERVICE) | Responsable Production | vue de son unité, édition du référentiel sans publication |
 | Acteurs d'appui | chef du DES (lancement, signature du PV), chargé de la DDRM (cadrage, réunion de lancement), RSSI (approbation), correspondant (portail) | nécessaires au parcours complet |
 
 Écrans : tableau de bord (Mon travail), Référentiels d'opérations (arbre, modélisateur canevas et liste, contrôle, comparaison,
@@ -262,8 +262,8 @@ Les boutons du pied (« Supprimer l'opération », « Annuler », « Enregistrer
 
 ### HOM-14 (mineure) Identités simulées incohérentes
 Pilotes « Ingénieur d'homologation A/B », conducteurs « Conducteur de projet 1/2 », intervenants « Chargé DDRM 1 »,
-« Ingénieur pôle réseau » alors que les comptes de démonstration sont Joël Ekotto Mballa, Aïcha Mahamat Nour, Fatimé Abakar
-Hissein, Idriss Mahamat Saleh : l'acteur ne se reconnaît pas dans la Gouvernance. Captures 013, 074, 080, 095.
+« Ingénieur pôle réseau » alors que les comptes de démonstration sont Agent Exploitation, Équipe Conduite Projet, Responsable Unité
+Hissein, Agent Pôle Réseau : l'acteur ne se reconnaît pas dans la Gouvernance. Captures 013, 074, 080, 095.
 
 ### HOM-15 (mineure) Avertissement de couverture en codes techniques
 Contrôle d'un processus : « Aucune personne active ne porte ROLE_POLE_SYSTEME dans l'unité SNA ; 1 porteur ailleurs dans le
