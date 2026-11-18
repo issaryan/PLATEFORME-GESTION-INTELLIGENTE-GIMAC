@@ -205,12 +205,12 @@ describe('D-100 : réglage « Qui peut voir et lancer » dans le modélisateur',
   it('version publiée : le public se consulte en lecture seule, personnes nommées ; résumé abrégé au-delà de trois personnes', async () => {
     const i: Initiateurs = {
       regles: ['PERSONNES', 'PROFILS'], unites: [], profils: ['ROLE_CONFORMITE'], permissions: [],
-      personnes: ['a', 'b', 'c', 'd', 'e'], personnesDetail: ['Ana', 'Opérateur B', 'Cyr', 'Dan', 'Eve'].map((n, k) => ({ id: 'abcde'[k], nomAffiche: n })),
+      personnes: ['a', 'b', 'c', 'd', 'e'], personnesDetail: ['Opérateur A', 'Opérateur B', 'Opérateur C', 'Opérateur D', 'Opérateur E'].map((n, k) => ({ id: 'abcde'[k], nomAffiche: n })),
     }
     rendrePage(<ModaleLancement initiateurs={i} lecture enCours={false} onFermer={() => undefined} onEnregistrer={() => undefined} />, { chemin: '/', motif: '/' })
     const d = await screen.findByRole('dialog', { name: 'Qui peut voir et lancer ce processus' })
     const liste = within(d).getByRole('list', { name: 'Personnes désignées' })
-    expect(within(liste).getAllByRole('listitem').map((x) => x.textContent)).toEqual(['Ana', 'Opérateur B', 'Cyr', 'Dan', 'Eve'])
+    expect(within(liste).getAllByRole('listitem').map((x) => x.textContent)).toEqual(['Opérateur A', 'Opérateur B', 'Opérateur C', 'Opérateur D', 'Opérateur E'])
     cleanup()
     const magasin = magasinPouvoirs()
     const s = services(RESP, magasin)

@@ -13,7 +13,7 @@ describe('processus DEMANDE_CHANGEMENT simulé', () => {
     const magasin = magasinPouvoirs()
     magasin.organisation.push({ id: 'u-ssi', nomAffiche: 'Sara SSI', fonction: 'RSSI', unite: 'SSI', responsableId: null, actif: true })
     magasin.definirProfils('u-ssi', ['ROLE_RSSI'])
-    magasin.organisation.push({ id: 'u-agent-ssi', nomAffiche: 'Alain SSI', fonction: 'Agent SSI', unite: 'SSI', responsableId: null, actif: true })
+    magasin.organisation.push({ id: 'u-agent-ssi', nomAffiche: 'Veilleur SSI', fonction: 'Agent SSI', unite: 'SSI', responsableId: null, actif: true })
     magasin.definirProfils('u-agent-ssi', ['ROLE_AGENT_SSI'])
     // u-ssi seul RSSI de l'organisation simulée : l'étape SSI lui revient d'office.
     for (const p of magasin.organisation) if (p.id !== 'u-ssi' && magasin.profilsDe(p.id).includes('ROLE_RSSI')) magasin.definirProfils(p.id, magasin.profilsDe(p.id).filter((x) => x !== 'ROLE_RSSI'))
@@ -29,7 +29,7 @@ describe('processus DEMANDE_CHANGEMENT simulé', () => {
     const ticket = await demandeur.processus.televerserLivrable(new File(['%PDF-1.4'], 'dossier.pdf', { type: 'application/pdf' }), d.id)
     await demandeur.processus.deposerLivrable(d.id, 'IMPLEMENTATION', 'DOSSIER_CHANGEMENT', ticket.documentId)
     await demandeur.processus.terminer(d.id, 'IMPLEMENTATION')
-    const agent = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-agent-ssi', nom: 'Alain SSI', profils: ['ROLE_AGENT_SSI'] }, pouvoirs: magasin })
+    const agent = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-agent-ssi', nom: 'Veilleur SSI', profils: ['ROLE_AGENT_SSI'] }, pouvoirs: magasin })
     const vue = await demandeur.processus.instance(d.id)
     // D-138 : l'étape SSI est adressée au rôle RSSI (même avec un seul porteur), jamais figée sur la personne.
     expect(vue.etapes[4]).toMatchObject({ etat: 'ACTIVE', executant: null, aPrendre: { profil: 'ROLE_RSSI' } })

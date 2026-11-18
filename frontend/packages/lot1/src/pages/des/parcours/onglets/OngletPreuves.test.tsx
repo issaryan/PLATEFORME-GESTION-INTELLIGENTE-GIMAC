@@ -31,8 +31,8 @@ const ping = op({
     ] },
   ],
   signatures: [
-    { code: 'S2', libelle: 'Visa SNA', ordre: 2, signataire: 'SNA', libelleSignataire: 'Ingénieur SNA', porte: [], etat: 'SIGNEE', suivante: false, signeParNom: 'Guilene', signeLe: '2026-10-12' },
-    { code: 'S1', libelle: 'Visa conducteur', ordre: 1, signataire: 'CONDUCTEUR', porte: [], etat: 'ATTENDUE', suivante: true, attendu: { id: 'u', nom: 'Berni', fonction: 'CONDUCTEUR' } },
+    { code: 'S2', libelle: 'Visa SNA', ordre: 2, signataire: 'SNA', libelleSignataire: 'Ingénieur SNA', porte: [], etat: 'SIGNEE', suivante: false, signeParNom: 'Déposante', signeLe: '2026-10-12' },
+    { code: 'S1', libelle: 'Visa conducteur', ordre: 1, signataire: 'CONDUCTEUR', porte: [], etat: 'ATTENDUE', suivante: true, attendu: { id: 'u', nom: 'Valideur', fonction: 'CONDUCTEUR' } },
     { code: 'S3', libelle: 'Visa RSSI', ordre: 3, signataire: 'RSSI', porte: [], etat: 'ATTENDUE', suivante: false },
   ],
   actionsPermises: ['SIGNER'],
@@ -82,8 +82,8 @@ describe('D-109 : onglet « Signatures »', () => {
   it('ordre, signataire, état, signée par, à venir ; reprise', async () => {
     page(<OngletSignatures dossier={dossier} />, avec([ping, reprise]))
     expect(await screen.findByText('Visa conducteur')).toBeTruthy()
-    expect(screen.getByText(/^Guilene · .*2026/)).toBeTruthy()
-    expect(screen.getByText('Berni')).toBeTruthy()
+    expect(screen.getByText(/^Déposante · .*2026/)).toBeTruthy()
+    expect(screen.getByText('Valideur')).toBeTruthy()
     expect(screen.getByText('Reprise, non recueillie sur la plateforme')).toBeTruthy()
     expect(screen.getByText('Signatures attendues')).toBeTruthy()
     fireEvent.click(screen.getAllByRole('button', { name: /9 ·/ })[0])
@@ -151,7 +151,7 @@ describe('D-109 : preuves et signatures d’une opération', () => {
   it('signatures de l’opération : bouton sur la suivante, aucune signature', () => {
     page(<><SignaturesOperation op={ping} /><SignaturesOperation op={op({ id: 'op-4' })} /></>, avec([]))
     expect(screen.getByRole('button', { name: /Visa conducteur/ })).toBeTruthy()
-    expect(screen.getByText(/^Guilene · .*2026/)).toBeTruthy()
+    expect(screen.getByText(/^Déposante · .*2026/)).toBeTruthy()
     expect(screen.getByText('Aucune signature attendue.')).toBeTruthy()
   })
   it('vérification d’empreinte : sans empreinte inscrite, casse, empreinte reçue divergente', async () => {
