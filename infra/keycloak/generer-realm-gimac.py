@@ -490,6 +490,7 @@ APPELS_SBX = [
     ("sbx-simulation", "INTERNAL_SBX_TRACE_REFERENCES", "SBX-TRACE : référence de trace au démarrage de l'essai"),
     ("sbx-simulation", "INTERNAL_SBX_DONNEES_ETATS", "SBX-DONNEES : restauration de l'état initial, relevé des soldes"),
     ("sbx-simulation", "INTERNAL_SBX_RACCORDEMENT_LIAISONS", "SBX-RACCORDEMENT : disponibilité des liaisons de test"),
+    ("sbx-simulation", "INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE", "SBX-RACCORDEMENT : préparation du participant avant un essai hybride ou d'intégration"),
     # Mode plateforme de SBX-SIMULATION : espace personnel du lanceur d'un essai libre (route interne de SBX-ESPACE).
     ("sbx-simulation", "INTERNAL_SBX_ESPACE_PERSONNEL", "SBX-ESPACE : espace personnel actif d'un collaborateur"),
     ("sbx-mobile", "INTERNAL_SBX_DONNEES_MOUVEMENTS", "SBX-DONNEES : mouvements, comptes, cartes, PIN, clés de travail"),
