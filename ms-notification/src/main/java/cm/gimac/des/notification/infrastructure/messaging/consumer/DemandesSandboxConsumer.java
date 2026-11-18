@@ -75,7 +75,8 @@ public class DemandesSandboxConsumer {
             destinataires(d),
             premier(texte(d, "codeParticipant"), texte(e, "partitionkey")),
             texte(d, "codeEspace"),
-            instant(d, "le")
+            instant(d, "le"),
+            texte(d.path("parametres"), "lienRetrait")
         );
         if (!idempotent.handleOnce(id, GROUPE, () -> sandbox.demander(demande))) {
             LOG.debug("Demande {} déjà traitée", id);

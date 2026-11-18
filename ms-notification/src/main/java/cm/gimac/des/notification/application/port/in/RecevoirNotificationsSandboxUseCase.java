@@ -14,7 +14,15 @@ public interface RecevoirNotificationsSandboxUseCase {
      * Demande reçue : identifiant de l'événement, service émetteur ({@code sbx-espace}…), modèle, destinataires (comptes
      * ou {@code ROLE:<rôle>}), code participant et code de l'espace, instant de la demande.
      */
-    record Demande(String evenementId, String service, String modele, List<String> destinataires, String codeParticipant, String codeEspace, Instant le) {}
+    /**
+     * Demande de notification ; {@code lienRetrait} : chemin du lien de retrait d'un identifiant d'accès de test
+     * (SBX_RAC_IDENTIFIANT_DELIVRE), repris comme lien du portail de la sandbox, sinon null.
+     */
+    record Demande(String evenementId, String service, String modele, List<String> destinataires, String codeParticipant, String codeEspace, Instant le, String lienRetrait) {
+        public Demande(String evenementId, String service, String modele, List<String> destinataires, String codeParticipant, String codeEspace, Instant le) {
+            this(evenementId, service, modele, destinataires, codeParticipant, codeEspace, le, null);
+        }
+    }
 
     /** Destinataire résolu à blanc : compte, couche du lien (portail ou DES), titre et lien qui seraient remis. */
     record Resolution(String compteId, boolean portail, String titre, String lien) {}

@@ -326,6 +326,10 @@ gimac:
     collaboration:
       url: http://localhost:8093
   notification:
+    sandbox:
+      # Adresse de base du portail de la sandbox (lien de retrait d'un identifiant d'accès de test délivré) ;
+      # vide : chemin relatif, ouvert depuis la cloche du portail de la sandbox.
+      adresse-portail: ${GIMAC_NOTIFICATION_SANDBOX_ADRESSE_PORTAIL:}
     # Noms affichés mis en cache 5 min, conversations 60 s (un groupe renommé apparaît vite).
     cache-noms-secondes: 300
     cache-conversations-secondes: 60

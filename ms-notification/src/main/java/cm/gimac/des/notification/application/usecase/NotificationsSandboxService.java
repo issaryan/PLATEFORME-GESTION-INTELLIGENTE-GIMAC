@@ -27,6 +27,8 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +55,29 @@ public class NotificationsSandboxService implements RecevoirNotificationsSandbox
     private final ReglesSandbox regles;
     private final JdbcTemplate jdbc;
     private final Clock horloge;
+    /** Adresse de base du portail de la sandbox (lien de retrait d'un identifiant d'accès de test) ; vide : chemin relatif. */
+    private final String adressePortailSandbox;
+
+    @Autowired
+    public NotificationsSandboxService(
+        NotificationUtilisateurRepository notifications,
+        PreferencesNotificationRepository preferences,
+        DestinatairesSandboxPort annuaire,
+        OutboxPublisher outbox,
+        ReglesSandbox regles,
+        JdbcTemplate jdbc,
+        Clock horloge,
+        @Value("${gimac.notification.sandbox.adresse-portail:}") String adressePortailSandbox
+    ) {
+        this.notifications = notifications;
+        this.preferences = preferences;
+        this.annuaire = annuaire;
+        this.outbox = outbox;
+        this.regles = regles;
+        this.jdbc = jdbc;
+        this.horloge = horloge;
+        this.adressePortailSandbox = adressePortailSandbox;
+    }
 
     public NotificationsSandboxService(
         NotificationUtilisateurRepository notifications,
@@ -63,13 +88,7 @@ public class NotificationsSandboxService implements RecevoirNotificationsSandbox
         JdbcTemplate jdbc,
         Clock horloge
     ) {
-        this.notifications = notifications;
-        this.preferences = preferences;
-        this.annuaire = annuaire;
-        this.outbox = outbox;
-        this.regles = regles;
-        this.jdbc = jdbc;
-        this.horloge = horloge;
+        this(notifications, preferences, annuaire, outbox, regles, jdbc, horloge, "");
     }
 
     @Override
@@ -93,7 +112,7 @@ public class NotificationsSandboxService implements RecevoirNotificationsSandbox
                 TypeNotification.SANDBOX,
                 regles.titre(m, d.codeParticipant()),
                 m.sousTitre(),
-                regles.lien(dest.portail(), d.codeParticipant()),
+                dest.portail() ? regles.lienPortailSandbox(m, d.lienRetrait(), adressePortailSandbox).orElseGet(() -> regles.lien(true, d.codeParticipant())) : regles.lien(false, d.codeParticipant()),
                 reference,
                 null,
                 null,

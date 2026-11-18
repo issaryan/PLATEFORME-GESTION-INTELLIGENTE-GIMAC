@@ -17,7 +17,9 @@ import java.util.regex.Pattern;
  * de l'institution ou des rôles ({@code ROLE:ADMINISTRATEUR_INSTITUTION}, {@code ROLE:ADMINISTRATEUR_GIMAC}…), résolus
  * dans la seule portée du modèle : un compte hors de l'institution n'est jamais notifié (cloisonnement du portail).
  * Aucune donnée sensible : les gabarits ne portent que le code participant et le code de l'espace, jamais un identifiant
- * de connexion, un secret, une donnée de test ni un numéro de carte.
+ * de connexion, un secret, une donnée de test ni un numéro de carte. Seule exception, le lien d'un identifiant d'accès de
+ * test délivré : il porte le jeton de retrait, à usage unique, échu sous trois jours et utilisable par le seul titulaire
+ * authentifié, qui en est l'unique destinataire.
  */
 public final class ReglesSandbox {
 
@@ -103,6 +105,24 @@ public final class ReglesSandbox {
     public String lien(boolean portail, String codeParticipant) {
         String c = code(codeParticipant);
         return portail ? "/portail" : "?".equals(c) ? "/des/sandbox/espaces" : "/des/sandbox/espaces/" + c;
+    }
+
+    /** Modèle dont le lien est le lien de retrait de la demande (identifiant d'accès de test délivré, SBX-RACCORDEMENT). */
+    public static final String IDENTIFIANT_DELIVRE = "SBX_RAC_IDENTIFIANT_DELIVRE";
+
+    private static final Pattern LIEN_RETRAIT = Pattern.compile("^/portail/sbx-raccordement/retrait/[A-Za-z0-9_-]{16,128}$");
+
+    /**
+     * Lien d'un compte d'institution vers la page de retrait du portail de la sandbox, sur son adresse de base
+     * (configuration ; vide : chemin relatif, servi par le portail de la sandbox) ; vide pour tout autre modèle ou un
+     * chemin hors de la forme attendue, le lien par défaut s'applique alors.
+     */
+    public Optional<String> lienPortailSandbox(Modele m, String lienRetrait, String adressePortailSandbox) {
+        if (!IDENTIFIANT_DELIVRE.equals(m.code()) || lienRetrait == null || !LIEN_RETRAIT.matcher(lienRetrait).matches()) {
+            return Optional.empty();
+        }
+        String base = adressePortailSandbox == null ? "" : adressePortailSandbox.strip().replaceAll("/+$", "");
+        return Optional.of(base + lienRetrait);
     }
 
     /**
