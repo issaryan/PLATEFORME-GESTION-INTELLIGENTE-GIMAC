@@ -32,13 +32,13 @@ describe('CorpsMessage : mentions mises en évidence sans HTML', () => {
   it('mention, la sienne, liaison citée, texte brut conservé', () => {
     render(
       <CorpsMessage
-        contenu="@Paul Mbarga et @Agent de test <b>voir</b> LIA-2026-030 @Inconnu"
+        contenu="@Chef Département et @Agent de test <b>voir</b> LIA-2026-030 @Inconnu"
         etiquettes={[]}
-        mentions={[{ id: 'u-1', nom: 'Paul Mbarga' }, { id: 'u-test', nom: 'Agent de test' }]}
+        mentions={[{ id: 'u-1', nom: 'Chef Département' }, { id: 'u-test', nom: 'Agent de test' }]}
         moi="u-test"
       />,
     )
-    expect(screen.getByText('@Paul Mbarga').className).toBe('gm-mention')
+    expect(screen.getByText('@Chef Département').className).toBe('gm-mention')
     expect(screen.getByText('@Agent de test').className).toBe('gm-mention gm-mention-moi')
     expect(screen.getByText(/<b>voir<\/b>/)).toBeTruthy()
     expect(document.querySelector('b')).toBeNull()
@@ -57,31 +57,31 @@ describe('MessageriePage : répondre et mentionner (D-82)', () => {
     // Message du jeu de démonstration : réponse au rapport des essais, avec une mention de l'utilisateur.
     const reponse = (await within(fil).findByText('@Agent de test')).closest('li')!
     expect(reponse.classList.contains('gm-msg-mentionne')).toBe(true)
-    expect(within(reponse).getByRole('button', { name: /En réponse à :\s*Rachel Biyong Mengue/ })).toBeTruthy()
+    expect(within(reponse).getByRole('button', { name: /En réponse à :\s*Responsable SNA/ })).toBeTruthy()
     // Citation ouverte : le message d'origine est mis en évidence.
     fireEvent.click(within(reponse).getByRole('button', { name: /En réponse à/ }))
     await waitFor(() => expect(fil.querySelector('.gm-msg-evidence')!.textContent).toContain('Les essais sont suspendus'))
     // Répondre au message du RSSI.
-    const herve = within(fil).getAllByText(/je prends contact/)[0].closest('li')!
-    fireEvent.click(within(herve).getByRole('button', { name: 'Répondre à Hervé Kamga Tchoupo' }))
-    const encours = within(fil).getByRole('group', { name: 'Réponse à Hervé Kamga Tchoupo' })
+    const officier = within(fil).getAllByText(/je prends contact/)[0].closest('li')!
+    fireEvent.click(within(officier).getByRole('button', { name: 'Répondre à Officier Sécurité Groupe' }))
+    const encours = within(fil).getByRole('group', { name: 'Réponse à Officier Sécurité Groupe' })
     expect(encours.textContent).toContain('je prends contact')
     const champ = within(fil).getByLabelText('Votre message') as HTMLTextAreaElement
-    fireEvent.change(champ, { target: { value: 'Merci @her', selectionStart: 10 } })
+    fireEvent.change(champ, { target: { value: 'Merci @off', selectionStart: 10 } })
     fireEvent.keyDown(champ, { key: 'Enter' })
-    expect(champ.value).toBe('Merci @Hervé Kamga Tchoupo ')
+    expect(champ.value).toBe('Merci @Officier Sécurité Groupe ')
     // Mention retenue tant que « @Nom » figure au texte.
-    fireEvent.change(champ, { target: { value: 'Merci @Hervé Kamga Tchoupo, je relis. @ra', selectionStart: 41 } })
+    fireEvent.change(champ, { target: { value: 'Merci @Officier Sécurité Groupe, je relis. @re', selectionStart: 46 } })
     fireEvent.keyDown(champ, { key: 'Escape' })
-    expect(within(fil).getByRole('group', { name: 'Réponse à Hervé Kamga Tchoupo' })).toBeTruthy()
-    fireEvent.change(champ, { target: { value: 'Merci @Hervé Kamga Tchoupo, je relis.', selectionStart: 37 } })
+    expect(within(fil).getByRole('group', { name: 'Réponse à Officier Sécurité Groupe' })).toBeTruthy()
+    fireEvent.change(champ, { target: { value: 'Merci @Officier Sécurité Groupe, je relis.', selectionStart: 42 } })
     fireEvent.click(within(fil).getByRole('button', { name: 'Envoyer' }))
     await waitFor(() => expect(envoyer).toHaveBeenCalled())
-    expect(envoyer.mock.calls[0][1]).toMatchObject({ contenu: 'Merci @Hervé Kamga Tchoupo, je relis.', reponseA: expect.stringMatching(/^MSG-/), mentions: ['u-rssi'] })
+    expect(envoyer.mock.calls[0][1]).toMatchObject({ contenu: 'Merci @Officier Sécurité Groupe, je relis.', reponseA: expect.stringMatching(/^MSG-/), mentions: ['u-rssi'] })
     // Envoyé : la réponse en cours disparaît, la bulle porte la citation.
     await waitFor(() => expect(within(fil).queryByRole('group', { name: /Réponse à/ })).toBeNull())
     const envoye = (await within(fil).findByText(/je relis\./)).closest('li')!
-    expect(within(envoye).getByRole('button', { name: /En réponse à :\s*Hervé Kamga Tchoupo/ })).toBeTruthy()
+    expect(within(envoye).getByRole('button', { name: /En réponse à :\s*Officier Sécurité Groupe/ })).toBeTruthy()
   })
 
   it('annuler une réponse par la croix ; message cité supprimé ; mention refusée traduite', async () => {
@@ -90,7 +90,7 @@ describe('MessageriePage : répondre et mentionner (D-82)', () => {
     const directe = conv.find((c) => c.membres.some((m) => m.id === 'u-rssi') && c.type === 'DIRECTE')!
     vi.spyOn(s.messagerie, 'envoyer').mockRejectedValueOnce(Object.assign(new Error('x'), { status: 422, code: 'COL_MENTION_INVALIDE', correlationId: 'c' }))
     page(`/des/messagerie?conversation=${directe.id}`, s)
-    const fil = await screen.findByRole('region', { name: 'Hervé Kamga Tchoupo' })
+    const fil = await screen.findByRole('region', { name: 'Officier Sécurité Groupe' })
     expect(await within(fil).findByText('Message supprimé')).toBeTruthy()
     const li = within(fil).getByText('Attestation reçue et en cours de vérification.').closest('li')!
     fireEvent.click(within(li).getByRole('button', { name: /^Répondre à/ }))
@@ -140,7 +140,7 @@ describe('MessageriePage : aperçu bureautique depuis le fil (D-83)', () => {
     const convertir = vi.spyOn(s.apercu!, 'convertir')
     const directe = (await premiere(s)).find((c) => c.membres.some((m) => m.id === 'u-rssi') && c.type === 'DIRECTE')!
     page(`/des/messagerie?conversation=${directe.id}`, s)
-    const fil = await screen.findByRole('region', { name: 'Hervé Kamga Tchoupo' })
+    const fil = await screen.findByRole('region', { name: 'Officier Sécurité Groupe' })
     fireEvent.click(await within(fil).findByRole('button', { name: 'Ouvrir note-attestations-PCI-DSS.docx' }))
     const d = await screen.findByRole('dialog', { name: /note-attestations-PCI-DSS\.docx/ })
     await waitFor(() => expect(convertir).toHaveBeenCalledWith(expect.anything(), 'note-attestations-PCI-DSS.docx'))

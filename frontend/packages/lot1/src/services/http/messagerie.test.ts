@@ -12,7 +12,7 @@ const methode = (i: number) => appels()[i][1].method
 describe('messagerieHttp', () => {
   it('lectures : annuaire, conversations filtrées, conversation, fil, non-lus', async () => {
     brancher()
-    await messagerieHttp.annuaire('rachel')
+    await messagerieHttp.annuaire('resp')
     await messagerieHttp.annuaire('', 2, 10)
     await messagerieHttp.conversations({ recherche: 'essais', liaisonId: 'L1' })
     await messagerieHttp.conversations({ page: 1, taille: 5 })
@@ -20,7 +20,7 @@ describe('messagerieHttp', () => {
     await messagerieHttp.messages('C1', 'M9')
     await messagerieHttp.nonLus()
     expect([0, 1, 2, 3, 4, 5, 6].map((i) => url(i).pathname + url(i).search)).toEqual([
-      '/bff/des/collaboration/messagerie/annuaire?recherche=rachel&page=0&taille=20',
+      '/bff/des/collaboration/messagerie/annuaire?recherche=resp&page=0&taille=20',
       '/bff/des/collaboration/messagerie/annuaire?page=2&taille=10',
       '/bff/des/collaboration/messagerie/conversations?page=0&taille=20&recherche=essais&liaisonId=L1',
       '/bff/des/collaboration/messagerie/conversations?page=1&taille=5',

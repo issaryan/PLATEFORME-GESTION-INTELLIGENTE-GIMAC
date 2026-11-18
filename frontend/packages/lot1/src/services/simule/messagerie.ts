@@ -13,22 +13,22 @@ type Refus = (status: number, code: string, message: string) => ApiError
 
 /** Annuaire de démonstration : comptes internes actifs du GIMAC (identifiants des profils de démonstration). */
 export const ANNUAIRE: Correspondant[] = [
-  { id: 'U-001', nom: 'Paul Mbarga Atangana', fonction: 'Chef du département DES', profils: ['ROLE_CHEF_DES'] },
-  { id: 'U-020', nom: 'Bertrand Nguema Obiang', fonction: 'Chef de la DDRM', profils: ['ROLE_CHEF_DDRM'] },
-  { id: 'sim-charge', nom: 'Fatimé Abakar Hissein', fonction: 'Chargée de la DDRM', profils: ['ROLE_CHARGE_DDRM'] },
-  { id: 'U-201', nom: 'Aïcha Mahamat Nour', fonction: 'Conductrice de projet', profils: ['ROLE_CONDUCTEUR_PROJET'] },
-  { id: 'U-101', nom: 'Joël Ekotto Mballa', fonction: 'Ingénieur d’homologation', profils: ['ROLE_INGENIEUR_HOMOLOGATION'] },
-  { id: 'u-sna', nom: 'Rachel Biyong Mengue', fonction: 'Normes et Agréments', profils: ['ROLE_SNA'] },
-  { id: 'u-prod', nom: 'Serge Ondoua Essomba', fonction: 'Production monétique', profils: ['ROLE_PRODUCTION_MONETIQUE'] },
-  { id: 'u-res', nom: 'Idriss Mahamat Saleh', fonction: 'Pôle réseau', profils: ['ROLE_POLE_RESEAU'] },
-  { id: 'u-sys', nom: 'Chantal Ngo Bassong', fonction: 'Pôle système', profils: ['ROLE_POLE_SYSTEME'] },
-  { id: 'u-rssi', nom: 'Hervé Kamga Tchoupo', fonction: 'Responsable de la sécurité des systèmes d’information', profils: ['ROLE_RSSI'] },
-  { id: 'u-ssi', nom: 'Linda Owona Ateba', fonction: 'Agente de la sécurité des systèmes d’information', profils: ['ROLE_AGENT_SSI'] },
-  { id: 'u-conf', nom: 'Mireille Obame Nze', fonction: 'Conformité', profils: ['ROLE_CONFORMITE'] },
-  { id: 'u-dg', nom: 'Jean-Baptiste Ella Mintsa', fonction: 'Direction générale', profils: ['ROLE_DG'] },
+  { id: 'U-001', nom: 'Chef Département DES', fonction: 'Chef du département DES', profils: ['ROLE_CHEF_DES'] },
+  { id: 'U-020', nom: 'Responsable DDRM', fonction: 'Chef de la DDRM', profils: ['ROLE_CHEF_DDRM'] },
+  { id: 'sim-charge', nom: 'Responsable Unité Démo', fonction: 'Chargée de la DDRM', profils: ['ROLE_CHARGE_DDRM'] },
+  { id: 'U-201', nom: 'Équipe Conduite Projet', fonction: 'Conductrice de projet', profils: ['ROLE_CONDUCTEUR_PROJET'] },
+  { id: 'U-101', nom: 'Agent Exploitation', fonction: 'Ingénieur d’homologation', profils: ['ROLE_INGENIEUR_HOMOLOGATION'] },
+  { id: 'u-sna', nom: 'Responsable SNA', fonction: 'Normes et Agréments', profils: ['ROLE_SNA'] },
+  { id: 'u-prod', nom: 'Superviseur Opérations Groupe', fonction: 'Production monétique', profils: ['ROLE_PRODUCTION_MONETIQUE'] },
+  { id: 'u-res', nom: 'Agent Pôle Réseau', fonction: 'Pôle réseau', profils: ['ROLE_POLE_RESEAU'] },
+  { id: 'u-sys', nom: 'Opératrice Pôle Système', fonction: 'Pôle système', profils: ['ROLE_POLE_SYSTEME'] },
+  { id: 'u-rssi', nom: 'Officier Sécurité Groupe', fonction: 'Responsable de la sécurité des systèmes d’information', profils: ['ROLE_RSSI'] },
+  { id: 'u-ssi', nom: 'Agent Logistique Bis', fonction: 'Agente de la sécurité des systèmes d’information', profils: ['ROLE_AGENT_SSI'] },
+  { id: 'u-conf', nom: 'Agent Qualité', fonction: 'Conformité', profils: ['ROLE_CONFORMITE'] },
+  { id: 'u-dg', nom: 'Agent Conformité', fonction: 'Direction générale', profils: ['ROLE_DG'] },
   // Mon activité (D-76) : responsable d'un service et collaborateur sans fonction métier dans la plateforme.
-  { id: 'u-resp-info', nom: 'Gaston Ndzana Ebode', fonction: 'Chef du service Production informatique', profils: ['ROLE_RESPONSABLE_SERVICE'] },
-  { id: 'u-collab', nom: 'Nadège Mvondo Assiga', fonction: 'Technicienne réseau', profils: ['ROLE_COLLABORATEUR'] },
+  { id: 'u-resp-info', nom: 'Responsable Production', fonction: 'Chef du service Production informatique', profils: ['ROLE_RESPONSABLE_SERVICE'] },
+  { id: 'u-collab', nom: 'Collaboratrice Réseau', fonction: 'Technicienne réseau', profils: ['ROLE_COLLABORATEUR'] },
 ]
 
 /** Comptes de l'annuaire qui ont déposé une photo de profil (démonstration) ; les autres gardent leurs initiales. */
@@ -220,8 +220,8 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
   const essais = g1.messages[1].id
   ajouterMessage(g1, rssi, `@${moi.nom} je prends contact avec le correspondant pour la nouvelle cérémonie.`, ilYA(120), [], [], [], { reponseA: essais, mentions: [moi.id] })
   // Accusés de lecture (D-88) : mon message est lu par le RSSI (position antérieure à D-88, heure inconnue) et par
-  // Rachel (qui écrit ensuite), pas encore par Aïcha : « Lu par 2 sur 3 ».
-  ajouterMessage(g1, moi, 'Merci Hervé, tenez-nous informés de la date de la cérémonie.', ilYA(60))
+  // Responsable (qui écrit ensuite), pas encore par Équipe : « Lu par 2 sur 3 ».
+  ajouterMessage(g1, moi, 'Merci Officier, tenez-nous informés de la date de la cérémonie.', ilYA(60))
   avancer(g1, rssi.id, g1.messages.length, null)
   ajouterMessage(g1, sna, 'Le blocage est déclaré sur la liaison ; échéance de levée au 27 septembre.', ilYA(20))
   const d2 = creer([moi, rssi], null, null, ilYA(4000))
@@ -237,7 +237,7 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
   d1.lus.set(moi.id, 2)
   g1.lus.set(moi.id, 2)
   d2.lus.set(moi.id, 2)
-  // Aïcha a ouvert l'échange direct après la réponse du chef : lu, à l'heure de son dernier message.
+  // Équipe a ouvert l'échange direct après la réponse du chef : lu, à l'heure de son dernier message.
   avancer(d1, cond.id, d1.messages.length, ilYA(44))
 
   /** Vue d'un message pour l'utilisateur (D-82) : message cité, mentions, « vous concerne ». */

@@ -12,7 +12,7 @@ const bouton = (nom: string) => screen.getByRole('button', { name: nom })
 describe('Fiche d’un compte : actes selon les permissions', () => {
   it('super administrateur : tous les actes ; lecteur : aucun ; propre compte : actes sur soi retirés', async () => {
     fiche('u-sna')
-    expect(await screen.findByRole('heading', { level: 1, name: 'Rachel Biyong Mengue' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Responsable SNA' })).toBeTruthy()
     // Cycle de vie dans la barre d'outils ; actes de sécurité dans l'onglet Sécurité ; sessions dans le leur.
     const barre = screen.getByRole('toolbar')
     for (const n of ['Modifier la fiche', 'Modifier les profils', 'Désactiver le compte', 'Supprimer le compte']) {
@@ -31,7 +31,7 @@ describe('Fiche d’un compte : actes selon les permissions', () => {
     expect(screen.getByTestId('emplacement').textContent).toBe('/console/comptes/u-sna')
     cleanup()
     fiche('u-sna?onglet=securite', { permissions: LECTEUR })
-    await screen.findByRole('heading', { level: 1, name: 'Rachel Biyong Mengue' })
+    await screen.findByRole('heading', { level: 1, name: 'Responsable SNA' })
     expect(screen.queryByRole('toolbar')?.querySelectorAll('button')).toHaveLength(0)
     expect(screen.getByRole('tab', { name: 'Sécurité' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.queryByRole('group', { name: 'Actes de sécurité du compte' })).toBeNull()

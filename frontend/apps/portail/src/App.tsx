@@ -101,7 +101,7 @@ export default function App() {
       etapes: demo?.etapes,
       // Correspondant de l'institution de démonstration : même nom que la session (connexionDemo.ts), adresse et fonction de l'institution.
       compte: {
-        identifiant: demo?.identifiant || 'correspondant-a', prenom: 'Brice', nom: 'Nzeng Mba', nomAffiche: NOM_CORRESPONDANT_DEMO, email: 'b.nzengmba@etablissement-paiement-a.example',
+        identifiant: demo?.identifiant || 'correspondant-a', prenom: 'Agent', nom: 'Délégué', nomAffiche: NOM_CORRESPONDANT_DEMO, email: 'b.nzengmba@etablissement-paiement-a.example',
         fonction: 'Correspondant technique', profils: ['ROLE_CORRESPONDANT'], institutionId: 'INST-0042',
       },
     })

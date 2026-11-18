@@ -4,11 +4,11 @@ import { servicesSimules } from './index'
 
 // Recette du lot DDR (docs/recette/ddrm.md) : anomalies reproduites sur les services simulés, qui suivent les règles de
 // MS-PARTICIPANT, MS-HOMOLOGATION et MS-PILOTAGE (RACI des dépôts, affectation, démonstration continue, dates).
-const charge = { id: 'sim-charge', nom: 'Fatimé Abakar Hissein', profils: ['ROLE_CHARGE_DDRM'] }
-const chef = { id: 'U-020', nom: 'Bertrand Nguema Obiang', profils: ['ROLE_CHEF_DDRM'] }
-const chefDes = { id: 'U-001', nom: 'Paul Mbarga Atangana', profils: ['ROLE_CHEF_DES'] }
-const sna = { id: 'u-sna', nom: 'Rachel Biyong Mengue', profils: ['ROLE_SNA'] }
-const conducteur = { id: 'U-201', nom: 'Aïcha Mahamat Nour', profils: ['ROLE_CONDUCTEUR_PROJET'] }
+const charge = { id: 'sim-charge', nom: 'Responsable Unité Démo', profils: ['ROLE_CHARGE_DDRM'] }
+const chef = { id: 'U-020', nom: 'Responsable DDRM', profils: ['ROLE_CHEF_DDRM'] }
+const chefDes = { id: 'U-001', nom: 'Chef Département DES', profils: ['ROLE_CHEF_DES'] }
+const sna = { id: 'u-sna', nom: 'Responsable SNA', profils: ['ROLE_SNA'] }
+const conducteur = { id: 'U-201', nom: 'Équipe Conduite Projet', profils: ['ROLE_CONDUCTEUR_PROJET'] }
 type U = typeof charge
 const svc = (u: U) => servicesSimules({ latenceMs: 0, utilisateur: u })
 const refus = (code: string) => expect.objectContaining({ code })
@@ -34,7 +34,7 @@ describe('DDR-05 : dépôt de preuve réservé au RACI, auteur réel tracé', ()
     // Sans responsabilité ni supervision (HOM_STEP_MANAGE) : 403, comme MS-HOMOLOGATION.
     await expect(svc(sna).parcours.deposerPreuve(`${l.id}:3`, fichier('perimetre.pdf'), {})).rejects.toEqual(refus('HOM_DEPOT_NON_AUTORISE'))
     await svc(charge).parcours.deposerPreuve(`${l.id}:3`, fichier('perimetre.pdf'), {})
-    expect((await op(charge, l.id, '3')).preuve?.deposePar).toBe('Fatimé Abakar Hissein')
+    expect((await op(charge, l.id, '3')).preuve?.deposePar).toBe('Responsable Unité Démo')
   })
 
   it('DDR-26 : deux fichiers de preuve différents ont deux empreintes différentes', async () => {
@@ -65,7 +65,7 @@ describe('DDR-06 : affectation des ressources contrôlée', () => {
     await svc(chef).parcours.affecterRessources(l.id, [{ fonction: 'SNA', personneId: 'U-SNA-2' }])
     const ops = await svc(chef).parcours.operations(l.id)
     expect(ops.filter((o) => o.etat !== 'FAITE' && o.raci.R?.fonction === 'SNA').every((o) => o.raci.R?.id === 'U-SNA-2')).toBe(true)
-    expect(ops.find((o) => o.rang === '6')!.preuve?.deposePar).toBe('Bertrand Nguema Obiang')
+    expect(ops.find((o) => o.rang === '6')!.preuve?.deposePar).toBe('Responsable DDRM')
   })
 })
 

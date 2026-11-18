@@ -15,7 +15,7 @@ import { BadgeEtape, BadgeInstance } from './communs'
 
 const PAR_PAGE = 10
 
-/** « Tenue par Ingrid Mballa », « À prendre : Pôle réseau (Pôle réseau) ». */
+/** « Tenue par Ingénieure Réseau Démo », « À prendre : Pôle réseau (Pôle réseau) ». */
 export function useQuiTient() {
   const { t } = useTranslation()
   const libelleProfil = useLibelleProfilEquipe()

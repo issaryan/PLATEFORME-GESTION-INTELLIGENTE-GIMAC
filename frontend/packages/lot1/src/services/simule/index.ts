@@ -228,7 +228,7 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
         { documentRef: `DOC-2026-${id.slice(-3)}0`, version: 1, typePiece: 'Rapport de tests signé', empreinte: D.empreinte(id + 'v1'), dateDepot: '12/09/2026 15:02', scelle: true, valide: false },
       ]
     }),
-    attributionsOperation: () => attendre([{ event: 'Responsable désigné : Joël Ekotto Mballa', at: '03/03/2026 09:15', actor: 'Chef du DES', correlationId: 'RQ-2026-0303-5' }]),
+    attributionsOperation: () => attendre([{ event: 'Responsable désigné : Agent Exploitation', at: '03/03/2026 09:15', actor: 'Chef du DES', correlationId: 'RQ-2026-0303-5' }]),
     grilleOperation: () => attendre([
       { code: 'G1', libelle: 'Les journaux de tests couvrent tous les scénarios attendus', reponse: 'CONFORME' as const, nonConformiteSignalee: false },
       { code: 'G2', libelle: 'Les écarts relevés sont justifiés et acceptés', reponse: null, nonConformiteSignalee: false },

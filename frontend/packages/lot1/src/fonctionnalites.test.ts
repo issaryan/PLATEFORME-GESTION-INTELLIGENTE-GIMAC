@@ -101,7 +101,7 @@ describe('comptes internes de démonstration', () => {
     expect(new Set(ids).size).toBe(ids.length)
     expect(PROFILS_INTERNES_DEMO.ROLE_SUPER_ADMIN.identifiant).toBe('super.admin')
     expect(PROFILS_INTERNES_DEMO.ROLE_ADMIN_SYSTEME).toMatchObject({ identifiant: 'admin.systeme', permissions: PROFILS.ROLE_ADMIN_SYSTEME })
-    expect(identifiantDemo('Aïcha Mahamat Nour')).toBe('a.mahamat')
+    expect(identifiantDemo('Équipe Conduite Projet')).toBe('e.conduite')
     expect(identifiantDemo('Unique')).toBe('u.unique')
   })
 })

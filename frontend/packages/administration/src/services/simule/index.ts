@@ -71,7 +71,7 @@ function parJour(instants: (string | null | undefined)[], fond: (i: number) => n
 
 export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesConsole {
   const { attendre, refus } = creerSimulateur({ latenceMs: o.latenceMs ?? 300 })
-  const acteur = o.acteur ?? { id: 'u-super-admin', nom: 'Serge Mouelle Kombi', permissions: ['IAM_ROLE_PRIVILEGED_GRANT'] }
+  const acteur = o.acteur ?? { id: 'u-super-admin', nom: 'Super Administrateur Démo', permissions: ['IAM_ROLE_PRIVILEGED_GRANT'] }
   const peutPrivilegie = acteur.permissions.includes(OCTROI_PRIVILEGIE)
   let comptes: Compte[] = D.comptesInitiaux()
   const journal: EntreeJournal[] = D.journalInitial()

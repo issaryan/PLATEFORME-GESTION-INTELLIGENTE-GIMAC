@@ -119,7 +119,7 @@ describe('Dossier numérique de la liaison (CR Fig. 7.3)', () => {
     await waitFor(() => expect(within(d).getByLabelText(/Conducteur désigné/).querySelectorAll('option').length).toBe(3))
     fireEvent.change(within(d).getByLabelText(/Conducteur désigné/), { target: { value: 'U-COND-1' } })
     fireEvent.click(within(d).getByRole('button', { name: 'Désigner le conducteur' }))
-    expect(await screen.findByText('Aïcha Mahamat Nour conduit désormais cette liaison.')).toBeTruthy()
+    expect(await screen.findByText('Équipe Conduite Projet conduit désormais cette liaison.')).toBeTruthy()
     fireEvent.click(await screen.findByRole('button', { name: 'Redésigner le conducteur' }))
     d = dialogue()
     fireEvent.change(within(d).getByLabelText(/Conducteur désigné/), { target: { value: 'U-COND-2' } })
@@ -127,7 +127,7 @@ describe('Dossier numérique de la liaison (CR Fig. 7.3)', () => {
     expect(await within(d).findByText(/Motivez la redésignation/)).toBeTruthy()
     fireEvent.change(within(d).getByLabelText(/Motif de la redésignation/), { target: { value: 'Rééquilibrage du plan de charge' } })
     fireEvent.click(within(d).getByRole('button', { name: 'Redésigner le conducteur' }))
-    expect(await screen.findByText('Brice Ondo Mba conduit désormais cette liaison.')).toBeTruthy()
+    expect(await screen.findByText('Délégué Conduite conduit désormais cette liaison.')).toBeTruthy()
   })
   it('désignation refusée : refus du service affiché', async () => {
     page('/des/parcours/LIA-2026-044?action=designer', { services: avec({ designerConducteur: async () => { throw new ApiError(422, 'HOM_LEAD_NOT_ELIGIBLE', 'x', 'RQ-DES') } }) })

@@ -90,7 +90,7 @@ describe('DES-12 : étapes configurables (D-89)', () => {
   })
 
   it('lecture filtrée : bandeau, fantômes grisés et non ouvrables, liste et onglet Opérations', async () => {
-    const services = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-res', nom: 'Idriss Mahamat Saleh', profils: ['ROLE_POLE_RESEAU'] } })
+    const services = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-res', nom: 'Agent Pôle Réseau', profils: ['ROLE_POLE_RESEAU'] } })
     const { container } = ouvrir('?version=REF-CI-4', ['HOM_REFERENTIEL_READ'], services)
     expect(await screen.findByText('Vous voyez les opérations qui vous concernent')).toBeTruthy()
     await waitFor(() => expect(container.querySelectorAll('.gm-mod-carte-fantome').length).toBeGreaterThan(0))

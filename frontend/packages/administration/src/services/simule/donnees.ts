@@ -5,30 +5,30 @@ import type { EntreeJournal } from '../../modele/comptes'
 import type { ConfigurationMessagerie, PolitiqueSecurite } from '../../modele/configuration'
 import type { EtatAlertes, EtatServeurs, EtatService, InstantanePlateforme, MetriqueSerie, NiveauxJournalisation, ConfigurationPlateforme, PeriodeSerie, PointSerie, SeriesMetriques } from '../../modele/plateforme'
 
-// Données fictives de la console (développement) : comptes de démonstration super.admin, h.kamga et admin.systeme, agents
+// Données fictives de la console (développement) : comptes de démonstration super.admin, o.securite et admin.systeme, agents
 // des directions, supervision d'une plateforme de recette. Aucune donnée réelle.
 
 const il = (heures: number) => new Date(Date.now() - heures * 3_600_000).toISOString()
 
 type Graine = [id: string, identifiant: string, prenom: string, nom: string, fonction: string, profils: string[], o?: Partial<Compte>]
 const GRAINES: Graine[] = [
-  ['u-super-admin', 'super.admin', 'Serge', 'Mouelle Kombi', 'Super administrateur de la plateforme', ['ROLE_SUPER_ADMIN']],
+  ['u-super-admin', 'super.admin', 'Super', 'Administrateur Démo', 'Super administrateur de la plateforme', ['ROLE_SUPER_ADMIN']],
   // Même identité que le compte RSSI commun aux trois applications (@gimac/lot1 profilsDemo, recette ACC-05).
-  ['u-rssi', 'h.kamga', 'Hervé', 'Kamga Tchoupo', 'Responsable de la sécurité des SI', ['ROLE_RSSI']],
+  ['u-rssi', 'o.securite', 'Officier', 'Sécurité Groupe', 'Responsable de la sécurité des SI', ['ROLE_RSSI']],
   // Administrateur système (D-78) : même identité que son compte de démonstration (admin.systeme), recette ADM-02.
-  ['u-admin-systeme', 'admin.systeme', 'Thierry', 'Abessolo Nkoulou', 'Administrateur système de la plateforme', ['ROLE_ADMIN_SYSTEME']],
-  ['u-chef-des', 'c.ndong', 'Christian', 'Ndong Obiang', 'Chef du DES', ['ROLE_CHEF_DES']],
-  ['u-ingenieur', 'p.mbida', 'Patrick', 'Mbida Essomba', 'Ingénieur d’homologation', ['ROLE_INGENIEUR_HOMOLOGATION', 'ROLE_CONDUCTEUR_PROJET']],
-  ['u-chef-ddrm', 'a.ngombarga', 'Aïssatou', 'Ngo Mbarga', 'Cheffe de la DDRM', ['ROLE_CHEF_DDRM']],
-  ['u-charge-ddrm', 'j.essomba', 'Joël', 'Essomba Atangana', 'Chargé d’études DDRM', ['ROLE_CHARGE_DDRM']],
-  ['u-conformite', 'm.oumarou', 'Mariam', 'Oumarou Bello', 'Responsable conformité', ['ROLE_CONFORMITE']],
-  ['u-dg', 'f.tchoumi', 'François', 'Tchoumi Kamga', 'Directeur général adjoint', ['ROLE_DG']],
-  ['u-correspondant', 'correspondant.epa', 'Brice', 'Nzeng Mba', 'Correspondant GIMAC', ['ROLE_CORRESPONDANT'], { institutionId: 'INST-0042' }],
-  ['u-sna', 'r.biyong', 'Rachel', 'Biyong Mengue', 'Analyste Normes et Agréments', ['ROLE_SNA']],
-  ['u-inactif', 'k.ateba', 'Kevin', 'Ateba Owona', 'Ancien opérateur réseau', ['ROLE_POLE_RESEAU'], { actif: false }],
-  ['u-premier-acces', 'l.nguema', 'Laetitia', 'Nguema Ondo', 'Opératrice production monétique', ['ROLE_PRODUCTION_MONETIQUE'],
+  ['u-admin-systeme', 'admin.systeme', 'Agent', 'Direction Générale', 'Administrateur système de la plateforme', ['ROLE_ADMIN_SYSTEME']],
+  ['u-chef-des', 'd.unite', 'Directeur', 'Unité DES', 'Chef du DES', ['ROLE_CHEF_DES']],
+  ['u-ingenieur', 'p.mbida', 'Agent', 'Désigné', 'Ingénieur d’homologation', ['ROLE_INGENIEUR_HOMOLOGATION', 'ROLE_CONDUCTEUR_PROJET']],
+  ['u-chef-ddrm', 'a.ngombarga', 'Analyste', 'Numérique', 'Cheffe de la DDRM', ['ROLE_CHEF_DDRM']],
+  ['u-charge-ddrm', 'c.mission', 'Agent', 'Contrôle', 'Chargé d’études DDRM', ['ROLE_CHARGE_DDRM']],
+  ['u-conformite', 'm.messagerie', 'Agent', 'Organigramme', 'Responsable conformité', ['ROLE_CONFORMITE']],
+  ['u-dg', 'c.messagerie', 'Correspondant', 'Messagerie', 'Directeur général adjoint', ['ROLE_DG']],
+  ['u-correspondant', 'correspondant.epa', 'Agent', 'Délégué', 'Correspondant GIMAC', ['ROLE_CORRESPONDANT'], { institutionId: 'INST-0042' }],
+  ['u-sna', 'r.sna', 'Responsable', 'SNA', 'Analyste Normes et Agréments', ['ROLE_SNA']],
+  ['u-inactif', 's.demo', 'Stagiaire', 'Démo', 'Ancien opérateur réseau', ['ROLE_POLE_RESEAU'], { actif: false }],
+  ['u-premier-acces', 'a.planification', 'Agent', 'Planification', 'Opératrice production monétique', ['ROLE_PRODUCTION_MONETIQUE'],
     { profilComplet: false, telephone: null, actionsRequises: ['MOT_DE_PASSE', 'SECOND_FACTEUR', 'VERIFIER_COURRIEL'], secondFacteur: false, emailVerifie: false, creeLe: il(30) }],
-  ['u-sans-2fa', 'b.hamadou', 'Bachir', 'Hamadou Ali', 'Ingénieur système', ['ROLE_POLE_SYSTEME'], { secondFacteur: false }],
+  ['u-sans-2fa', 'sans.unite', 'Agent', 'Sans Unité', 'Ingénieur système', ['ROLE_POLE_SYSTEME'], { secondFacteur: false }],
 ]
 
 /**
@@ -60,14 +60,14 @@ export function comptesInitiaux(): Compte[] {
 }
 
 export function journalInitial(): EntreeJournal[] {
-  const e = (h: number, action: string, cibleId: string | null, cibleLibelle: string, motif: string | null, details = '', acteur: [string, string] = ['u-super-admin', 'Serge Mouelle Kombi']): EntreeJournal => ({
+  const e = (h: number, action: string, cibleId: string | null, cibleLibelle: string, motif: string | null, details = '', acteur: [string, string] = ['u-super-admin', 'Super Administrateur Démo']): EntreeJournal => ({
     id: `j-${action}-${h}`, horodatage: il(h), acteurId: acteur[0], acteurNom: acteur[1], action, cibleId, cibleLibelle, motif, details, correlationId: `c0f${Math.round(h * 1000).toString(16)}-4d2a`,
   })
   return [
-    e(2, 'CREATION', 'u-premier-acces', 'l.nguema', null, 'ROLE_PRODUCTION_MONETIQUE'),
-    e(5, 'ACTIONS_REQUISES', 'u-sans-2fa', 'b.hamadou', 'Second facteur absent depuis la migration du poste', 'SECOND_FACTEUR', ['u-rssi', 'Hervé Kamga Tchoupo']),
-    e(20, 'CONFIGURATION_POLITIQUE_SECURITE', null, 'POLITIQUE_SECURITE', 'Alignement sur la PSSI 2026 : 14 caractères', 'longueurMinimale', ['u-rssi', 'Hervé Kamga Tchoupo']),
-    e(30, 'DESACTIVATION', 'u-inactif', 'k.ateba', 'Départ du collaborateur le 15 septembre', ''),
+    e(2, 'CREATION', 'u-premier-acces', 'a.planification', null, 'ROLE_PRODUCTION_MONETIQUE'),
+    e(5, 'ACTIONS_REQUISES', 'u-sans-2fa', 'sans.unite', 'Second facteur absent depuis la migration du poste', 'SECOND_FACTEUR', ['u-rssi', 'Officier Sécurité Groupe']),
+    e(20, 'CONFIGURATION_POLITIQUE_SECURITE', null, 'POLITIQUE_SECURITE', 'Alignement sur la PSSI 2026 : 14 caractères', 'longueurMinimale', ['u-rssi', 'Officier Sécurité Groupe']),
+    e(30, 'DESACTIVATION', 'u-inactif', 's.demo', 'Départ du collaborateur le 15 septembre', ''),
     e(52, 'PROFILS', 'u-ingenieur', 'p.mbida', 'Désignation comme conducteur de projet LIA-2026-017', 'ROLE_CONDUCTEUR_PROJET, ROLE_INGENIEUR_HOMOLOGATION'),
   ]
 }

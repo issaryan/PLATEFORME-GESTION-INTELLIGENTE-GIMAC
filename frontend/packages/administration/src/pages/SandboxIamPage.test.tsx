@@ -33,7 +33,7 @@ describe('Sandbox GIMAC dans la console', () => {
   it('US-EXI-06 scénario 3 : onglet des comptes protégés, tenu dans l’adresse', async () => {
     page()
     fireEvent.click(await screen.findByRole('tab', { name: 'Comptes protégés' }))
-    expect(await screen.findByText('Awa Ndiaye')).toBeTruthy()
+    expect(await screen.findByText('Cheffe DDRM')).toBeTruthy()
     expect(screen.getAllByText('Dernier administrateur')).toHaveLength(2)
     expect(screen.getByTestId('emplacement').textContent).toBe('/console/sandbox?onglet=protections')
   })
@@ -53,7 +53,7 @@ describe('Sandbox GIMAC dans la console', () => {
     const lus: [number, number][] = []
     const base = simules()
     page('/console/sandbox?onglet=protections', avec('sandbox', { protections: async (p, t) => { lus.push([p, t]); return base.sandbox.protections(p, t) } }, base))
-    expect(await screen.findByText('Jean Mbarga')).toBeTruthy()
+    expect(await screen.findByText('Agent Mission')).toBeTruthy()
     expect(lus[0]).toEqual([0, 20])
   })
 })
@@ -85,7 +85,7 @@ describe('Sandbox GIMAC : mandats de partenaire (US-EXI-04)', () => {
     page('/console/sandbox?onglet=mandats')
     const actif = (await screen.findAllByText('Campagnes de certification : exécuter les campagnes'))[0].closest('tr') as HTMLElement
     expect(within(actif).getByText('Active')).toBeTruthy()
-    expect(within(actif).getByText('Paul Ebode (Intégrateur Afrique)')).toBeTruthy()
+    expect(within(actif).getByText('Agent Personnalisation (Intégrateur Afrique)')).toBeTruthy()
     expect(within(actif).getByText('99002')).toBeTruthy()
     expect(screen.getByText('Programmée')).toBeTruthy()
     expect(screen.getByText('Échue')).toBeTruthy()

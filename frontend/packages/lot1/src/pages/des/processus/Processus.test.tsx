@@ -26,10 +26,10 @@ afterEach(() => {
 })
 
 const PERSONNES = {
-  chef: { id: 'U-001', nom: 'Paul Mbarga Atangana', role: 'ROLE_CHEF_DES' },
-  resp: { id: 'u-resp-info', nom: 'Gaston Ndzana Ebode', role: 'ROLE_RESPONSABLE_SERVICE' },
-  membre: { id: 'u-res', nom: 'Idriss Mahamat Saleh', role: 'ROLE_POLE_RESEAU' },
-  collab: { id: 'u-collab', nom: 'Nadège Mvondo Assiga', role: 'ROLE_COLLABORATEUR' },
+  chef: { id: 'U-001', nom: 'Chef Département DES', role: 'ROLE_CHEF_DES' },
+  resp: { id: 'u-resp-info', nom: 'Responsable Production', role: 'ROLE_RESPONSABLE_SERVICE' },
+  membre: { id: 'u-res', nom: 'Agent Pôle Réseau', role: 'ROLE_POLE_RESEAU' },
+  collab: { id: 'u-collab', nom: 'Collaboratrice Réseau', role: 'ROLE_COLLABORATEUR' },
 }
 type Qui = (typeof PERSONNES)[keyof typeof PERSONNES]
 /**
@@ -38,7 +38,7 @@ type Qui = (typeof PERSONNES)[keyof typeof PERSONNES]
  */
 const magasinDeuxPorteurs = () => {
   const m = magasinPouvoirs()
-  m.organisation.push({ id: 'u-res-bis', nomAffiche: 'Armel Nkoulou Beti', fonction: 'Technicien réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', actif: true })
+  m.organisation.push({ id: 'u-res-bis', nomAffiche: 'Agent Banque Partenaire', fonction: 'Technicien réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', actif: true })
   m.definirProfils('u-res-bis', ['ROLE_POLE_RESEAU'])
   return m
 }
@@ -318,7 +318,7 @@ describe('D-87 : suivi d’une instance', () => {
     const signer = vi.spyOn(s.processus, 'signer')
     await ouvrirInstance(s, PERSONNES.resp, 'Flux SFTP')
     const panneau = screen.getByRole('complementary', { name: /Recette du flux/ })
-    expect(within(panneau).getByText('Attendue de : Gaston Ndzana Ebode')).toBeTruthy()
+    expect(within(panneau).getByText('Attendue de : Responsable Production')).toBeTruthy()
     expect(within(panneau).getAllByText(/^SHA-256 /).length).toBe(1)
     fireEvent.click(within(panneau).getByRole('button', { name: 'Signer' }))
     const d = await screen.findByRole('dialog', { name: 'Signer : Signature du procès-verbal' })
@@ -359,7 +359,7 @@ describe('D-87 : suivi d’une instance', () => {
     const choix = within(d).getByLabelText(/^Nouvel exécutant/) as HTMLSelectElement
     await waitFor(() => expect(choix.options.length).toBeGreaterThan(3))
     fireEvent.change(choix, { target: { value: 'u-res' } })
-    fireEvent.change(within(d).getByLabelText(/Motif/), { target: { value: 'Idriss assure l’analyse cette semaine' } })
+    fireEvent.change(within(d).getByLabelText(/Motif/), { target: { value: 'Agent assure l’analyse cette semaine' } })
     fireEvent.click(within(d).getByRole('button', { name: 'Réaffecter l’étape' }))
     expect(await screen.findByText(/Étape réaffectée/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Suspendre' }))
@@ -439,7 +439,7 @@ describe('D-87 : suivi d’une instance', () => {
 describe('D-87 : désignation hors de l’unité', () => {
   it('lancement : un seul porteur du profil de remplacement, choisi d’office', async () => {
     // D-99 : lancé par la technicienne (non porteuse) ; l'ingénieur réseau, seul porteur, est choisi d'office.
-    const s = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-collab', nom: 'Nadège Mvondo Assiga', profils: ['ROLE_COLLABORATEUR'] }, pouvoirs: magasinPouvoirs() })
+    const s = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-collab', nom: 'Collaboratrice Réseau', profils: ['ROLE_COLLABORATEUR'] }, pouvoirs: magasinPouvoirs() })
     catalogue(PERSONNES.collab, s)
     fireEvent.click(await screen.findByRole('button', { name: 'Lancer le processus Ouverture d’un flux réseau' }))
     const d = await screen.findByRole('dialog', { name: 'Lancer le processus' })
@@ -524,7 +524,7 @@ describe('recette du travail quotidien (QUO-02, QUO-04, QUO-12)', () => {
     expect(await screen.findByRole('dialog', { name: /note\.pdf/ })).toBeTruthy()
     cleanup()
     // Le responsable du pôle système ne lit pas la demande : refus expliqué, sans « Réessayer ».
-    const tiers = { id: 'u-sys', nom: 'Chantal Ngo Bassong', role: 'ROLE_POLE_SYSTEME' } as unknown as Qui
+    const tiers = { id: 'u-sys', nom: 'Opératrice Pôle Système', role: 'ROLE_POLE_SYSTEME' } as unknown as Qui
     rendrePage(<InstancePage />, { chemin: `/des/processus/instances/${i.id}`, motif: '/des/processus/instances/:id', services: services(tiers, magasin), session: session(tiers) })
     expect(await screen.findByText('Vous ne pouvez pas consulter cette demande')).toBeTruthy()
     expect(screen.queryByText('Instance introuvable.')).toBeNull()
@@ -535,7 +535,7 @@ describe('recette du travail quotidien (QUO-02, QUO-04, QUO-12)', () => {
     const magasin = magasinPouvoirs()
     const s = services(PERSONNES.collab, magasin)
     const i = await s.processus.lancer((await congé(s)).id, { intitule: 'Congé de décembre', champs: {}, designations: {}, formulaire: { PERIODE: periode, MOTIF: 'Congé annuel.' } })
-    const dg = { id: 'u-dg', nom: 'Jean-Baptiste Ella Mintsa', role: 'ROLE_DG' } as unknown as Qui
+    const dg = { id: 'u-dg', nom: 'Agent Conformité', role: 'ROLE_DG' } as unknown as Qui
     rendrePage(<InstancePage />, { chemin: `/des/processus/instances/${i.id}?etape=ANALYSE`, motif: '/des/processus/instances/:id', services: services(dg, magasin), session: session(dg) })
     fireEvent.click(await screen.findByRole('button', { name: 'Réaffecter l’étape' }))
     const d = await screen.findByRole('dialog', { name: /Réaffecter l’étape/ })

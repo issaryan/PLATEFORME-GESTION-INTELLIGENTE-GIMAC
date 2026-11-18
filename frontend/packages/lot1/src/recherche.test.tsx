@@ -16,7 +16,7 @@ function Sonde({ permissions, espace }: { permissions: string[]; espace?: string
 }
 const monter = (permissions: string[], espace?: string) =>
   rendrePage(<Sonde permissions={permissions} espace={espace} />, {
-    chemin: '/des/x', motif: '/des/x', session: { ...sessionTest(permissions), sujet: 'U-001' }, services: servicesSimules({ latenceMs: 0, utilisateur: { id: 'U-001', nom: 'Paul Mbarga Atangana' } }),
+    chemin: '/des/x', motif: '/des/x', session: { ...sessionTest(permissions), sujet: 'U-001' }, services: servicesSimules({ latenceMs: 0, utilisateur: { id: 'U-001', nom: 'Chef Département DES' } }),
   })
 
 describe('useSourcesRecherche', () => {
@@ -33,8 +33,8 @@ describe('useSourcesRecherche', () => {
     expect(c[0]).toMatchObject({ type: 'conversation', libelle: 'Essais de LIA-2026-030', detail: 'LIA-2026-030', href: expect.stringMatching(/^\/des\/messagerie\?conversation=/) })
     // Conversation directe : le nom de l'interlocuteur, sans le sien.
     const d = await conversations.chercher('')
-    expect(d.map((x) => x.libelle)).toContain('Aïcha Mahamat Nour')
-    expect(d.map((x) => x.libelle).join()).not.toContain('Paul Mbarga Atangana')
+    expect(d.map((x) => x.libelle)).toContain('Équipe Conduite Projet')
+    expect(d.map((x) => x.libelle).join()).not.toContain('Chef Département DES')
   })
   it('console : conversations seulement ; sans permission : aucune source', async () => {
     monter(PROFILS.ROLE_RSSI, '/console')

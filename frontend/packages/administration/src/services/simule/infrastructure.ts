@@ -91,7 +91,7 @@ export function infrastructureSimulee(o: OptionsInfrastructureSimulee): ServiceI
     ['pilotage', 'REDEMARRER', 'Erreurs de connexion à la base après maintenance', 'ECHOUEE', 240],
     ['collaboration', 'ARRETER', 'Maintenance programmée de la messagerie', 'REUSSIE', 600],
   ].map(([charge, geste, motif, resultat, minutes], i) => ({
-    id: `op-sim-${i + 1}`, charge: charge as string, geste: geste as Geste, motif: motif as string, acteur: { id: 'u-admin-systeme', nomAffiche: 'Thierry Abessolo Nkoulou' },
+    id: `op-sim-${i + 1}`, charge: charge as string, geste: geste as Geste, motif: motif as string, acteur: { id: 'u-admin-systeme', nomAffiche: 'Agent Direction Générale' },
     avant: 'EN_COURS', apres: resultat === 'ECHOUEE' ? 'EN_ERREUR' : geste === 'ARRETER' ? 'ARRETEE' : 'EN_COURS', repliquesAvant: 1, repliquesApres: geste === 'ECHELLE' ? 2 : geste === 'ARRETER' ? 0 : 1,
     resultat: resultat as Operation['resultat'], erreur: resultat === 'ECHOUEE' ? 'Délai de démarrage dépassé (90 s)' : null, demandeeLe: il(minutes as number), termineeLe: il((minutes as number) - 1),
   }))

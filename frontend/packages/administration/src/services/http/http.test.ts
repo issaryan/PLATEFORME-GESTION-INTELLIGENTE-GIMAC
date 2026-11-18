@@ -36,7 +36,7 @@ afterEach(() => {
 describe('comptes (MS-IAM)', () => {
   it('lectures : pagination à partir de 0, filtres omis quand vides', async () => {
     const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => json({ contenu: [], total: 0 }))
-    await comptesHttp.lister({ page: 2, taille: 25, q: 'ndong', profil: 'ROLE_RSSI', etat: 'SANS_2FA' })
+    await comptesHttp.lister({ page: 2, taille: 25, q: 'unite', profil: 'ROLE_RSSI', etat: 'SANS_2FA' })
     await comptesHttp.lister({ page: 1, taille: 50 })
     await comptesHttp.indicateurs()
     await comptesHttp.journal({ page: 1, taille: 10, compte: 'u-1' })
@@ -44,7 +44,7 @@ describe('comptes (MS-IAM)', () => {
     await comptesHttp.lire('u 1')
     await comptesHttp.sessions('u-1')
     expect(appels(spy)).toEqual([
-      'GET /bff/console/iam/comptes?page=1&taille=25&q=ndong&profil=ROLE_RSSI&etat=SANS_2FA',
+      'GET /bff/console/iam/comptes?page=1&taille=25&q=unite&profil=ROLE_RSSI&etat=SANS_2FA',
       'GET /bff/console/iam/comptes?page=0&taille=50',
       'GET /bff/console/iam/comptes/indicateurs',
       'GET /bff/console/iam/comptes/journal?page=0&taille=10&compte=u-1',

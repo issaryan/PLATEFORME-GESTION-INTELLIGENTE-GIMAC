@@ -65,10 +65,10 @@ describe('profils de démonstration = domaine Keycloak (ADM-09)', () => {
 
 describe('compte de l’administrateur système (ADM-02)', () => {
   it('présent dans l’annuaire avec son identité de démonstration ; profil privilégié non modifiable sans l’octroi', async () => {
-    const rssi = servicesConsoleSimules({ latenceMs: 0, acteur: { id: 'u-rssi', nom: 'Hervé Kamga Tchoupo', permissions: PROFILS_DEMO.ROLE_RSSI.permissions } }).comptes
+    const rssi = servicesConsoleSimules({ latenceMs: 0, acteur: { id: 'u-rssi', nom: 'Officier Sécurité Groupe', permissions: PROFILS_DEMO.ROLE_RSSI.permissions } }).comptes
     const c = await rssi.lire(PROFILS_DEMO.ROLE_ADMIN_SYSTEME.sujet)
     expect(c).toMatchObject({ identifiant: PROFILS_DEMO.ROLE_ADMIN_SYSTEME.identifiant, nomAffiche: PROFILS_DEMO.ROLE_ADMIN_SYSTEME.nom, profils: ['ROLE_ADMIN_SYSTEME'] })
-    expect((await rssi.lister({ page: 1, taille: 100, q: 'abessolo' })).total).toBe(1)
+    expect((await rssi.lister({ page: 1, taille: 100, q: 'direction générale' })).total).toBe(1)
     await expect(rssi.definirProfils(c.id, ['ROLE_CONFORMITE'], 'Retrait du profil', ASSERTION)).rejects.toMatchObject({ status: 403, code: 'IAM_PRIVILEGED_PROFILE' })
   })
 })

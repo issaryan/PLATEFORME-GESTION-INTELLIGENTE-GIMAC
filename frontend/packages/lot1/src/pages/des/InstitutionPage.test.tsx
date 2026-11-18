@@ -112,7 +112,7 @@ describe('DES-06 Dossier numérique d’une institution', () => {
   it('proposition puis approbation signée : l’institution devient adhérente', async () => {
     // Maker-checker (DDR-01) : la chargée propose, l'approbateur (session u-test) prononce, sur le même registre.
     localStorage.setItem('gm.demoContinue', '1')
-    const parCharge = servicesSimules({ latenceMs: 0, utilisateur: { id: 'sim-charge', nom: 'Fatimé Abakar Hissein' } })
+    const parCharge = servicesSimules({ latenceMs: 0, utilisateur: { id: 'sim-charge', nom: 'Responsable Unité Démo' } })
     const id = (await parCharge.participant.listerInstitutions({ page: 1, taille: 50 })).contenu.find((i) => i.nom === 'Banque de Libreville')!.id
     await parCharge.participant.proposerTransition(id, 'ADHERENT', 'Dossier complet')
     const services = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-test', nom: 'Agent de test' } })

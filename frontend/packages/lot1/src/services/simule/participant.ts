@@ -38,9 +38,9 @@ const reprendreCompteur = (garde: string) => {
   for (const m of garde.matchAll(/"(?:INS|PIE|DOC|TRA)-(\d+)"/g)) n = Math.max(n, Number(m[1]))
 }
 /** Chargé de la DDRM du jeu de démonstration (titulaire des dossiers initiaux, auteur des propositions historiques). */
-export const CHARGE_DEMO = { id: 'sim-charge', nom: 'Fatimé Abakar Hissein' }
+export const CHARGE_DEMO = { id: 'sim-charge', nom: 'Responsable Unité Démo' }
 /** Chef de la DDRM du jeu de démonstration (approbateur des transitions historiques). */
-export const CHEF_DEMO = { id: 'U-020', nom: 'Bertrand Nguema Obiang' }
+export const CHEF_DEMO = { id: 'U-020', nom: 'Responsable DDRM' }
 /** Acteur authentifié (sujet du jeton) : auteur des écritures, comme ActeurCourant de MS-PARTICIPANT. */
 export type ActeurParticipant = { id: string; nom: string }
 const maintenant = () => new Date().toISOString()

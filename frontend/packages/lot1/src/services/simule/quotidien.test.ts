@@ -8,8 +8,8 @@ import { COMPTES_ORGANISATION_DEMO, roleDeCleDemo } from '../../profilsDemo'
 
 const code = (p: Promise<unknown>) => p.then(() => 'ok', (e: { status: number; code: string }) => `${e.status} ${e.code}`)
 const NOMS: Record<string, string> = {
-  'U-001': 'Paul Mbarga Atangana', 'u-dg': 'Jean-Baptiste Ella Mintsa', 'u-collab': 'Nadège Mvondo Assiga', 'u-rh': 'Thierry Bekolo Ngoa', 'u-sna': 'Rachel Biyong Mengue',
-  'u-res': 'Idriss Mahamat Saleh', 'u-resp-info': 'Gaston Ndzana Ebode', 'u-sys': 'Chantal Ngo Bassong',
+  'U-001': 'Chef Département DES', 'u-dg': 'Agent Conformité', 'u-collab': 'Collaboratrice Réseau', 'u-rh': 'Gestionnaire RH Démo', 'u-sna': 'Responsable SNA',
+  'u-res': 'Agent Pôle Réseau', 'u-resp-info': 'Responsable Production', 'u-sys': 'Opératrice Pôle Système',
 }
 function monde() {
   const magasin = magasinPouvoirs()
@@ -23,17 +23,17 @@ afterEach(() => sessionStorage.clear())
 
 describe('recette du travail quotidien : services simulés', () => {
   it('QUO-01 : comptes de démonstration du service RH avec leur profil', () => {
-    expect(COMPTES_ORGANISATION_DEMO['u-rh']).toMatchObject({ identifiant: 't.bekolo', nom: 'Thierry Bekolo Ngoa', role: 'ROLE_COLLABORATEUR' })
-    expect(COMPTES_ORGANISATION_DEMO['u-rh-chef']).toMatchObject({ identifiant: 's.ateba', nom: 'Solange Ateba Mvondo', role: 'ROLE_RESPONSABLE_SERVICE' })
+    expect(COMPTES_ORGANISATION_DEMO['u-rh']).toMatchObject({ identifiant: 'g.rh', nom: 'Gestionnaire RH Démo', role: 'ROLE_COLLABORATEUR' })
+    expect(COMPTES_ORGANISATION_DEMO['u-rh-chef']).toMatchObject({ identifiant: 'c.ressources', nom: 'Cheffe Ressources Humaines', role: 'ROLE_RESPONSABLE_SERVICE' })
     expect(roleDeCleDemo('u-rh')).toBe('ROLE_COLLABORATEUR')
     expect(roleDeCleDemo('ROLE_DG')).toBe('ROLE_DG')
   })
 
   it('QUO-02 : la demandeuse n’est ni proposée ni réaffectée sur sa propre demande (séparation des fonctions)', async () => {
     const qui = monde()
-    const nadege = qui('u-collab')
-    const conge = await lancables(nadege, 'DEMANDE_CONGE')
-    const i = await nadege.processus.lancer(conge.id, { intitule: 'Congé annuel de décembre', champs: {}, designations: {}, formulaire: { PERIODE: periode, MOTIF: 'Congé annuel.' } })
+    const collaboratrice = qui('u-collab')
+    const conge = await lancables(collaboratrice, 'DEMANDE_CONGE')
+    const i = await collaboratrice.processus.lancer(conge.id, { intitule: 'Congé annuel de décembre', champs: {}, designations: {}, formulaire: { PERIODE: periode, MOTIF: 'Congé annuel.' } })
     // D-138 : la vérification des droits est adressée au rôle du gestionnaire RH ; la demandeuse n'y a aucune action.
     expect(i.etapes[0]).toMatchObject({ code: 'ANALYSE', executant: null, aPrendre: expect.objectContaining({ unite: 'RH' }) })
     // Aucune exécution ni prise ; étape à prendre, la demandeuse peut seulement choisir l'exécutant (lanceur, D-87).
@@ -45,8 +45,8 @@ describe('recette du travail quotidien : services simulés', () => {
     expect(candidats.exclus).toEqual(['u-collab'])
     expect(await code(dg.processus.reaffecter(i.id, 'ANALYSE', 'u-collab', 'Absence du gestionnaire'))).toBe('422 PIL_PROCESSUS_SEPARATION_FONCTIONS')
     // Le gestionnaire RH lance lui-même une demande : sa vérification va à l'autre porteur du profil, jamais à lui.
-    const thierry = qui('u-rh')
-    const j = await thierry.processus.lancer(conge.id, { intitule: 'Congé du gestionnaire', champs: {}, designations: {}, formulaire: { PERIODE: periode, MOTIF: 'Congé annuel.' } })
+    const gestrh = qui('u-rh')
+    const j = await gestrh.processus.lancer(conge.id, { intitule: 'Congé du gestionnaire', champs: {}, designations: {}, formulaire: { PERIODE: periode, MOTIF: 'Congé annuel.' } })
     expect(j.etapes[0].executant?.id).not.toBe('u-rh')
   })
 
@@ -70,40 +70,40 @@ describe('recette du travail quotidien : services simulés', () => {
 
   it('QUO-04 : la pièce justificative se télécharge par qui lit la demande', async () => {
     const qui = monde()
-    const nadege = qui('u-collab')
-    const conge = await lancables(nadege, 'DEMANDE_CONGE')
-    const depot = await nadege.processus.televerserPieceLancement(new File(['%PDF-1.4 justificatif'], 'note.pdf', { type: 'application/pdf' }), conge.id)
-    const i = await nadege.processus.lancer(conge.id, { intitule: 'Congé avec justificatif', champs: {}, designations: {}, formulaire: { PERIODE: periode, MOTIF: 'Événement familial.', JUSTIFICATIF: { documentId: depot.documentId } } })
+    const collaboratrice = qui('u-collab')
+    const conge = await lancables(collaboratrice, 'DEMANDE_CONGE')
+    const depot = await collaboratrice.processus.televerserPieceLancement(new File(['%PDF-1.4 justificatif'], 'note.pdf', { type: 'application/pdf' }), conge.id)
+    const i = await collaboratrice.processus.lancer(conge.id, { intitule: 'Congé avec justificatif', champs: {}, designations: {}, formulaire: { PERIODE: periode, MOTIF: 'Événement familial.', JUSTIFICATIF: { documentId: depot.documentId } } })
     for (const lecteur of ['u-collab', 'u-rh']) {
       const d = await qui(lecteur).processus.documentInstance(i.id, depot.documentId)
       expect(d.blob).toMatchObject({ size: '%PDF-1.4 justificatif'.length, type: 'application/pdf' })
     }
     expect(await code(qui('u-sys').processus.documentInstance(i.id, depot.documentId))).toBe('403 PIL_PROCESSUS_INTERDIT')
-    expect(await code(nadege.processus.documentInstance(i.id, 'DOC-INCONNU'))).toBe('404 PIL_PROCESSUS_DOCUMENT_INCONNU')
+    expect(await code(collaboratrice.processus.documentInstance(i.id, 'DOC-INCONNU'))).toBe('404 PIL_PROCESSUS_DOCUMENT_INCONNU')
   })
 
   it('QUO-05 : notifications d’étape, d’avancement et de clôture de la demande', async () => {
     const qui = monde()
-    const rachel = qui('u-sna')
-    const ip = await lancables(rachel, 'CHANGEMENT_ADRESSE_IP')
-    const i = await rachel.processus.lancer(ip.id, {
+    const resp = qui('u-sna')
+    const ip = await lancables(resp, 'CHANGEMENT_ADRESSE_IP')
+    const i = await resp.processus.lancer(ip.id, {
       intitule: 'Poste d’accueil du rez-de-chaussée', champs: {}, designations: {},
       formulaire: { EQUIPEMENT: 'PC-ACC-01', ADRESSE_ACTUELLE: '10.20.4.15', ADRESSE_DEMANDEE: '10.20.4.60', JUSTIFICATION: 'Déménagement du poste.' },
     })
-    const notes = rachel.processusDemo
+    const notes = resp.processusDemo
     // D-138 : étape adressée au rôle, notifiée à chaque porteur comme une étape à prendre.
     expect(notes.pour('u-res').map((n) => n.titre)).toContain('Étape à prendre : Analyse technique')
-    const idriss = qui('u-res').processus
-    await idriss.saisirChamps(i.id, 'ANALYSE', { ADRESSE_DISPONIBLE: 'Oui' })
-    await idriss.terminer(i.id, 'ANALYSE')
+    const agentreseau = qui('u-res').processus
+    await agentreseau.saisirChamps(i.id, 'ANALYSE', { ADRESSE_DISPONIBLE: 'Oui' })
+    await agentreseau.terminer(i.id, 'ANALYSE')
     expect(notes.pour('u-sna').map((n) => n.titre)).toContain('Votre demande avance : Validation du chef de pôle')
-    const gaston = qui('u-resp-info').processus
+    const prod = qui('u-resp-info').processus
     expect(notes.pour('u-resp-info').map((n) => n.titre)).toContain('Étape à réaliser : Validation du chef de pôle')
-    await gaston.saisirChamps(i.id, 'VALIDATION', { DECISION: 'Accordée' })
-    await gaston.terminer(i.id, 'VALIDATION')
-    await idriss.saisirChamps(i.id, 'EXECUTION', { ADRESSE_ATTRIBUEE: '10.20.4.60' })
-    await idriss.terminer(i.id, 'EXECUTION')
-    const close = await idriss.terminer(i.id, 'CLOTURE')
+    await prod.saisirChamps(i.id, 'VALIDATION', { DECISION: 'Accordée' })
+    await prod.terminer(i.id, 'VALIDATION')
+    await agentreseau.saisirChamps(i.id, 'EXECUTION', { ADRESSE_ATTRIBUEE: '10.20.4.60' })
+    await agentreseau.terminer(i.id, 'EXECUTION')
+    const close = await agentreseau.terminer(i.id, 'CLOTURE')
     expect(close.etat).toBe('CLOSE')
     const cloture = notes.pour('u-sna').find((n) => n.titre === 'Processus terminé : Poste d’accueil du rez-de-chaussée')
     expect(cloture).toMatchObject({ type: 'PROCESSUS', lien: `/des/processus/instances/${i.id}` })
@@ -112,20 +112,20 @@ describe('recette du travail quotidien : services simulés', () => {
   })
 
   it('QUO-09 : sans lecture des liaisons, la messagerie de démonstration ne mène à aucune liaison', async () => {
-    const collab = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-collab', nom: 'Nadège Mvondo Assiga', profils: ['ROLE_COLLABORATEUR'] } })
+    const collab = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-collab', nom: 'Collaboratrice Réseau', profils: ['ROLE_COLLABORATEUR'] } })
     const conversations = (await collab.messagerie.conversations({})).contenu
     expect(conversations.length).toBeGreaterThan(0)
     expect(conversations.every((c) => !c.liaison)).toBe(true)
     const fil = await collab.messagerie.messages(conversations.find((c) => c.titre === 'Essais de LIA-2026-030')!.id)
     expect(fil.contenu.every((m) => !m.etiquettes?.length)).toBe(true)
     // Qui lit les liaisons garde le lien de la conversation.
-    const sna = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-sna', nom: 'Rachel Biyong Mengue', profils: ['ROLE_SNA'] } })
+    const sna = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-sna', nom: 'Responsable SNA', profils: ['ROLE_SNA'] } })
     expect((await sna.messagerie.conversations({})).contenu.some((c) => c.liaison?.reference === 'LIA-2026-030')).toBe(true)
   })
 
   it('QUO-19 : les tâches de processus terminées survivent au rechargement de la démonstration', async () => {
-    sessionStorage.setItem('gm.sessionDemo', JSON.stringify({ identifiant: 'n.mvondo' }))
-    const utilisateur = { id: 'u-collab', nom: 'Nadège Mvondo Assiga' }
+    sessionStorage.setItem('gm.sessionDemo', JSON.stringify({ identifiant: 'c.reseau' }))
+    const utilisateur = { id: 'u-collab', nom: 'Collaboratrice Réseau' }
     const avant = servicesSimules({ latenceMs: 0, utilisateur, pouvoirs: magasinPouvoirs() })
     const terminees = (await avant.pilotage.taches({ vue: 'moi' })).contenu.filter((t) => t.origine.type === 'PROCESSUS' && t.etat === 'TERMINEE')
     expect(terminees.length).toBeGreaterThan(0)

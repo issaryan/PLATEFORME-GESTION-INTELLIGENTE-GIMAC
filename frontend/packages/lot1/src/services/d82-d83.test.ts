@@ -11,7 +11,7 @@ import { arriveeMention, lecteurApercu, notificationsDemo, type DemoNotification
 // REPONSE ; aperçu bureautique (D-83) : route, en-têtes et refus.
 
 afterEach(() => vi.restoreAllMocks())
-const moi = { id: 'U-001', nom: 'Paul Mbarga Atangana' }
+const moi = { id: 'U-001', nom: 'Chef Département DES' }
 const code = (p: Promise<unknown>) => p.then(() => 'ok', (e: { status: number; code: string }) => `${e.status} ${e.code}`)
 
 describe('extrait d’un message cité', () => {
@@ -30,10 +30,10 @@ describe('extrait d’un message cité', () => {
 describe('messagerie HTTP : reponseA et mentions dans la partie JSON (D-82)', () => {
   it('envoi et création ; absents sans citation ni mention', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } }))
-    await messagerieHttp.envoyer('C1', { contenu: '@Aïcha Mahamat Nour d’accord', etiquettes: [], fichiers: [], reponseA: 'M-7', mentions: ['U-201'] })
+    await messagerieHttp.envoyer('C1', { contenu: '@Équipe Conduite Projet d’accord', etiquettes: [], fichiers: [], reponseA: 'M-7', mentions: ['U-201'] })
     await messagerieHttp.demarrer({ destinataires: ['U-201'], titre: null, liaisonId: null, contenu: 'Suite', etiquettes: [], fichiers: [], reponseA: 'M-8', mentions: [] })
     const corps = async (i: number) => JSON.parse(await (((globalThis.fetch as unknown as { mock: { calls: [URL, RequestInit][] } }).mock.calls[i][1].body as FormData).get('message') as Blob).text())
-    expect(await corps(0)).toEqual({ contenu: '@Aïcha Mahamat Nour d’accord', etiquettes: [], reponseA: 'M-7', mentions: ['U-201'] })
+    expect(await corps(0)).toEqual({ contenu: '@Équipe Conduite Projet d’accord', etiquettes: [], reponseA: 'M-7', mentions: ['U-201'] })
     expect(await corps(1)).toEqual({ contenu: 'Suite', etiquettes: [], reponseA: 'M-8', destinataires: ['U-201'], titre: null, liaisonId: null })
   })
 })
@@ -44,8 +44,8 @@ describe('messagerie simulée : réponses et mentions (D-82)', () => {
     const [groupe, , directe] = (await s.conversations({})).contenu
     const fil = (await s.messages(groupe.id)).contenu
     const reponse = fil.find((m) => m.reponseA)!
-    expect(reponse.reponseA).toMatchObject({ auteur: { nom: 'Rachel Biyong Mengue' }, piecesJointes: 2, supprime: false })
-    expect(reponse.mentions).toEqual([{ id: 'U-001', nom: 'Paul Mbarga Atangana' }])
+    expect(reponse.reponseA).toMatchObject({ auteur: { nom: 'Responsable SNA' }, piecesJointes: 2, supprime: false })
+    expect(reponse.mentions).toEqual([{ id: 'U-001', nom: 'Chef Département DES' }])
     expect(reponse.mentionneMoi).toBe(true)
     const purge = (await s.messages(directe.id)).contenu.find((m) => m.reponseA)!
     expect(purge.reponseA).toEqual({ id: 'MSG-PURGE', auteur: null, extrait: '', piecesJointes: 0, envoyeLe: null, supprime: true })
@@ -58,9 +58,9 @@ describe('messagerie simulée : réponses et mentions (D-82)', () => {
     const fil = (await s.messages(groupe.id)).contenu
     const evenement = fil.find((m) => m.evenement)!
     const sna = fil.find((m) => m.auteur.id === 'u-sna')!
-    const e = await s.envoyer(groupe.id, { contenu: '@Rachel Biyong Mengue merci', etiquettes: [], fichiers: [], reponseA: sna.id, mentions: ['u-sna', 'u-sna'] })
+    const e = await s.envoyer(groupe.id, { contenu: '@Responsable SNA merci', etiquettes: [], fichiers: [], reponseA: sna.id, mentions: ['u-sna', 'u-sna'] })
     expect(e.reponseA).toMatchObject({ id: sna.id, supprime: false })
-    expect(e.mentions).toEqual([{ id: 'u-sna', nom: 'Rachel Biyong Mengue' }])
+    expect(e.mentions).toEqual([{ id: 'u-sna', nom: 'Responsable SNA' }])
     expect(e.mentionneMoi).toBe(false)
     const base = { contenu: 'x', etiquettes: [], fichiers: [] }
     expect(await code(s.envoyer(groupe.id, { ...base, reponseA: 'inconnu' }))).toBe('422 COL_REPONSE_INVALIDE')
@@ -91,13 +91,13 @@ describe('notifications MENTION et REPONSE (D-82, notifications.md §7)', () => 
     expect(types.filter((x) => x === 'MENTION')).toHaveLength(2)
     expect(types.filter((x) => x === 'REPONSE')).toHaveLength(1)
     const mention = liste.find((x) => x.type === 'MENTION')!
-    expect(mention).toMatchObject({ titre: 'Aïcha Mahamat Nour vous a mentionné', conversationId: cid, reference: { service: 'collaboration', type: 'MESSAGE' }, nombre: 1 })
+    expect(mention).toMatchObject({ titre: 'Équipe Conduite Projet vous a mentionné', conversationId: cid, reference: { service: 'collaboration', type: 'MESSAGE' }, nombre: 1 })
     expect(mention.lien).toMatch(new RegExp(`^/des/messagerie\\?conversation=${cid}&message=MSG-`))
     // Deux mentions reçues dans la même milliseconde : ordre non garanti, on vérifie l'ensemble des aperçus.
     const apercus = await Promise.all(liste.filter((x) => x.type === 'MENTION').map((x) => lecteurApercu(s)(x)))
-    expect(apercus.sort()).toEqual(['@Paul Mbarga Atangana Les deux à la fois.', '@Paul Mbarga Atangana Pouvez-vous valider ?'])
+    expect(apercus.sort()).toEqual(['@Chef Département DES Les deux à la fois.', '@Chef Département DES Pouvez-vous valider ?'])
     const reponse = liste.find((x) => x.type === 'REPONSE')!
-    expect(reponse.titre).toBe('Aïcha Mahamat Nour a répondu à votre message')
+    expect(reponse.titre).toBe('Équipe Conduite Projet a répondu à votre message')
     // Message introuvable dans la dernière page : pas d'aperçu.
     expect(await lecteurApercu(s)({ ...reponse, reference: { ...reponse.reference, id: 'absent' } })).toBeNull()
     // Ouvrir la conversation les lit toutes.

@@ -7,7 +7,7 @@ import { PROFILS, PROFILS_INTERNES_DEMO } from '@gimac/lot1'
 // est refusé ici (CNX_COUCHE_REFUSEE) et conduit vers l'écran de connexion de l'application interne. Mot de passe :
 // MOT_DE_PASSE_DEMO ; tout code de six chiffres est accepté (socle, connexion/simule.ts).
 /** Nom du correspondant de démonstration, le même dans l'en-tête et dans « Mon compte » (prénom et nom de sa fiche). */
-export const NOM_CORRESPONDANT_DEMO = 'Brice Nzeng Mba'
+export const NOM_CORRESPONDANT_DEMO = 'Agent Délégué'
 
 export function sessionCorrespondant(identifiant = 'correspondant-a'): Session {
   return { sujet: 'demo-correspondant', nom: NOM_CORRESPONDANT_DEMO, identifiant, roles: ['ROLE_CORRESPONDANT'], permissions: PROFILS.ROLE_CORRESPONDANT, institutionId: 'INST-0042', acr: '2', doubleFacteur: true }

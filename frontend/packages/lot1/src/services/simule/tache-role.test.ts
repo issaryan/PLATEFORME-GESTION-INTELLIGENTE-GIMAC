@@ -10,10 +10,10 @@ const code = (p: Promise<unknown>) => p.then(() => 'ok', (e: { status: number; c
 describe('D-138 : tâche pour un rôle (services simulés)', () => {
   it('porteur : « Mes tâches » la montre pour le rôle, il la termine sans prise, un second acte reçoit 409', async () => {
     const magasin = magasinPouvoirs()
-    magasin.organisation.push({ id: 'u-res-bis', nomAffiche: 'Armel Nkoulou Beti', fonction: 'Technicien réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', actif: true })
+    magasin.organisation.push({ id: 'u-res-bis', nomAffiche: 'Agent Banque Partenaire', fonction: 'Technicien réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', actif: true })
     magasin.definirProfils('u-res-bis', ['ROLE_POLE_RESEAU'])
-    const s = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-res', nom: 'Idriss Mahamat Saleh', profils: magasin.profilsDe('u-res') }, pouvoirs: magasin })
-    const chef = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-resp-info', nom: 'Gaston Ndzana Ebode' }, pouvoirs: magasin })
+    const s = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-res', nom: 'Agent Pôle Réseau', profils: magasin.profilsDe('u-res') }, pouvoirs: magasin })
+    const chef = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-resp-info', nom: 'Responsable Production' }, pouvoirs: magasin })
     const p = await chef.processus.creer({ unite: 'POLE_RESEAU', libelle: 'Demande au rôle', description: '', categorie: '', delaiCibleJours: null,
       initiateurs: { regles: ['MEMBRES_UNITE'], unites: [], profils: [], permissions: [], initiateurIntervenant: true },
       etapes: [{ ...etapeVierge(1), code: 'TRAITER', libelle: 'Traiter', intervenant: { mode: 'PROFIL', profil: 'ROLE_POLE_RESEAU' } }] })

@@ -141,22 +141,22 @@ export function magasinPouvoirs(): MagasinPouvoirs {
   const demandes: Demande[] = [
     {
       id: 'DEM-0001', type: 'CREATION_COMPTE', demandeur: personne('U-001'), cible: null,
-      contenu: { identifiant: 'i.fouda', prenom: 'Ingrid', nom: 'Fouda Ngono', email: 'i.fouda@gimac-afr.org', telephone: '+237 699 12 34 56', fonction: 'Technicienne réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', profils: ['ROLE_POLE_RESEAU'] },
+      contenu: { identifiant: 'i.production', prenom: 'Agent', nom: 'Production', email: 'i.production@gimac-afr.org', telephone: '+237 699 12 34 56', fonction: 'Technicienne réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', profils: ['ROLE_POLE_RESEAU'] },
       motif: 'Renfort du pôle réseau pour les liaisons ouvertes en 2026.', etat: 'EN_ATTENTE', decision: null, creeeLe: il(2),
     },
     {
       id: 'DEM-0002', type: 'PROFILS', demandeur: personne('u-resp-info'), cible: personne('u-collab'), contenu: { ajouter: ['ROLE_POLE_RESEAU'], retirer: [] },
-      motif: 'Nadège assure désormais les dépôts de preuves du pôle réseau.', etat: 'EN_ATTENTE', decision: null, creeeLe: il(1, '14:20'),
+      motif: 'Collaboratrice assure désormais les dépôts de preuves du pôle réseau.', etat: 'EN_ATTENTE', decision: null, creeeLe: il(1, '14:20'),
     },
     {
       id: 'DEM-0003', type: 'STATUT', demandeur: personne('U-001'), cible: personne('u-prod'), contenu: { actif: false },
       motif: 'Départ annoncé à la fin du mois.', etat: 'REFUSEE',
-      decision: { par: { id: 'u-super-admin', nomAffiche: 'Serge Mouelle Kombi' }, motif: 'Le départ n’est pas encore confirmé par les ressources humaines.', le: il(3, '16:05') }, creeeLe: il(5),
+      decision: { par: { id: 'u-super-admin', nomAffiche: 'Super Administrateur Démo' }, motif: 'Le départ n’est pas encore confirmé par les ressources humaines.', le: il(3, '16:05') }, creeeLe: il(5),
     },
     {
       id: 'DEM-0004', type: 'PROFILS', demandeur: personne('U-020'), cible: personne('sim-charge'), contenu: { ajouter: ['ROLE_CONDUCTEUR_PROJET'], retirer: [] },
       motif: 'Conduite du projet de la Banque de Libreville.', etat: 'ACCEPTEE',
-      decision: { par: { id: 'u-super-admin', nomAffiche: 'Serge Mouelle Kombi' }, motif: null, le: il(6, '10:40') }, creeeLe: il(7),
+      decision: { par: { id: 'u-super-admin', nomAffiche: 'Super Administrateur Démo' }, motif: null, le: il(6, '10:40') }, creeeLe: il(7),
     },
   ]
   let numero = demandes.length

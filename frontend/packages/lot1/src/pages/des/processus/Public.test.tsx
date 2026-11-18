@@ -25,15 +25,15 @@ afterEach(() => {
 })
 
 type Qui = { id: string; nom: string; role: string }
-const ADMIN: Qui = { id: 'u-super-admin', nom: 'Serge Mouelle Kombi', role: 'ROLE_SUPER_ADMIN' }
-const HOMOLOGATION: Qui = { id: 'U-101', nom: 'Joël Ekotto Mballa', role: 'ROLE_INGENIEUR_HOMOLOGATION' }
-const SNA: Qui = { id: 'u-sna', nom: 'Rachel Biyong Mengue', role: 'ROLE_SNA' }
-const RESEAU: Qui = { id: 'u-res', nom: 'Idriss Mahamat Saleh', role: 'ROLE_POLE_RESEAU' }
-const RESP: Qui = { id: 'u-resp-info', nom: 'Gaston Ndzana Ebode', role: 'ROLE_RESPONSABLE_SERVICE' }
-const CHEF_DES: Qui = { id: 'U-001', nom: 'Paul Mbarga Atangana', role: 'ROLE_CHEF_DES' }
-const CHEF_DDRM: Qui = { id: 'U-020', nom: 'Bertrand Nguema Obiang', role: 'ROLE_CHEF_DDRM' }
-const CONFORMITE: Qui = { id: 'u-conf', nom: 'Mireille Obame Nze', role: 'ROLE_CONFORMITE' }
-const RSSI: Qui = { id: 'u-rssi', nom: 'Hervé Kamga Tchoupo', role: 'ROLE_RSSI' }
+const ADMIN: Qui = { id: 'u-super-admin', nom: 'Super Administrateur Démo', role: 'ROLE_SUPER_ADMIN' }
+const HOMOLOGATION: Qui = { id: 'U-101', nom: 'Agent Exploitation', role: 'ROLE_INGENIEUR_HOMOLOGATION' }
+const SNA: Qui = { id: 'u-sna', nom: 'Responsable SNA', role: 'ROLE_SNA' }
+const RESEAU: Qui = { id: 'u-res', nom: 'Agent Pôle Réseau', role: 'ROLE_POLE_RESEAU' }
+const RESP: Qui = { id: 'u-resp-info', nom: 'Responsable Production', role: 'ROLE_RESPONSABLE_SERVICE' }
+const CHEF_DES: Qui = { id: 'U-001', nom: 'Chef Département DES', role: 'ROLE_CHEF_DES' }
+const CHEF_DDRM: Qui = { id: 'U-020', nom: 'Responsable DDRM', role: 'ROLE_CHEF_DDRM' }
+const CONFORMITE: Qui = { id: 'u-conf', nom: 'Agent Qualité', role: 'ROLE_CONFORMITE' }
+const RSSI: Qui = { id: 'u-rssi', nom: 'Officier Sécurité Groupe', role: 'ROLE_RSSI' }
 
 const services = (q: Qui, magasin: MagasinPouvoirs) => servicesSimules({ latenceMs: 0, utilisateur: { id: q.id, nom: q.nom, profils: [q.role] }, pouvoirs: magasin })
 const session = (q: Qui) => ({ ...sessionTest(PROFILS[q.role], [q.role]), sujet: q.id, nom: q.nom })
@@ -71,7 +71,7 @@ describe('D-100 : public strict (services simulés, comme MS-PILOTAGE)', () => {
     const vm = (await s.lister({ etat: 'PUBLIEE' })).find((p) => p.code === 'CREATION_MACHINE_VIRTUELLE')!
     expect(vm.droits.lancer).toBe(false)
     const lu = await s.lire(vm.id)
-    expect(lu.initiateurs?.personnesDetail).toEqual([{ id: 'u-res', nomAffiche: 'Idriss Mahamat Saleh' }, { id: 'u-sna', nomAffiche: 'Rachel Biyong Mengue' }])
+    expect(lu.initiateurs?.personnesDetail).toEqual([{ id: 'u-res', nomAffiche: 'Agent Pôle Réseau' }, { id: 'u-sna', nomAffiche: 'Responsable SNA' }])
     const refus = await s.lancer(vm.id, { intitule: 'VM', champs: {}, designations: {}, formulaire: {} }).catch((e: ApiError) => e)
     expect(refus).toBeInstanceOf(ApiError)
     expect((refus as ApiError).code).toBe('PIL_PROCESSUS_NON_INITIATEUR')
@@ -125,7 +125,7 @@ describe('D-100 : public strict (services simulés, comme MS-PILOTAGE)', () => {
     magasin.organisation.find((m) => m.id === 'u-collab')!.actif = false
     const m = await chef.modifier(p.id, avec({ regles: ['PERSONNES'], personnes: ['u-res', 'u-res', 'u-collab', 'inconnu'] }))
     expect(m.initiateurs?.personnes).toEqual(['u-res', 'u-collab', 'inconnu'])
-    expect(m.initiateurs?.personnesDetail?.map((d) => d.nomAffiche)).toEqual(['Idriss Mahamat Saleh', 'Nadège Mvondo Assiga', null])
+    expect(m.initiateurs?.personnesDetail?.map((d) => d.nomAffiche)).toEqual(['Agent Pôle Réseau', 'Collaboratrice Réseau', null])
     expect(await anomalies()).toEqual([['PERSONNE_INCONNUE', 'initiateurs.personnes', 'BLOQUANTE'], ['PERSONNE_INCONNUE', 'initiateurs.personnes', 'BLOQUANTE']])
     expect(await code(chef.publier(p.id, {}))).toBe('422 PIL_PROCESSUS_ANOMALIES')
     await chef.modifier(p.id, avec({ regles: ['PERSONNES'], personnes: ['u-res'] }))
@@ -165,12 +165,12 @@ describe('D-100 : réglage « Qui peut voir et lancer » dans le modélisateur',
     fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer' }))
     expect(await within(d).findByText('Choisissez au moins une personne.')).toBeTruthy()
     const zone = within(d).getByTestId('initiateurs-personnes')
-    fireEvent.click(await within(zone).findByRole('button', { name: /Idriss Mahamat Saleh/ }))
-    fireEvent.click(within(zone).getByRole('button', { name: /Rachel Biyong Mengue/ }))
-    fireEvent.click(within(zone).getByRole('button', { name: /Chantal Ngo Bassong/ }))
+    fireEvent.click(await within(zone).findByRole('button', { name: /Agent Pôle Réseau/ }))
+    fireEvent.click(within(zone).getByRole('button', { name: /Responsable SNA/ }))
+    fireEvent.click(within(zone).getByRole('button', { name: /Opératrice Pôle Système/ }))
     expect(within(zone).getByText('3 personnes choisies', { exact: false })).toBeTruthy()
-    // Puce retirable : Chantal Ngo Bassong est retirée.
-    fireEvent.click(within(zone).getByRole('button', { name: /Retirer Chantal Ngo Bassong/ }))
+    // Puce retirable : Opératrice Pôle Système est retirée.
+    fireEvent.click(within(zone).getByRole('button', { name: /Retirer Opératrice Pôle Système/ }))
     fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Qui peut voir et lancer ce processus' })).toBeNull())
     const corps = modifier.mock.calls.at(-1)![1]
@@ -183,7 +183,7 @@ describe('D-100 : réglage « Qui peut voir et lancer » dans le modélisateur',
     await waitFor(() => expect(modifier.mock.calls.length).toBeGreaterThan(1))
     expect(modifier.mock.calls.at(-1)![1].initiateurs).not.toHaveProperty('personnesDetail')
     expect(modifier.mock.calls.at(-1)![1].initiateurs?.personnes).toEqual(['u-res', 'u-sna'])
-    expect(await screen.findByText('Personnes désignées (Idriss Mahamat Saleh, Rachel Biyong Mengue)')).toBeTruthy()
+    expect(await screen.findByText('Personnes désignées (Agent Pôle Réseau, Responsable SNA)')).toBeTruthy()
   })
 
   it('lien direct ?reglage=public : le réglage s’ouvre ; création (?cree=1) : public par défaut annoncé, invitation à le régler', async () => {
@@ -205,19 +205,19 @@ describe('D-100 : réglage « Qui peut voir et lancer » dans le modélisateur',
   it('version publiée : le public se consulte en lecture seule, personnes nommées ; résumé abrégé au-delà de trois personnes', async () => {
     const i: Initiateurs = {
       regles: ['PERSONNES', 'PROFILS'], unites: [], profils: ['ROLE_CONFORMITE'], permissions: [],
-      personnes: ['a', 'b', 'c', 'd', 'e'], personnesDetail: ['Ana', 'Bob', 'Cyr', 'Dan', 'Eve'].map((n, k) => ({ id: 'abcde'[k], nomAffiche: n })),
+      personnes: ['a', 'b', 'c', 'd', 'e'], personnesDetail: ['Ana', 'Opérateur B', 'Cyr', 'Dan', 'Eve'].map((n, k) => ({ id: 'abcde'[k], nomAffiche: n })),
     }
     rendrePage(<ModaleLancement initiateurs={i} lecture enCours={false} onFermer={() => undefined} onEnregistrer={() => undefined} />, { chemin: '/', motif: '/' })
     const d = await screen.findByRole('dialog', { name: 'Qui peut voir et lancer ce processus' })
     const liste = within(d).getByRole('list', { name: 'Personnes désignées' })
-    expect(within(liste).getAllByRole('listitem').map((x) => x.textContent)).toEqual(['Ana', 'Bob', 'Cyr', 'Dan', 'Eve'])
+    expect(within(liste).getAllByRole('listitem').map((x) => x.textContent)).toEqual(['Ana', 'Opérateur B', 'Cyr', 'Dan', 'Eve'])
     cleanup()
     const magasin = magasinPouvoirs()
     const s = services(RESP, magasin)
     const p = await s.processus.creer({ code: 'DEMANDE_LARGE', unite: 'POLE_RESEAU', libelle: 'Demande large', description: '', categorie: '', delaiCibleJours: null, etapes: [],
       initiateurs: { ...INITIATEURS_DEFAUT, regles: ['PERSONNES'], personnes: ['u-res', 'u-sna', 'u-sys', 'u-conf', 'u-rssi'] } })
     rendrePage(<ModelisateurProcessusPage />, { chemin: `/des/processus/${p.id}`, motif: '/des/processus/:id', services: s, session: session(RESP) })
-    expect(await screen.findByText('Personnes désignées (Idriss Mahamat Saleh, Rachel Biyong Mengue, Chantal Ngo Bassong et 2 autres)')).toBeTruthy()
+    expect(await screen.findByText('Personnes désignées (Agent Pôle Réseau, Responsable SNA, Opératrice Pôle Système et 2 autres)')).toBeTruthy()
   })
 })
 
@@ -227,7 +227,7 @@ describe('D-100 : catalogue « Processus de l’unité »', () => {
     const s = services(CHEF_DES, magasin)
     rendrePage(<ProcessusPage />, { chemin: '/des/processus', motif: '/des/processus', services: s, session: session(CHEF_DES), autres: [{ motif: '/des/processus/:id', element: <Ici /> }] })
     expect(await screen.findByTestId('public-CREATION_MACHINE_VIRTUELLE')).toBeTruthy()
-    expect(screen.getByTestId('public-CREATION_MACHINE_VIRTUELLE').textContent).toBe('Visible et lançable par : Personnes désignées (Idriss Mahamat Saleh, Rachel Biyong Mengue)')
+    expect(screen.getByTestId('public-CREATION_MACHINE_VIRTUELLE').textContent).toBe('Visible et lançable par : Personnes désignées (Agent Pôle Réseau, Responsable SNA)')
     expect(screen.getByTestId('public-CHANGEMENT_ADRESSE_IP').textContent).toBe('Visible et lançable par : Tout le GIMAC')
     // D-103 : bouton « Public » vers le réglage pour qui définit, brouillon comme version publiée.
     expect(screen.getByRole('button', { name: 'Régler qui peut voir et lancer « Création d’une machine virtuelle »' })).toBeTruthy()
@@ -262,7 +262,7 @@ describe('D-103 : public modifiable sur une version publiée (services simulés)
     expect(lu.initiateurs).toMatchObject({ regles: ['PERSONNES'], personnes: ['u-sna'], initiateurIntervenant: !!avant.initiateurs?.initiateurIntervenant })
     expect(lu.historique.at(-1)).toMatchObject({
       action: 'PUBLIC_MODIFIE', acteur: { id: 'u-resp-info' },
-      detail: `Public de la version ${avant.version} modifié : Ouverture à la SNA ; avant : MEMBRES_UNITE ; après : PERSONNES (Rachel Biyong Mengue)`,
+      detail: `Public de la version ${avant.version} modifié : Ouverture à la SNA ; avant : MEMBRES_UNITE ; après : PERSONNES (Responsable SNA)`,
     })
     expect(lu.etapes).toEqual(avant.etapes)
     expect(await codes(SNA, magasin)).toContain('OUVERTURE_FLUX_RESEAU')
@@ -331,7 +331,7 @@ describe('D-103 : réglage du public d’une version publiée dans le modélisat
     expect([enregistrer.disabled, enregistrer.title]).toEqual([true, 'Le public n’a pas changé.'])
     fireEvent.click(within(d).getByLabelText('Personnes désignées'))
     const zone = within(d).getByTestId('initiateurs-personnes')
-    fireEvent.click(await within(zone).findByRole('button', { name: /Rachel Biyong Mengue/ }))
+    fireEvent.click(await within(zone).findByRole('button', { name: /Responsable SNA/ }))
     // Motif obligatoire, 10 caractères au moins.
     expect([enregistrer.disabled, enregistrer.title]).toEqual([true, 'Le motif est obligatoire (10 caractères au moins)'])
     fireEvent.change(within(d).getByLabelText(/^Motif/), { target: { value: 'Demandes de flux de la SNA' } })
@@ -341,7 +341,7 @@ describe('D-103 : réglage du public d’une version publiée dans le modélisat
     expect(modifier).not.toHaveBeenCalled()
     expect(modifierPublic.mock.calls[0]).toEqual([p.id, { initiateurs: { regles: ['MEMBRES_UNITE', 'PERSONNES'], unites: [], profils: [], permissions: [], personnes: ['u-sna'] }, motif: 'Demandes de flux de la SNA' }])
     expect(await screen.findByText('Public enregistré : il vaut pour les prochains lancements.')).toBeTruthy()
-    expect(await within(screen.getByTestId('public-processus')).findByText(/Rachel Biyong Mengue/)).toBeTruthy()
+    expect(await within(screen.getByTestId('public-processus')).findByText(/Responsable SNA/)).toBeTruthy()
     expect(await codes(SNA, magasin)).toContain('OUVERTURE_FLUX_RESEAU')
   })
 
@@ -352,12 +352,12 @@ describe('D-103 : réglage du public d’une version publiée dans le modélisat
     rendrePage(<ModelisateurProcessusPage />, { chemin: `/des/processus/${p.id}?reglage=public`, motif: '/des/processus/:id', services: s, session: session(RESP) })
     const d = await screen.findByRole('dialog', { name: 'Qui peut voir et lancer ce processus' })
     fireEvent.click(within(d).getByLabelText('Personnes désignées'))
-    fireEvent.click(await within(within(d).getByTestId('initiateurs-personnes')).findByRole('button', { name: /Rachel Biyong Mengue/ }))
+    fireEvent.click(await within(within(d).getByTestId('initiateurs-personnes')).findByRole('button', { name: /Responsable SNA/ }))
     fireEvent.change(within(d).getByLabelText(/^Motif/), { target: { value: 'Demandes de flux de la SNA' } })
     magasin.organisation.find((m) => m.id === 'u-sna')!.actif = false
     fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer le public' }))
     expect(await within(d).findByText('Le public comporte des anomalies bloquantes : rien n’a été changé.')).toBeTruthy()
-    expect(within(within(d).getByTestId('anomalies-public')).getByText(/Personne désignée inconnue, externe ou inactive : Rachel Biyong Mengue/)).toBeTruthy()
+    expect(within(within(d).getByTestId('anomalies-public')).getByText(/Personne désignée inconnue, externe ou inactive : Responsable SNA/)).toBeTruthy()
     expect((await s.processus.lire(p.id)).initiateurs?.regles).toEqual(['MEMBRES_UNITE'])
   })
 

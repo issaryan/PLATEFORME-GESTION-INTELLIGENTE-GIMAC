@@ -18,12 +18,12 @@ En mode simulé, le profil de démonstration (`src/profils.ts`, d'après le doma
 
 | Profil | Démonstration | Particularités (D-57, D-58) |
 |---|---|---|
-| `ROLE_CHEF_DDRM` (défaut) | Bertrand Nguema Obiang | Tranche les propositions ; ouvre les liaisons au cadrage et désigne leur conducteur (`HOM_LIAISON_OPEN` et `HOM_PROJECT_DESIGNATE`) |
-| `ROLE_CHARGE_DDRM` | Fatimé Abakar Hissein | Instruit les candidatures, propose |
-| `ROLE_CHEF_DES` | Paul Mbarga Atangana | Ouvre et désigne ; dégel, export des preuves, quitus technique |
-| `ROLE_INGENIEUR_HOMOLOGATION` | Joël Ekotto Mballa | N'ouvre plus de liaison ; référentiels, opérations, preuves |
-| `ROLE_CONDUCTEUR_PROJET` | Aïcha Mahamat Nour | Lit ; « Mes projets » activé d'emblée |
-| `ROLE_SNA` | Rachel Biyong Mengue | Lecture, dépôt et validation de preuves |
+| `ROLE_CHEF_DDRM` (défaut) | Responsable DDRM | Tranche les propositions ; ouvre les liaisons au cadrage et désigne leur conducteur (`HOM_LIAISON_OPEN` et `HOM_PROJECT_DESIGNATE`) |
+| `ROLE_CHARGE_DDRM` | Responsable Unité Démo | Instruit les candidatures, propose |
+| `ROLE_CHEF_DES` | Chef Département DES | Ouvre et désigne ; dégel, export des preuves, quitus technique |
+| `ROLE_INGENIEUR_HOMOLOGATION` | Agent Exploitation | N'ouvre plus de liaison ; référentiels, opérations, preuves |
+| `ROLE_CONDUCTEUR_PROJET` | Équipe Conduite Projet | Lit ; « Mes projets » activé d'emblée |
+| `ROLE_SNA` | Responsable SNA | Lecture, dépôt et validation de preuves |
 
 ```
 npm run dev:departement                  # depuis frontend/

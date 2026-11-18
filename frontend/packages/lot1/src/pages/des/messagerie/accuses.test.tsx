@@ -39,9 +39,9 @@ describe('messagerie simulée : accusés de lecture', () => {
     expect(mien.lecture).toEqual({ etat: 'LU_PAR_CERTAINS', lus: 2, destinataires: 3 })
     const lectures = await s.messagerie.lectures(groupe.id, mien.id)
     expect(lectures.map((l) => [l.membre.nom, l.lu, l.luLe === null])).toEqual([
-      ['Rachel Biyong Mengue', true, false], ['Hervé Kamga Tchoupo', true, true], ['Aïcha Mahamat Nour', false, true],
+      ['Responsable SNA', true, false], ['Officier Sécurité Groupe', true, true], ['Équipe Conduite Projet', false, true],
     ])
-    // Dernier message de l'échange direct : celui d'Aïcha, sans accusé ; le mien est lu.
+    // Dernier message de l'échange direct : celui d'Équipe, sans accusé ; le mien est lu.
     expect(direct.dernierMessage?.lecture).toBeUndefined()
     const filDirect = (await s.messagerie.messages(direct.id)).contenu
     expect(filDirect.find((m) => m.moi)!.lecture).toEqual({ etat: 'LU', lus: 1, destinataires: 1 })
@@ -87,15 +87,15 @@ describe('MessageriePage : coches et « Lu par »', () => {
     expect(bouton.getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(bouton)
     const detail = await within(fil).findByRole('dialog', { name: 'Lu par' })
-    expect(await within(detail).findByText('Rachel Biyong Mengue')).toBeTruthy()
+    expect(await within(detail).findByText('Responsable SNA')).toBeTruthy()
     expect(within(detail).getByText('heure inconnue')).toBeTruthy()
-    expect(within(within(detail).getByRole('list', { name: 'Pas encore lu' })).getByText('Aïcha Mahamat Nour')).toBeTruthy()
+    expect(within(within(detail).getByRole('list', { name: 'Pas encore lu' })).getByText('Équipe Conduite Projet')).toBeTruthy()
     // Échap ferme ; le survol rouvre, la sortie referme.
     fireEvent.keyDown(bouton, { key: 'Escape' })
     expect(within(fil).queryByRole('dialog', { name: 'Lu par' })).toBeNull()
     fireEvent.mouseEnter(bouton.parentElement!)
     expect(within(fil).getByRole('dialog', { name: 'Lu par' })).toBeTruthy()
-    // Aïcha lit : le fil et le détail ouvert sont relus.
+    // Équipe lit : le fil et le détail ouvert sont relus.
     act(() => {
       s.messagerie.lireDemo({ conversationId: groupe.id, lecteurId: 'U-201' })
     })
@@ -109,7 +109,7 @@ describe('MessageriePage : coches et « Lu par »', () => {
     const s = services()
     const [, direct] = (await s.messagerie.conversations({})).contenu
     page(`/des/messagerie?conversation=${direct.id}`, s)
-    const fil = await screen.findByRole('region', { name: 'Aïcha Mahamat Nour' })
+    const fil = await screen.findByRole('region', { name: 'Équipe Conduite Projet' })
     expect(await within(fil).findByRole('img', { name: 'Lu' })).toBeTruthy()
     fireEvent.change(within(fil).getByLabelText('Votre message'), { target: { value: 'Je signe ce soir.' } })
     fireEvent.click(within(fil).getByRole('button', { name: 'Envoyer' }))

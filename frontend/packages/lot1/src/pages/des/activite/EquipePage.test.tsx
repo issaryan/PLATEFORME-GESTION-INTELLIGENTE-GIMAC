@@ -15,7 +15,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-const CHEF = { id: 'U-001', nom: 'Paul Mbarga Atangana' }
+const CHEF = { id: 'U-001', nom: 'Chef Département DES' }
 const session = (u = CHEF, role = 'ROLE_CHEF_DES') => ({ ...sessionTest(PROFILS[role], [role]), sujet: u.id, nom: u.nom })
 function Ici() {
   const l = useLocation()
@@ -36,7 +36,7 @@ describe('Mon équipe : organisation et demandes', () => {
     page()
     expect(await screen.findByRole('tab', { name: 'Organisation', selected: true })).toBeTruthy()
     expect(await screen.findByText('Choisissez une personne ou une unité')).toBeTruthy()
-    await choisir('Idriss Mahamat Saleh')
+    await choisir('Agent Pôle Réseau')
     const gestes = screen.getByRole('group', { name: 'Gestes permis' })
     // Niveau 2 : confier, lire et viser, demander un profil ou une désactivation ; pas de rattachement (DIRECTS).
     expect(within(gestes).getByRole('link', { name: 'Journée' }).getAttribute('href')).toContain('collaborateur=u-res')
@@ -61,10 +61,10 @@ describe('Mon équipe : organisation et demandes', () => {
     expect(within(d).getByText('Identifiant invalide : minuscules, chiffres, point, tiret ou souligné, 3 à 50 caractères.')).toBeTruthy()
     expect(within(d).getByText('Choisissez au moins un profil.')).toBeTruthy()
     expect(within(d).getByText('Motif de 5 à 500 caractères.')).toBeTruthy()
-    fireEvent.change(within(d).getByLabelText(/^Prénom/), { target: { value: 'Blaise' } })
-    fireEvent.change(within(d).getByLabelText(/^Nom/), { target: { value: 'Ondo' } })
-    fireEvent.change(within(d).getByLabelText(/^Identifiant/), { target: { value: 'B.Ondo' } })
-    fireEvent.change(within(d).getByLabelText(/^Courriel/), { target: { value: 'b.ondo@gimac-afr.org' } })
+    fireEvent.change(within(d).getByLabelText(/^Prénom/), { target: { value: 'Agent' } })
+    fireEvent.change(within(d).getByLabelText(/^Nom/), { target: { value: 'Délégation' } })
+    fireEvent.change(within(d).getByLabelText(/^Identifiant/), { target: { value: 'D.Conduite' } })
+    fireEvent.change(within(d).getByLabelText(/^Courriel/), { target: { value: 'd.conduite@gimac-afr.org' } })
     fireEvent.change(within(d).getByLabelText(/^Téléphone/), { target: { value: '+237 699 00 00 00' } })
     fireEvent.change(within(d).getByLabelText(/^Fonction/), { target: { value: 'Technicien système' } })
     fireEvent.change(within(d).getByLabelText(/^Unité/), { target: { value: 'POLE_SYSTEME' } })
@@ -77,12 +77,12 @@ describe('Mon équipe : organisation et demandes', () => {
     fireEvent.click(within(d).getByRole('button', { name: 'Envoyer la demande' }))
     expect(await screen.findByText('Demande adressée à l’administration.')).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: 'Mes demandes' }))
-    expect(await screen.findByText('Nouveau compte : Blaise Ondo')).toBeTruthy()
+    expect(await screen.findByText('Nouveau compte : Agent Délégation')).toBeTruthy()
   })
 
   it('demander un profil, une désactivation ; modifier le rattachement d’un subordonné direct', async () => {
     page()
-    await choisir('Gaston Ndzana Ebode')
+    await choisir('Responsable Production')
     fireEvent.click(screen.getByRole('button', { name: 'Demander un profil' }))
     let d = await screen.findByRole('dialog', { name: 'Demander un profil' })
     fireEvent.click(within(d).getByRole('button', { name: 'Envoyer la demande' }))
@@ -97,19 +97,19 @@ describe('Mon équipe : organisation et demandes', () => {
     fireEvent.click(within(d).getByRole('button', { name: 'Envoyer la demande' }))
     expect(await screen.findByText('Demande adressée à l’administration.')).toBeTruthy()
 
-    await choisir('Gaston Ndzana Ebode')
+    await choisir('Responsable Production')
     fireEvent.click(screen.getByRole('button', { name: 'Demander la désactivation' }))
     d = await screen.findByRole('dialog', { name: 'Demander la désactivation' })
     fireEvent.change(within(d).getByLabelText(/^Motif/), { target: { value: 'Départ en retraite' } })
     fireEvent.click(within(d).getByRole('button', { name: 'Envoyer la demande' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Demander la désactivation' })).toBeNull())
 
-    await choisir('Gaston Ndzana Ebode')
+    await choisir('Responsable Production')
     fireEvent.click(screen.getByRole('button', { name: 'Modifier le rattachement' }))
     d = await screen.findByRole('dialog', { name: 'Modifier le rattachement' })
     fireEvent.change(within(d).getByLabelText(/^Unité/), { target: { value: 'DES' } })
     fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer le rattachement' }))
-    expect(await screen.findByText('Rattachement de Gaston Ndzana Ebode modifié.')).toBeTruthy()
+    expect(await screen.findByText('Rattachement de Responsable Production modifié.')).toBeTruthy()
   })
 
   it('mes demandes : filtre, fiche avec décision, annulation ; lien direct /des/equipe/demandes?demande=', async () => {
@@ -120,11 +120,11 @@ describe('Mon équipe : organisation et demandes', () => {
     fireEvent.click(within(fiche).getAllByRole('button', { name: 'Fermer' }).at(-1)!)
     fireEvent.click(await screen.findByRole('button', { name: 'Création de compte' }))
     const c = await screen.findByRole('dialog', { name: 'Création de compte' })
-    expect(await within(c).findByText('i.fouda')).toBeTruthy()
+    expect(await within(c).findByText('i.production')).toBeTruthy()
     fireEvent.click(within(c).getByRole('button', { name: 'Annuler la demande' }))
     expect(await screen.findByText('Demande annulée.')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('État'), { target: { value: 'ANNULEE' } })
-    expect(await screen.findByText('Nouveau compte : Ingrid Fouda Ngono')).toBeTruthy()
+    expect(await screen.findByText('Nouveau compte : Agent Production')).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: 'Activité du jour' }))
     expect(await screen.findByRole('button', { name: 'Jour précédent' })).toBeTruthy()
   })

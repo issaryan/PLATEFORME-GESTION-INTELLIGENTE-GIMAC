@@ -113,7 +113,7 @@ describe('DES-12 : modélisateur', () => {
     expect(await screen.findByText('Disposition automatique enregistrée.')).toBeTruthy()
     fireEvent.change(screen.getByRole('combobox', { name: /Pilote du brouillon/ }), { target: { value: 'U-102' } })
     await waitFor(() => expect(pilote).toHaveBeenCalledWith('REF-CI-4', 'U-102'))
-    expect(await screen.findByText('Pilote : Arnaud Mvogo Eyenga')).toBeTruthy()
+    expect(await screen.findByText('Pilote : Agent Supervision')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Comparer' }))
     await waitFor(() => expect(document.querySelector('.gm-diff-del')).not.toBeNull())
   })

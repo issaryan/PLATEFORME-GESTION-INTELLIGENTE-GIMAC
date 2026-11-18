@@ -129,7 +129,7 @@ export const CATALOGUE: CatalogueModelisateur = {
   typesPieces: ['application/pdf', 'image/png', 'image/jpeg', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv', 'application/zip'],
   // Recette HOM-14 : pilotes nommés comme les comptes de démonstration des ingénieurs d'homologation.
-  pilotes: [{ id: 'U-101', nom: 'Joël Ekotto Mballa' }, { id: 'U-102', nom: 'Arnaud Mvogo Eyenga' }],
+  pilotes: [{ id: 'U-101', nom: 'Agent Exploitation' }, { id: 'U-102', nom: 'Agent Supervision' }],
   vuesOperation: ([
     ['AUCUNE', 'Aucune vue spécialisée'], ['AFFECTATION', 'Affectation des intervenants'], ['COORDONNEES', 'Coordonnées techniques'], ['ESSAIS', 'Essais'],
     ['DECISION', 'Décision de mise en production'], ['ATTESTATIONS', 'Attestations'], ['MISE_EN_SERVICE', 'Mise en service'], ['CEREMONIE', 'Cérémonie de clés'],

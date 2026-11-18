@@ -12,7 +12,7 @@ describe('homologation simulée : cadrage', () => {
     const s = servicesSimules({ latenceMs: 0 })
     const l = await s.homologation.ouvrirLiaison({ ...ouverture, banquePartenaireId: 'INST-0017' })
     expect(l).toMatchObject({
-      etat: 'OUVERTE', phaseCourante: 'CADRAGE', institutionNom: 'Mobile Money Sanaga', chefDeProjetNom: 'Brice Ondo Mba', banquePartenaireNom: 'Banque B',
+      etat: 'OUVERTE', phaseCourante: 'CADRAGE', institutionNom: 'Mobile Money Sanaga', chefDeProjetNom: 'Délégué Conduite', banquePartenaireNom: 'Banque B',
       versionId: 'REF-PM-2', perimetre: ['TRANSVERSE', 'TRANSFERT', 'PAIEMENT'], actionsPermises: ['DESIGNER_CHEF_DE_PROJET'],
     })
     expect(l.intervenants?.map((i) => i.role)).toEqual(['INSTITUTION', 'BANQUE_PARTENAIRE', 'CHEF_DE_PROJET'])
@@ -51,13 +51,13 @@ describe('homologation simulée : cadrage', () => {
     expect(cadrage.contenu.map((l) => l.phaseCourante)).toEqual(['CADRAGE'])
     expect((await s.homologation.listerLiaisons({ page: 1, taille: 25, filtres: { institutionId: 'INST-0017' } })).total).toBe(1)
     expect((await s.homologation.listerLiaisons({ page: 1, taille: 25, filtres: { mesProjets: undefined } })).total).toBe(4)
-    expect((await s.homologation.conducteurs()).map((c) => c.nom)).toEqual(['Aïcha Mahamat Nour', 'Brice Ondo Mba', 'Estelle Ngo Bassong'])
+    expect((await s.homologation.conducteurs()).map((c) => c.nom)).toEqual(['Équipe Conduite Projet', 'Délégué Conduite', 'Opératrice Pôle Système Bis'])
   })
   it('désigne le conducteur (intervenants à jour), refuse un non-habilité et une liaison qui ne le permet plus', async () => {
     const s = servicesSimules({ latenceMs: 0 })
     const l = await s.homologation.designerChefDeProjet('LIA-2026-030', 'U-203', 'Réorganisation du portefeuille')
-    expect(l).toMatchObject({ chefDeProjetId: 'U-203', chefDeProjetNom: 'Estelle Ngo Bassong' })
-    expect(l.intervenants?.find((i) => i.role === 'CHEF_DE_PROJET')?.nom).toBe('Estelle Ngo Bassong')
+    expect(l).toMatchObject({ chefDeProjetId: 'U-203', chefDeProjetNom: 'Opératrice Pôle Système Bis' })
+    expect(l.intervenants?.find((i) => i.role === 'CHEF_DE_PROJET')?.nom).toBe('Opératrice Pôle Système Bis')
     await expect(s.homologation.designerChefDeProjet('LIA-2026-030', 'U-001')).rejects.toEqual(refus('HOM_LIAISON_PROJECT_LEAD_NOT_HABILITATED'))
     await expect(s.homologation.designerChefDeProjet('LIA-2025-102', 'U-201')).rejects.toEqual(refus('HOM_LIAISON_STATE'))
     // Chaque instance a son propre état : la désignation ne fuit pas.

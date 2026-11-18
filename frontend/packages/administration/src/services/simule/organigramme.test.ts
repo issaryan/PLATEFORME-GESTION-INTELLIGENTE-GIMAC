@@ -12,8 +12,8 @@ describe('affectations simulées', () => {
     const r = await x.organisation.affecter('POLE_SYSTEME', { comptes: ['u-sans-2fa', 'u-ingenieur', 'u-sans-2fa'], motif: '  Renfort du pôle  ' })
     // Le pôle et son service n'ont pas de chef : n+1 du chef du DES.
     expect(r).toEqual([
-      { id: 'u-sans-2fa', nomAffiche: 'Bachir Hamadou Ali', avant: { unite: null, responsableId: null }, apres: { unite: 'POLE_SYSTEME', responsableId: 'u-chef-des' } },
-      { id: 'u-ingenieur', nomAffiche: 'Patrick Mbida Essomba', avant: { unite: 'SNA', responsableId: 'u-chef-des' }, apres: { unite: 'POLE_SYSTEME', responsableId: 'u-chef-des' } },
+      { id: 'u-sans-2fa', nomAffiche: 'Agent Sans Unité', avant: { unite: null, responsableId: null }, apres: { unite: 'POLE_SYSTEME', responsableId: 'u-chef-des' } },
+      { id: 'u-ingenieur', nomAffiche: 'Agent Désigné', avant: { unite: 'SNA', responsableId: 'u-chef-des' }, apres: { unite: 'POLE_SYSTEME', responsableId: 'u-chef-des' } },
     ])
     expect((await x.comptes.lire('u-sans-2fa')).unite).toBe('POLE_SYSTEME')
     const j = (await x.comptes.journal({ page: 1, taille: 10 })).contenu
@@ -47,7 +47,7 @@ describe('affectations simulées', () => {
   })
 
   it('chef sans droit d’administration : unités qu’il dirige seulement', async () => {
-    const chef = s({ acteur: { id: 'u-chef-des', nom: 'Christian Ndong Obiang', permissions: ['PIL_ACTIVITY_OWN'] } })
+    const chef = s({ acteur: { id: 'u-chef-des', nom: 'Directeur Unité DES', permissions: ['PIL_ACTIVITY_OWN'] } })
     expect(await chef.organisation.affecter('SNA', { comptes: ['u-sans-2fa'], motif: 'Renfort' })).toHaveLength(1)
     await expect(chef.organisation.affecter('DDRM', { comptes: ['u-sna'], motif: 'Renfort' })).rejects.toMatchObject({ status: 403, code: 'ORG_HORS_PERIMETRE' })
   })
@@ -55,7 +55,7 @@ describe('affectations simulées', () => {
   it('retrait : unité et n+1 venu de l’unité retirés ; absent, chef de l’unité, motif', async () => {
     const x = s()
     expect(await x.organisation.retirer('SNA', 'u-sna', 'Départ du service')).toEqual({
-      id: 'u-sna', nomAffiche: 'Rachel Biyong Mengue', avant: { unite: 'SNA', responsableId: 'u-chef-des' }, apres: { unite: null, responsableId: null },
+      id: 'u-sna', nomAffiche: 'Responsable SNA', avant: { unite: 'SNA', responsableId: 'u-chef-des' }, apres: { unite: null, responsableId: null },
     })
     // n+1 qui ne vient pas de l'unité : gardé.
     await x.organisation.rattacher('u-ingenieur', { unite: 'SNA', responsableId: 'u-dg' })

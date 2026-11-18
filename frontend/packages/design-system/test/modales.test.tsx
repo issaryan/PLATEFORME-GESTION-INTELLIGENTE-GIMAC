@@ -13,7 +13,7 @@ describe('CrudDialog : modale CRUD standard', () => {
     const soumettre = vi.fn()
     const fermer = vi.fn()
     render(
-      <CrudDialog title="Modifier la fiche" subject="directeur.unite · Agent Console" description="Données descriptives du compte" onClose={fermer} onSubmit={soumettre} submitLabel="Enregistrer la fiche">
+      <CrudDialog title="Modifier la fiche" subject="d.unite · Agent Console" description="Données descriptives du compte" onClose={fermer} onSubmit={soumettre} submitLabel="Enregistrer la fiche">
         <TextField name="nom" label="Nom" value="" onChange={() => undefined} />
       </CrudDialog>,
     )
@@ -22,7 +22,7 @@ describe('CrudDialog : modale CRUD standard', () => {
     expect(d.className).toContain('gm-dialog-lg')
     expect(d.className).toContain('gm-crud-edit')
     expect(d.getAttribute('aria-describedby')!.split(' ')).toHaveLength(2)
-    expect(within(d).getByText('directeur.unite · Agent Console').className).toBe('gm-dialog-sujet')
+    expect(within(d).getByText('d.unite · Agent Console').className).toBe('gm-dialog-sujet')
     const principal = within(d).getByRole('button', { name: 'Enregistrer la fiche' }) as HTMLButtonElement
     const form = d.querySelector('form')!
     expect(principal.type).toBe('submit')
@@ -97,11 +97,11 @@ describe('CrudDialog : modale CRUD standard', () => {
 
   it('suppression : mise en garde, case irréversible, bouton danger, rappel de l’objet et conséquences ; alertdialog', () => {
     const soumettre = vi.fn()
-    render(<CrudDialog context="delete" title="Supprimer le compte" object={[{ key: 'Identifiant', value: 'directeur.unite' }]} consequences={['Sessions fermées']} onClose={() => undefined} onSubmit={soumettre} submitLabel="Supprimer le compte" />)
+    render(<CrudDialog context="delete" title="Supprimer le compte" object={[{ key: 'Identifiant', value: 'd.unite' }]} consequences={['Sessions fermées']} onClose={() => undefined} onSubmit={soumettre} submitLabel="Supprimer le compte" />)
     const d = screen.getByRole('alertdialog', { name: 'Supprimer le compte' })
     expect(d.className).toContain('gm-crud-delete')
     expect(within(d).getByText('Action définitive : elle ne pourra pas être annulée.')).toBeTruthy()
-    expect(within(d).getByText('directeur.unite')).toBeTruthy()
+    expect(within(d).getByText('d.unite')).toBeTruthy()
     expect(within(d).getByText('Sessions fermées')).toBeTruthy()
     const b = within(d).getByRole('button', { name: /Supprimer le compte/ }) as HTMLButtonElement
     expect(b.className).toContain('gm-btn-danger')
@@ -204,7 +204,7 @@ describe('StatCard cliquable et SideNav de la coquille', () => {
 
 describe('QrCode', () => {
   it('image nommée, carré de modules avec zone de silence, taille par défaut ou fournie, recalcul au changement de contenu', () => {
-    const { rerender } = render(<QrCode value="otpauth://totp/GIMAC:directeur.unite?secret=JBSWY3DPEHPK3PXP" label="Code QR" data-testid="qr" />)
+    const { rerender } = render(<QrCode value="otpauth://totp/GIMAC:d.unite?secret=JBSWY3DPEHPK3PXP" label="Code QR" data-testid="qr" />)
     const svg = screen.getByRole('img', { name: 'Code QR' })
     expect(svg.getAttribute('width')).toBe('192')
     const [, , n] = svg.getAttribute('viewBox')!.split(' ').map(Number)

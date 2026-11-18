@@ -76,15 +76,15 @@ describe('HOM-03 : RACI imposé au dépôt et à la validation', () => {
   it('dépôt par un non-désigné refusé ; validation par un autre que le validateur refusée, boutons absents ; refus de R ; validation du V', async () => {
     const o = await preuveOuverte(svc())
     expect(o).toMatchObject({ etat: 'A_FAIRE', geste: 'DEPOSER_PREUVE', raci: { R: { fonction: 'SNA' }, V: { fonction: 'CONDUCTEUR', id: 'U-COND-1' } } })
-    const systeme = svc(['ROLE_POLE_SYSTEME'], 'u-sys', 'Chantal Ngo Bassong')
+    const systeme = svc(['ROLE_POLE_SYSTEME'], 'u-sys', 'Opératrice Pôle Système')
     expect((await op(systeme, o.liaisonId, o.rang)).actionsPermises).not.toContain('DEPOSER_PREUVE')
     await expect(systeme.parcours.deposerPreuve(o.id, fichier(), {})).rejects.toSatisfy((e) => (e as ApiError).status === 403 && code(e) === 'HOM_DEPOT_NON_AUTORISE')
 
-    const r = svc(['ROLE_SNA'], 'u-sna', 'Rachel Biyong Mengue')
+    const r = svc(['ROLE_SNA'], 'u-sna', 'Responsable SNA')
     await r.parcours.deposerPreuve(o.id, fichier(), {})
     expect((await op(r, o.liaisonId, o.rang)).etat).toBe('EN_VALIDATION')
 
-    const production = svc(['ROLE_PRODUCTION_MONETIQUE'], 'u-prod', 'Serge Ondoua Essomba')
+    const production = svc(['ROLE_PRODUCTION_MONETIQUE'], 'u-prod', 'Superviseur Opérations Groupe')
     const vue = await op(production, o.liaisonId, o.rang)
     expect(vue.actionsPermises).not.toContain('VALIDER')
     expect(vue.actionsPermises).not.toContain('RENVOYER')
@@ -94,7 +94,7 @@ describe('HOM-03 : RACI imposé au dépôt et à la validation', () => {
     expect((await op(responsable, o.liaisonId, o.rang)).actionsPermises).not.toContain('VALIDER')
     await expect(responsable.parcours.validerOperation(o.id, 'assertion')).rejects.toSatisfy((e) => code(e) === 'HOM_VALIDATOR_IS_RESPONSIBLE')
 
-    const conducteur = svc(['ROLE_CONDUCTEUR_PROJET'], 'U-201', 'Aïcha Mahamat Nour')
+    const conducteur = svc(['ROLE_CONDUCTEUR_PROJET'], 'U-201', 'Équipe Conduite Projet')
     expect((await op(conducteur, o.liaisonId, o.rang)).actionsPermises).toEqual(expect.arrayContaining(['VALIDER', 'RENVOYER']))
     await conducteur.parcours.validerOperation(o.id, 'assertion')
     expect((await op(conducteur, o.liaisonId, o.rang)).etat).toBe('FAITE')
@@ -127,14 +127,14 @@ describe('HOM-05 et HOM-04 : signatures configurées avant la clôture, fonction
     expect((await op(conducteur, 'LIA-2026-041', '7')).etat).toBe('FAITE')
 
     // HOM-04 : l'opération du pôle réseau (à affecter) ouverte, sa fonction est une tâche à prendre de MS-PILOTAGE.
-    const reseau = svc(['ROLE_POLE_RESEAU'], 'u-res', 'Idriss Mahamat Saleh')
+    const reseau = svc(['ROLE_POLE_RESEAU'], 'u-res', 'Agent Pôle Réseau')
     await reseau.parcours.operations('LIA-2026-041')
     const aPrendre = (await reseau.pilotage.taches({ vue: 'unite' })).contenu.filter((t) => t.origine.reference === 'LIA-2026-041/AFFECTER/POLE_RESEAU')
     expect(aPrendre).toHaveLength(1)
     expect(aPrendre[0]).toMatchObject({ titre: 'Prendre la fonction Pôle réseau (LIA-2026-041)', etat: 'A_PRENDRE', permissionsRequises: ['HOM_FUNCTION_NETWORK'] })
     await reseau.pilotage.prendre(aPrendre[0]!.id)
     const gouvernance = (await reseau.parcours.dossier('LIA-2026-041')).intervenants?.find((i) => i.fonction === 'POLE_RESEAU')!
-    expect(gouvernance).toMatchObject({ aAffecter: false, personne: { id: 'u-res', nom: 'Idriss Mahamat Saleh' } })
+    expect(gouvernance).toMatchObject({ aAffecter: false, personne: { id: 'u-res', nom: 'Agent Pôle Réseau' } })
     const ouvertes = (await reseau.parcours.operations('LIA-2026-041')).filter((x) => x.raci.R?.fonction === 'POLE_RESEAU' && x.etat !== 'FAITE')
     expect(ouvertes.length).toBeGreaterThan(0)
     expect(ouvertes.every((x) => x.raci.R?.id === 'u-res')).toBe(true)

@@ -101,11 +101,11 @@ describe('données de démonstration cohérentes', () => {
     // Un même service tient les deux fonctions signataires (Normes et Agréments, conducteur) pour enchaîner les signatures.
     const cond = svc(['ROLE_SNA', 'ROLE_CONDUCTEUR_PROJET'], 'U-COND-2')
     const o = await op(cond, 'LIA-2026-036', '11')
-    expect(o.signatures?.find((x) => x.code === 'VISA_CONDUITE')?.attendu?.nom).toBe('Brice Ondo Mba')
+    expect(o.signatures?.find((x) => x.code === 'VISA_CONDUITE')?.attendu?.nom).toBe('Délégué Conduite')
     await cond.parcours.signerOperation('LIA-2026-036', '11', 'VISA_NORMES', 'a')
     await cond.parcours.signerOperation('LIA-2026-036', '11', 'VISA_CONDUITE', 'a')
     const signee = (await op(cond, 'LIA-2026-036', '11')).signatures?.find((x) => x.code === 'VISA_CONDUITE')
-    expect(signee).toMatchObject({ etat: 'SIGNEE', signeParNom: 'Brice Ondo Mba', signeLe: expect.stringMatching(new RegExp(`^${aujourdhui()}T`)) })
+    expect(signee).toMatchObject({ etat: 'SIGNEE', signeParNom: 'Délégué Conduite', signeLe: expect.stringMatching(new RegExp(`^${aujourdhui()}T`)) })
   })
 
   it('CER-11 : statut déduit de l’étape courante avant tout jalon (intégration puis essais)', async () => {

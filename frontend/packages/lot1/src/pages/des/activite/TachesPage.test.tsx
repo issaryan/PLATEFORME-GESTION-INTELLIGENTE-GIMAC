@@ -14,8 +14,8 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-const COLLAB = { id: 'u-collab', nom: 'Nadège Mvondo Assiga' }
-const RESP = { id: 'u-resp-info', nom: 'Gaston Ndzana Ebode' }
+const COLLAB = { id: 'u-collab', nom: 'Collaboratrice Réseau' }
+const RESP = { id: 'u-resp-info', nom: 'Responsable Production' }
 const services = (u = COLLAB) => servicesSimules({ latenceMs: 0, utilisateur: u })
 const session = (u = COLLAB, role = 'ROLE_COLLABORATEUR') => ({ ...sessionTest(PROFILS[role], [role]), sujet: u.id, nom: u.nom })
 const page = (chemin = '/des/taches', o: { s?: Services; u?: typeof COLLAB; role?: string } = {}) =>
@@ -51,7 +51,7 @@ describe('Tâches', () => {
   })
 
   it('tâche issue d’une opération : lien vers son origine ; filtre d’état', async () => {
-    page('/des/taches', { u: { id: 'U-201', nom: 'Aïcha Mahamat Nour' }, role: 'ROLE_CONDUCTEUR_PROJET' })
+    page('/des/taches', { u: { id: 'U-201', nom: 'Équipe Conduite Projet' }, role: 'ROLE_CONDUCTEUR_PROJET' })
     fireEvent.click(await screen.findByRole('button', { name: 'Compléter les preuves de l’opération OP-E05 de LIA-2026-030' }))
     const fiche = await screen.findByRole('dialog', { name: /Compléter les preuves/ })
     expect((await within(fiche).findByRole('link', { name: 'Ouvrir' })).getAttribute('href')).toBe('/des/parcours/LIA-2026-030')
@@ -94,7 +94,7 @@ describe('Tâches', () => {
   })
 
   it('chef du DES : confier à plusieurs personnes, suivre le groupe et relancer ; confier à une unité puis attribuer', async () => {
-    const CHEF = { id: 'U-001', nom: 'Paul Mbarga Atangana' }
+    const CHEF = { id: 'U-001', nom: 'Chef Département DES' }
     const s = services(CHEF)
     page('/des/taches', { s, u: CHEF, role: 'ROLE_CHEF_DES' })
     fireEvent.click(await screen.findByRole('button', { name: 'Nouvelle tâche' }))
@@ -103,17 +103,17 @@ describe('Tâches', () => {
     fireEvent.click(within(d).getByLabelText('Plusieurs personnes'))
     fireEvent.click(within(d).getByRole('button', { name: 'Créer la tâche' }))
     expect(await within(d).findByText('Choisissez de 2 à 50 personnes.')).toBeTruthy()
-    fireEvent.click(within(d).getByLabelText(/^Idriss Mahamat Saleh/))
-    fireEvent.click(within(d).getByLabelText(/^Chantal Ngo Bassong/))
+    fireEvent.click(within(d).getByLabelText(/^Agent Pôle Réseau/))
+    fireEvent.click(within(d).getByLabelText(/^Opératrice Pôle Système/))
     fireEvent.click(within(d).getByRole('button', { name: 'Créer la tâche' }))
     expect(await screen.findByText('Tâche confiée à 2 personnes.')).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: 'Confiées' }))
     fireEvent.click((await screen.findAllByRole('button', { name: 'Suivi du groupe « Relire la procédure de bascule »' }))[0])
     const g = await screen.findByRole('dialog', { name: 'Suivi : Relire la procédure de bascule' })
     expect(await within(g).findByText('0 sur 2')).toBeTruthy()
-    fireEvent.click(within(g).getByRole('button', { name: 'Relancer Idriss Mahamat Saleh' }))
-    expect(await within(g).findByText('Relance envoyée à Idriss Mahamat Saleh.')).toBeTruthy()
-    fireEvent.click(within(g).getByRole('button', { name: 'Relancer Idriss Mahamat Saleh' }))
+    fireEvent.click(within(g).getByRole('button', { name: 'Relancer Agent Pôle Réseau' }))
+    expect(await within(g).findByText('Relance envoyée à Agent Pôle Réseau.')).toBeTruthy()
+    fireEvent.click(within(g).getByRole('button', { name: 'Relancer Agent Pôle Réseau' }))
     expect(await within(g).findByText('Une relance a déjà été envoyée il y a moins de 24 heures.')).toBeTruthy()
     fireEvent.click(within(g).getAllByRole('button', { name: 'Fermer' }).at(-1)!)
 
@@ -137,11 +137,11 @@ describe('Tâches', () => {
     expect(within(a).getByText('Choisissez le membre de l’unité.')).toBeTruthy()
     fireEvent.change(within(a).getByLabelText(/^Responsable/), { target: { value: 'u-collab' } })
     fireEvent.click(within(a).getByRole('button', { name: 'Attribuer la tâche' }))
-    expect(await screen.findByText('Tâche attribuée à Nadège Mvondo Assiga.')).toBeTruthy()
+    expect(await screen.findByText('Tâche attribuée à Collaboratrice Réseau.')).toBeTruthy()
   })
 
   it('membre du pôle : prend une tâche à prendre ; création pré-remplie depuis « Mon équipe »', async () => {
-    const MEMBRE = { id: 'u-res', nom: 'Idriss Mahamat Saleh' }
+    const MEMBRE = { id: 'u-res', nom: 'Agent Pôle Réseau' }
     page('/des/taches?vue=unite', { u: MEMBRE, role: 'ROLE_POLE_RESEAU' })
     fireEvent.click(await screen.findByRole('button', { name: 'Vérifier la supervision des liens du participant' }))
     const f = await screen.findByRole('dialog', { name: 'Vérifier la supervision des liens du participant' })
@@ -154,7 +154,7 @@ describe('Tâches', () => {
     expect(screen.getAllByText(/^Pour le rôle /).length).toBeGreaterThan(0)
     expect(screen.queryByText(/Profil requis :/)).toBeNull()
     cleanup()
-    const CHEF = { id: 'U-001', nom: 'Paul Mbarga Atangana' }
+    const CHEF = { id: 'U-001', nom: 'Chef Département DES' }
     page('/des/taches?unite=POLE_SYSTEME', { u: CHEF, role: 'ROLE_CHEF_DES' })
     const d = await screen.findByRole('dialog', { name: 'Nouvelle tâche' })
     expect((within(d).getByLabelText(/^Unité/) as HTMLSelectElement).value).toBe('POLE_SYSTEME')
@@ -169,10 +169,10 @@ describe('Tâches', () => {
   })
 
   it('D-98 : transition proposée, décision à prononcer offerte à l’approbateur, lien vers l’onglet des transitions', async () => {
-    const CHEF_DDRM = { id: 'U-020', nom: 'Bertrand Nguema Obiang' }
+    const CHEF_DDRM = { id: 'U-020', nom: 'Responsable DDRM' }
     // DDR-01 : la chargée propose, le chef (autre acteur, démonstration continue) prononce.
     localStorage.setItem('gm.demoContinue', '1')
-    const parCharge = servicesSimules({ latenceMs: 0, utilisateur: { id: 'sim-charge', nom: 'Fatimé Abakar Hissein', profils: ['ROLE_CHARGE_DDRM'] } })
+    const parCharge = servicesSimules({ latenceMs: 0, utilisateur: { id: 'sim-charge', nom: 'Responsable Unité Démo', profils: ['ROLE_CHARGE_DDRM'] } })
     const banque = (await parCharge.participant.listerInstitutions({ recherche: 'Libreville', page: 1, taille: 5 })).contenu[0]
     await parCharge.participant.proposerTransition(banque.id, 'ADHERENT', 'Dossier complet')
     const s = servicesSimules({ latenceMs: 0, utilisateur: { ...CHEF_DDRM, profils: ['ROLE_CHEF_DDRM'] } })
@@ -181,7 +181,7 @@ describe('Tâches', () => {
     const ligne = (await screen.findByRole('button', { name: 'Prononcer l’adhésion : Banque de Libreville' })).closest('tr') as HTMLElement
     // DDR-16 : colonne Unité : offerte à toutes les unités (porteurs de la permission), pas « Décision à prononcer ».
     expect(within(ligne).getByText('Toutes unités')).toBeTruthy()
-    expect(within(ligne).getByText('Fatimé Abakar Hissein')).toBeTruthy()
+    expect(within(ligne).getByText('Responsable Unité Démo')).toBeTruthy()
     fireEvent.click(within(ligne).getByRole('button', { name: 'Prononcer l’adhésion : Banque de Libreville' }))
     const f = await screen.findByRole('dialog', { name: 'Prononcer l’adhésion : Banque de Libreville' })
     expect((await within(f).findByRole('link', { name: 'Ouvrir' })).getAttribute('href')).toBe(`/des/institutions/${banque.id}?onglet=transitions`)

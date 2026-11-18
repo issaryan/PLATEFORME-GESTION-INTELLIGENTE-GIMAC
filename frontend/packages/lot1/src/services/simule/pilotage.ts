@@ -37,22 +37,22 @@ type Membre = { id: string; nomAffiche: string; fonction: string; unite: string 
 
 /** Organisation de démonstration : comptes de l'annuaire simulé, unité la plus fine et responsable (n+1). */
 export const ORGANISATION_DEMO: Membre[] = [
-  { id: 'u-dg', nomAffiche: 'Jean-Baptiste Ella Mintsa', fonction: 'Directeur général', unite: 'DG', responsableId: null },
-  { id: 'U-001', nomAffiche: 'Paul Mbarga Atangana', fonction: 'Chef du département DES', unite: 'DES', responsableId: 'u-dg' },
-  { id: 'U-020', nomAffiche: 'Bertrand Nguema Obiang', fonction: 'Chef de la DDRM', unite: 'DDRM', responsableId: 'u-dg' },
-  { id: 'sim-charge', nomAffiche: 'Fatimé Abakar Hissein', fonction: 'Chargée de la DDRM', unite: 'DDRM', responsableId: 'U-020' },
-  { id: 'U-201', nomAffiche: 'Aïcha Mahamat Nour', fonction: 'Conductrice de projet', unite: 'DES', responsableId: 'U-001' },
-  { id: 'U-101', nomAffiche: 'Joël Ekotto Mballa', fonction: 'Ingénieur d’homologation', unite: 'SNA', responsableId: 'U-001' },
-  { id: 'u-sna', nomAffiche: 'Rachel Biyong Mengue', fonction: 'Analyste Normes et Agréments', unite: 'SNA', responsableId: 'U-001' },
-  { id: 'u-prod', nomAffiche: 'Serge Ondoua Essomba', fonction: 'Chargé de production monétique', unite: 'PROD_MONETIQUE', responsableId: 'U-001' },
-  { id: 'u-resp-info', nomAffiche: 'Gaston Ndzana Ebode', fonction: 'Chef du service Production informatique', unite: 'PROD_INFO', responsableId: 'U-001' },
-  { id: 'u-res', nomAffiche: 'Idriss Mahamat Saleh', fonction: 'Ingénieur réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info' },
-  { id: 'u-sys', nomAffiche: 'Chantal Ngo Bassong', fonction: 'Ingénieure système', unite: 'POLE_SYSTEME', responsableId: 'u-resp-info' },
-  { id: 'u-collab', nomAffiche: 'Nadège Mvondo Assiga', fonction: 'Technicienne réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info' },
-  { id: 'u-rssi', nomAffiche: 'Hervé Kamga Tchoupo', fonction: 'Responsable de la sécurité des SI', unite: 'SSI', responsableId: 'u-dg' },
-  { id: 'u-conf', nomAffiche: 'Mireille Obame Nze', fonction: 'Responsable conformité', unite: 'CONFORMITE', responsableId: 'u-dg' },
-  { id: 'u-rh-chef', nomAffiche: 'Solange Ateba Mvondo', fonction: 'Cheffe du service des ressources humaines', unite: 'RH', responsableId: 'u-dg' },
-  { id: 'u-rh', nomAffiche: 'Thierry Bekolo Ngoa', fonction: 'Gestionnaire des ressources humaines', unite: 'RH', responsableId: 'u-rh-chef' },
+  { id: 'u-dg', nomAffiche: 'Agent Conformité', fonction: 'Directeur général', unite: 'DG', responsableId: null },
+  { id: 'U-001', nomAffiche: 'Chef Département DES', fonction: 'Chef du département DES', unite: 'DES', responsableId: 'u-dg' },
+  { id: 'U-020', nomAffiche: 'Responsable DDRM', fonction: 'Chef de la DDRM', unite: 'DDRM', responsableId: 'u-dg' },
+  { id: 'sim-charge', nomAffiche: 'Responsable Unité Démo', fonction: 'Chargée de la DDRM', unite: 'DDRM', responsableId: 'U-020' },
+  { id: 'U-201', nomAffiche: 'Équipe Conduite Projet', fonction: 'Conductrice de projet', unite: 'DES', responsableId: 'U-001' },
+  { id: 'U-101', nomAffiche: 'Agent Exploitation', fonction: 'Ingénieur d’homologation', unite: 'SNA', responsableId: 'U-001' },
+  { id: 'u-sna', nomAffiche: 'Responsable SNA', fonction: 'Analyste Normes et Agréments', unite: 'SNA', responsableId: 'U-001' },
+  { id: 'u-prod', nomAffiche: 'Superviseur Opérations Groupe', fonction: 'Chargé de production monétique', unite: 'PROD_MONETIQUE', responsableId: 'U-001' },
+  { id: 'u-resp-info', nomAffiche: 'Responsable Production', fonction: 'Chef du service Production informatique', unite: 'PROD_INFO', responsableId: 'U-001' },
+  { id: 'u-res', nomAffiche: 'Agent Pôle Réseau', fonction: 'Ingénieur réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info' },
+  { id: 'u-sys', nomAffiche: 'Opératrice Pôle Système', fonction: 'Ingénieure système', unite: 'POLE_SYSTEME', responsableId: 'u-resp-info' },
+  { id: 'u-collab', nomAffiche: 'Collaboratrice Réseau', fonction: 'Technicienne réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info' },
+  { id: 'u-rssi', nomAffiche: 'Officier Sécurité Groupe', fonction: 'Responsable de la sécurité des SI', unite: 'SSI', responsableId: 'u-dg' },
+  { id: 'u-conf', nomAffiche: 'Agent Qualité', fonction: 'Responsable conformité', unite: 'CONFORMITE', responsableId: 'u-dg' },
+  { id: 'u-rh-chef', nomAffiche: 'Cheffe Ressources Humaines', fonction: 'Cheffe du service des ressources humaines', unite: 'RH', responsableId: 'u-dg' },
+  { id: 'u-rh', nomAffiche: 'Gestionnaire RH Démo', fonction: 'Gestionnaire des ressources humaines', unite: 'RH', responsableId: 'u-rh-chef' },
 ]
 
 /**
@@ -123,7 +123,7 @@ type EtatTacheSim = Required<Tache>
 type EtatRapport = Rapport & { documentBlob?: Blob }
 
 export function pilotageSimule(
-  attendreJeu: Attendre, refus: Refus, utilisateur: { id: string; nom: string } = { id: 'U-001', nom: 'Paul Mbarga Atangana' }, magasin: MagasinPouvoirs = magasinPouvoirs(),
+  attendreJeu: Attendre, refus: Refus, utilisateur: { id: string; nom: string } = { id: 'U-001', nom: 'Chef Département DES' }, magasin: MagasinPouvoirs = magasinPouvoirs(),
   relier?: (pont: PontTachesProcessus) => void,
   /** DDR-09 : démonstration continue, tâches gardées d'un chargement à l'autre (changement d'acteur). */
   persistance?: { lire(): string | null; ecrire(valeur: string): void },

@@ -45,7 +45,7 @@ describe('Liaison au cadrage : résumé et désignation du conducteur', () => {
     expect(within(r).getByText('Cadrage')).toBeTruthy()
     for (const s of ['Transverse', 'Transfert', 'Paiement']) expect(within(r).getByText(s)).toBeTruthy()
     expect(within(r).getByText('Institution membre')).toBeTruthy()
-    expect(within(r).getByText('Aïcha Mahamat Nour')).toBeTruthy()
+    expect(within(r).getByText('Équipe Conduite Projet')).toBeTruthy()
   })
   it('résumé sans conducteur ni périmètre renvoyés : signalé', async () => {
     const s = servicesSimules({ latenceMs: 0 })
@@ -67,7 +67,7 @@ describe('Liaison au cadrage : résumé et désignation du conducteur', () => {
     fireEvent.change(container.querySelector('textarea[name="motif"]')!, { target: { value: 'Réorganisation du portefeuille' } })
     fireEvent.submit(container.querySelector('form')!)
     await waitFor(() => expect(appels).toEqual([['LIA-2026-030', 'U-203', 'Réorganisation du portefeuille']]))
-    expect(await within(await waitFor(resume)).findByText('Estelle Ngo Bassong')).toBeTruthy()
+    expect(await within(await waitFor(resume)).findByText('Opératrice Pôle Système Bis')).toBeTruthy()
   })
   it('désignation sans motif ; conducteur requis ; refus du service traduit', async () => {
     const services = avec({ designerChefDeProjet: async () => { throw new ApiError(409, 'HOM_LIAISON_PROJECT_LEAD_NOT_HABILITATED', 'x', 'RQ-DES-1') } })

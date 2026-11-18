@@ -17,7 +17,7 @@ const services = (id: string, nom = id) => servicesSimules({ latenceMs: 0, utili
 const code = (p: Promise<unknown>) => p.then(() => 'ok', (e: ApiError) => `${e.status} ${e.code}`)
 const creation = (o: Partial<{ unite: string; responsableId: string; profils: string[]; identifiant: string; motif: string }> = {}): NouvelleDemande => ({
   type: 'CREATION_COMPTE', cibleId: null, motif: o.motif ?? 'Renfort du pôle système',
-  contenu: { identifiant: o.identifiant ?? 'b.ondo', prenom: 'Blaise', nom: 'Ondo', email: 'b.ondo@gimac-afr.org', fonction: 'Technicien système', unite: o.unite ?? 'POLE_SYSTEME', responsableId: o.responsableId ?? 'u-resp-info', profils: o.profils ?? ['ROLE_POLE_SYSTEME'] },
+  contenu: { identifiant: o.identifiant ?? 'd.conduite', prenom: 'Agent', nom: 'Délégation', email: 'd.conduite@gimac-afr.org', fonction: 'Technicien système', unite: o.unite ?? 'POLE_SYSTEME', responsableId: o.responsableId ?? 'u-resp-info', profils: o.profils ?? ['ROLE_POLE_SYSTEME'] },
 })
 
 describe('modèle des portées', () => {
@@ -112,7 +112,7 @@ describe('demandes à l’administration', () => {
     m.retirerProfil('ROLE_ASTREINTE')
     expect(m.matrice.some((l) => l.profil === 'ROLE_ASTREINTE')).toBe(false)
     expect(m.personne('inconnu').nomAffiche).toBe('inconnu')
-    expect(m.personne('U-101').nomAffiche).toBe('Joël Ekotto Mballa')
+    expect(m.personne('U-101').nomAffiche).toBe('Agent Exploitation')
   })
 })
 
@@ -141,7 +141,7 @@ describe('tâches confiées (D-81 §6)', () => {
     expect((await chef.attribuer(t.id, 'u-collab')).responsable?.id).toBe('u-collab')
     expect(await code(chef.attribuer(t.id, 'u-res'))).toBe('409 PIL_TRANSITION_INTERDITE')
     // Le membre du pôle prend la tâche à prendre de démonstration.
-    const membre = services('u-res', 'Idriss Mahamat Saleh').pilotage
+    const membre = services('u-res', 'Agent Pôle Réseau').pilotage
     // Hors étapes de processus d'unité (D-87), à prendre par les porteurs du profil « Pôle réseau ».
     const aPrendre = (await membre.taches({ vue: 'unite' })).contenu.filter((x) => x.origine.type !== 'PROCESSUS')
     expect(aPrendre.map((x) => x.titre)).toEqual(['Vérifier la supervision des liens du participant'])
@@ -164,7 +164,7 @@ describe('tâches confiées (D-81 §6)', () => {
     expect(await code(chef.relancer(propre.id))).toBe('409 PIL_RELANCE_IMPOSSIBLE')
     // TACHE_SUIVRE : relance d'une tâche confiée par un autre ; sans ce pouvoir, refusée.
     const magasin = magasinPouvoirs()
-    const suivi = servicesSimules({ latenceMs: 0, utilisateur: { id: 'U-001', nom: 'Paul' }, pouvoirs: magasin }).pilotage
+    const suivi = servicesSimules({ latenceMs: 0, utilisateur: { id: 'U-001', nom: 'Chef' }, pouvoirs: magasin }).pilotage
     const deSonEquipe = (await suivi.taches({ vue: 'equipe' })).contenu.find((x) => x.createur.id === 'u-resp-info' && x.responsable?.id === 'u-res' && x.etat === 'OUVERTE')!
     await suivi.relancer(deSonEquipe.id)
     vi.setSystemTime(new Date('2026-10-09T09:00:00Z'))

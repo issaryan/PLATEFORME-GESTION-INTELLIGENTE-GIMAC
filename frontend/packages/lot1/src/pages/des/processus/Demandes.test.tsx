@@ -26,9 +26,9 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-const SNA = { id: 'u-sna', nom: 'Rachel Biyong Mengue', role: 'ROLE_SNA' }
-const RESEAU = { id: 'u-res', nom: 'Idriss Mahamat Saleh', role: 'ROLE_POLE_RESEAU' }
-const RESP = { id: 'u-resp-info', nom: 'Gaston Ndzana Ebode', role: 'ROLE_RESPONSABLE_SERVICE' }
+const SNA = { id: 'u-sna', nom: 'Responsable SNA', role: 'ROLE_SNA' }
+const RESEAU = { id: 'u-res', nom: 'Agent Pôle Réseau', role: 'ROLE_POLE_RESEAU' }
+const RESP = { id: 'u-resp-info', nom: 'Responsable Production', role: 'ROLE_RESPONSABLE_SERVICE' }
 type Qui = typeof SNA
 const services = (q: Qui, magasin = magasinPouvoirs()) => servicesSimules({ latenceMs: 0, utilisateur: { id: q.id, nom: q.nom, profils: [q.role] }, pouvoirs: magasin })
 const session = (q: Qui) => ({ ...sessionTest(PROFILS[q.role], [q.role]), sujet: q.id, nom: q.nom })
@@ -127,7 +127,7 @@ describe('D-98 : lancer une demande, la suivre', () => {
     await res.saisirChamps(i.id, 'ANALYSE', { ADRESSE_DISPONIBLE: 'Oui' })
     await res.terminer(i.id, 'ANALYSE')
     rendrePage(<MesDemandesPage />, { chemin: '/des/demandes', motif: '/des/demandes', services: s, session: session(SNA), autres: AUTRES })
-    expect(await screen.findByText(/tenue par Gaston Ndzana Ebode/)).toBeTruthy()
+    expect(await screen.findByText(/tenue par Responsable Production/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Ouvrir l’étape Analyse technique (Terminée)' })).toBeTruthy()
     const chef = services(RESP, magasin).processus
     await chef.saisirChamps(i.id, 'VALIDATION', { DECISION: 'Accordée' })

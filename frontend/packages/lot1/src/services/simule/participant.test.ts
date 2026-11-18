@@ -6,8 +6,8 @@ import type { ParticipantSimule } from './participant'
 const svc = () => servicesSimules({ latenceMs: 0 }).participant
 const idDe = async (s: ReturnType<typeof svc>, nom: string) => (await s.listerInstitutions({ page: 1, taille: 50 })).contenu.find((i) => i.nom === nom)!.id
 const refus = (code: string) => expect.objectContaining({ code })
-const charge = { id: 'sim-charge', nom: 'Fatimé Abakar Hissein', profils: ['ROLE_CHARGE_DDRM'] }
-const chef = { id: 'U-020', nom: 'Bertrand Nguema Obiang', profils: ['ROLE_CHEF_DDRM'] }
+const charge = { id: 'sim-charge', nom: 'Responsable Unité Démo', profils: ['ROLE_CHARGE_DDRM'] }
+const chef = { id: 'U-020', nom: 'Responsable DDRM', profils: ['ROLE_CHEF_DDRM'] }
 afterEach(() => Object.keys(localStorage).filter((k) => k.startsWith('gm.demo')).forEach((k) => localStorage.removeItem(k)))
 
 describe('participantSimule', () => {

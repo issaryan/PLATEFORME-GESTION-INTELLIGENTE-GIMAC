@@ -7,7 +7,7 @@ import { RSSI, SUPER_ADMIN, avec, rendrePage, signer, simules } from '../test/re
 // Corrections de la recette du lot « administration » (docs/recette/administration.md, ADM-03 à ADM-08).
 afterEach(cleanup)
 const profils = (o: Partial<Parameters<typeof rendrePage>[1]> = {}) => rendrePage(<ProfilsPage />, { chemin: '/console/profils', motif: '/console/profils', ...o })
-const acteurRssi = { id: 'u-rssi', nom: 'Hervé Kamga Tchoupo', permissions: RSSI }
+const acteurRssi = { id: 'u-rssi', nom: 'Officier Sécurité Groupe', permissions: RSSI }
 
 describe('ADM-03 : refus du service pendant une signature', () => {
   it('la clé a répondu : « Acte refusé par le service », message et code du service, sans « Réessayer » ni mise en cause de la clé', async () => {
@@ -107,6 +107,6 @@ describe('ADM-08 : organigramme pendant le chargement des comptes', () => {
     expect(des.textContent).toContain('Chef : chargement…')
     expect(des.textContent).not.toMatch(/u-chef-des|0 personne/)
     lire()
-    await waitFor(() => expect(des.textContent).toMatch(/Chef : Christian Ndong Obiang · 5 personnes/))
+    await waitFor(() => expect(des.textContent).toMatch(/Chef : Directeur Unité DES · 5 personnes/))
   })
 })

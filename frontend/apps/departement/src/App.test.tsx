@@ -57,27 +57,27 @@ describe('profils de démonstration', () => {
   })
   it('QUO-01 : comptes de démonstration du service RH, chacun avec son profil de l’organisation simulée', async () => {
     const { COMPTES_DEMO } = await import('./connexionDemo')
-    const gestionnaire = COMPTES_DEMO.find((c) => c.identifiant === 't.bekolo')!
-    const cheffe = COMPTES_DEMO.find((c) => c.identifiant === 's.ateba')!
-    expect(gestionnaire.session).toMatchObject({ sujet: 'u-rh', nom: 'Thierry Bekolo Ngoa', roles: ['ROLE_COLLABORATEUR'] })
-    expect(cheffe.session).toMatchObject({ sujet: 'u-rh-chef', nom: 'Solange Ateba Mvondo', roles: ['ROLE_RESPONSABLE_SERVICE'] })
+    const gestionnaire = COMPTES_DEMO.find((c) => c.identifiant === 'g.rh')!
+    const cheffe = COMPTES_DEMO.find((c) => c.identifiant === 'c.ressources')!
+    expect(gestionnaire.session).toMatchObject({ sujet: 'u-rh', nom: 'Gestionnaire RH Démo', roles: ['ROLE_COLLABORATEUR'] })
+    expect(cheffe.session).toMatchObject({ sujet: 'u-rh-chef', nom: 'Cheffe Ressources Humaines', roles: ['ROLE_RESPONSABLE_SERVICE'] })
     // La session ouverte par la connexion simulée garde le compte (et non le premier porteur du profil).
-    sessionStorage.setItem('gm.sessionDemo', JSON.stringify({ identifiant: 't.bekolo', role: gestionnaire.role }))
+    sessionStorage.setItem('gm.sessionDemo', JSON.stringify({ identifiant: 'g.rh', role: gestionnaire.role }))
     expect(sessionDemo()).toMatchObject({ sujet: 'u-rh', roles: ['ROLE_COLLABORATEUR'] })
   })
   it('profil choisi par la préférence locale, chef de la DDRM à défaut', () => {
     expect(roleDemo()).toBe('ROLE_CHEF_DDRM')
     localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_CONDUCTEUR_PROJET')
-    expect(sessionDemo()).toMatchObject({ sujet: 'U-201', nom: 'Aïcha Mahamat Nour', roles: ['ROLE_CONDUCTEUR_PROJET'], doubleFacteur: true })
+    expect(sessionDemo()).toMatchObject({ sujet: 'U-201', nom: 'Équipe Conduite Projet', roles: ['ROLE_CONDUCTEUR_PROJET'], doubleFacteur: true })
     expect(roleDemo('ROLE_INCONNU')).toBe('ROLE_CHEF_DDRM')
     // Super administrateur (D-69) : même identité que dans la console.
-    expect(sessionDemo('ROLE_SUPER_ADMIN')).toMatchObject({ sujet: 'u-super-admin', nom: 'Serge Mouelle Kombi' })
+    expect(sessionDemo('ROLE_SUPER_ADMIN')).toMatchObject({ sujet: 'u-super-admin', nom: 'Super Administrateur Démo' })
   })
 })
 
 describe('Mon activité (D-76)', () => {
   it('profils de démonstration : collaborateur et responsable de service, PIL_* selon le contrat', () => {
-    expect(PROFILS_DEMO.ROLE_COLLABORATEUR).toMatchObject({ sujet: 'u-collab', nom: 'Nadège Mvondo Assiga' })
+    expect(PROFILS_DEMO.ROLE_COLLABORATEUR).toMatchObject({ sujet: 'u-collab', nom: 'Collaboratrice Réseau' })
     expect([...PROFILS_DEMO.ROLE_COLLABORATEUR.permissions].sort()).toEqual(['COL_MESSAGE_READ', 'COL_MESSAGE_SEND', 'NOT_INBOX_READ', 'PIL_ACTIVITY_OWN'])
     expect(PROFILS_DEMO.ROLE_RESPONSABLE_SERVICE.permissions).toEqual(expect.arrayContaining(['PIL_ACTIVITY_OWN', 'PIL_TEAM_READ', 'PIL_TASK_ASSIGN']))
     for (const r of ['ROLE_CHEF_DES', 'ROLE_CHEF_DDRM', 'ROLE_DG', 'ROLE_RSSI', 'ROLE_CONFORMITE']) expect(PROFILS_DEMO[r].permissions).toContain('PIL_TEAM_READ')
@@ -146,7 +146,7 @@ describe('Application du département', () => {
     expect(document.querySelector('.gm-footer')).toBeTruthy()
     fireEvent.click(screen.getByRole('link', { name: 'Mon compte' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Mon compte' })).toBeTruthy()
-    expect(await screen.findByText('Bertrand')).toBeTruthy()
+    expect(await screen.findByText('Responsable')).toBeTruthy()
   })
   it('conducteur de projet : « Mes projets », sans registre des institutions en écriture', async () => {
     localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_CONDUCTEUR_PROJET')

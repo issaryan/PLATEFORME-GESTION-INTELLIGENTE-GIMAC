@@ -16,8 +16,8 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-const COLLAB = { id: 'u-collab', nom: 'Nadège Mvondo Assiga' }
-const RESP = { id: 'u-resp-info', nom: 'Gaston Ndzana Ebode' }
+const COLLAB = { id: 'u-collab', nom: 'Collaboratrice Réseau' }
+const RESP = { id: 'u-resp-info', nom: 'Responsable Production' }
 const services = (u = COLLAB) => servicesSimules({ latenceMs: 0, utilisateur: u })
 const session = (u = COLLAB, role = 'ROLE_COLLABORATEUR') => ({ ...sessionTest(PROFILS[role], [role]), sujet: u.id, nom: u.nom })
 const page = (chemin = '/des/activite', o: { s?: Services; u?: typeof COLLAB; role?: string } = {}) =>
@@ -92,7 +92,7 @@ describe('Ma journée', () => {
     await waitFor(() => expect((rediger as HTMLButtonElement).disabled).toBe(false))
     fireEvent.click(rediger)
     const d = await dialogue('Nouveau rapport')
-    expect(await within(d).findByText('Le rapport soumis sera remis à Gaston Ndzana Ebode, votre responsable.')).toBeTruthy()
+    expect(await within(d).findByText('Le rapport soumis sera remis à Responsable Production, votre responsable.')).toBeTruthy()
     fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer et soumettre' }))
     expect(await within(d).findByText('Le rapport est vide : préremplissez-le ou rédigez-le.')).toBeTruthy()
     fireEvent.click(within(d).getByRole('button', { name: 'Préremplir à partir de mes activités' }))
@@ -101,14 +101,14 @@ describe('Ma journée', () => {
     expect(await screen.findByText(/^Rapport remis à .+ \(votre n\+1\)\.$/)).toBeTruthy()
     expect(await screen.findByText('Votre rapport est soumis à votre responsable.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Ouvrir mon rapport' }))
-    const c = await dialogue(/Rapport quotidien de Nadège Mvondo Assiga/)
-    expect(await within(c).findByText('Gaston Ndzana Ebode (votre n+1)')).toBeTruthy()
+    const c = await dialogue(/Rapport quotidien de Collaboratrice Réseau/)
+    expect(await within(c).findByText('Responsable Production (votre n+1)')).toBeTruthy()
     expect(within(c).getByRole('heading', { name: 'Réalisé' })).toBeTruthy()
   })
 
   it('journée d’un membre de l’équipe : lecture seule ; jour précédent et retour à aujourd’hui', async () => {
     page(`/des/activite?collaborateur=u-res`, { u: RESP, role: 'ROLE_RESPONSABLE_SERVICE' })
-    expect(await screen.findByRole('heading', { level: 1, name: 'Journée de Idriss Mahamat Saleh' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Journée de Agent Pôle Réseau' })).toBeTruthy()
     expect(await screen.findByText('Configurer le VPN du participant')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Ajouter une activité' })).toBeNull()
     // Lecture seule : aucun sélecteur d'état d'activité ; seul reste celui de la taille de page de la liste paginée (D-66, D-112).

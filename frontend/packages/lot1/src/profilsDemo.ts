@@ -13,8 +13,8 @@ export type ProfilInterneDemo = { identifiant: string; nom: string; sujet: strin
 
 /** Identités hors annuaire de la messagerie (mêmes que dans la console). */
 export const IDENTITES_HORS_ANNUAIRE: Record<string, Omit<ProfilInterneDemo, 'permissions'>> = {
-  ROLE_SUPER_ADMIN: { identifiant: 'super.admin', nom: 'Serge Mouelle Kombi', sujet: 'u-super-admin' },
-  ROLE_ADMIN_SYSTEME: { identifiant: 'admin.systeme', nom: 'Thierry Abessolo Nkoulou', sujet: 'u-admin-systeme' },
+  ROLE_SUPER_ADMIN: { identifiant: 'super.admin', nom: 'Super Administrateur Démo', sujet: 'u-super-admin' },
+  ROLE_ADMIN_SYSTEME: { identifiant: 'admin.systeme', nom: 'Agent Direction Générale', sujet: 'u-admin-systeme' },
   // D-133 : désigné par son rôle, sans personne de l'annuaire.
   ROLE_CHARGE_IMPLEMENTATION_SNA: { identifiant: 'charge.implementation.sna', nom: 'Chargé de l’implémentation des projets (SNA)', sujet: 'u-charge-implementation-sna' },
 }

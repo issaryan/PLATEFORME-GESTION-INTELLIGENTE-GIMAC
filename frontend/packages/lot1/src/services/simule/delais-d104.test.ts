@@ -41,7 +41,7 @@ describe('D-106 : délais des processus internes', () => {
     expect(p.etapes[0].delaiMaxJours).toBe(6)
     // Démonstration : « Ouverture d'un flux réseau » porte 10 à 15 jours, son étape d'analyse 2 à 4 jours.
     const magasin = magasinPouvoirs()
-    magasin.organisation.push({ id: 'u-res-bis', nomAffiche: 'Armel Nkoulou Beti', fonction: 'Technicien réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', actif: true })
+    magasin.organisation.push({ id: 'u-res-bis', nomAffiche: 'Agent Banque Partenaire', fonction: 'Technicien réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', actif: true })
     magasin.definirProfils('u-res-bis', ['ROLE_POLE_RESEAU'])
     const membre = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-res', nom: 'u-res' }, pouvoirs: magasin }).processus
     const flux = (await membre.lister({ etat: 'PUBLIEE' })).find((x) => x.code === 'OUVERTURE_FLUX_RESEAU')!

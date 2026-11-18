@@ -17,8 +17,8 @@ export const PERIMETRES_DEMO: PerimetreSuspendu[] = [
 ]
 
 export const PROTECTIONS_DEMO: CompteProtege[] = [
-  { compteId: 'u-admin-99001', nom: 'Awa Ndiaye', institutionId: '99001', depuis: '2026-10-01T09:00:00Z' },
-  { compteId: 'u-admin-99002', nom: 'Jean Mbarga', institutionId: '99002', depuis: '2026-10-02T09:00:00Z' },
+  { compteId: 'u-admin-99001', nom: 'Cheffe DDRM', institutionId: '99001', depuis: '2026-10-01T09:00:00Z' },
+  { compteId: 'u-admin-99002', nom: 'Agent Mission', institutionId: '99002', depuis: '2026-10-02T09:00:00Z' },
 ]
 
 const mandat = (id: string, compteId: string, nom: string, debut: string, fin: string, etat: Delegation['etat'], permissions: string[], creeLe: string): [Delegation, string] => [
@@ -27,10 +27,10 @@ const mandat = (id: string, compteId: string, nom: string, debut: string, fin: s
 ]
 
 export const DELEGATIONS_DEMO: [Delegation, string][] = [
-  mandat('d-mandat-actif', 'u-integrateur', 'Paul Ebode (Intégrateur Afrique)', '2026-10-01T08:00:00Z', '2026-12-31T18:00:00Z', 'ACCORDEE', ['SBX_CER_EXECUTION', 'SBX_CER_CONSULTATION', 'SBX_RAC_CONSULTATION'], '2026-10-01T08:00:00Z'),
-  mandat('d-mandat-programme', 'u-editeur', 'Chantal Owona (Éditeur monétique)', '2026-11-02T08:00:00Z', '2026-12-02T18:00:00Z', 'ACCORDEE', ['SBX_MOB_SIMULATION', 'SBX_MOB_CONSULTATION'], '2026-10-20T08:00:00Z'),
-  mandat('d-mandat-echu', 'u-integrateur', 'Paul Ebode (Intégrateur Afrique)', '2026-08-01T08:00:00Z', '2026-09-30T18:00:00Z', 'ACCORDEE', ['SBX_RAC_ADMINISTRATION'], '2026-08-01T08:00:00Z'),
-  mandat('d-mandat-revoque', 'u-editeur', 'Chantal Owona (Éditeur monétique)', '2026-09-01T08:00:00Z', '2026-11-30T18:00:00Z', 'REVOQUEE', ['SBX_CER_EXECUTION'], '2026-09-01T08:00:00Z'),
+  mandat('d-mandat-actif', 'u-integrateur', 'Agent Personnalisation (Intégrateur Afrique)', '2026-10-01T08:00:00Z', '2026-12-31T18:00:00Z', 'ACCORDEE', ['SBX_CER_EXECUTION', 'SBX_CER_CONSULTATION', 'SBX_RAC_CONSULTATION'], '2026-10-01T08:00:00Z'),
+  mandat('d-mandat-programme', 'u-editeur', 'Agent Archives (Éditeur monétique)', '2026-11-02T08:00:00Z', '2026-12-02T18:00:00Z', 'ACCORDEE', ['SBX_MOB_SIMULATION', 'SBX_MOB_CONSULTATION'], '2026-10-20T08:00:00Z'),
+  mandat('d-mandat-echu', 'u-integrateur', 'Agent Personnalisation (Intégrateur Afrique)', '2026-08-01T08:00:00Z', '2026-09-30T18:00:00Z', 'ACCORDEE', ['SBX_RAC_ADMINISTRATION'], '2026-08-01T08:00:00Z'),
+  mandat('d-mandat-revoque', 'u-editeur', 'Agent Archives (Éditeur monétique)', '2026-09-01T08:00:00Z', '2026-11-30T18:00:00Z', 'REVOQUEE', ['SBX_CER_EXECUTION'], '2026-09-01T08:00:00Z'),
 ]
 
 /** Auteur des demandes faites depuis la console simulée : il n'approuve jamais sa propre demande (quatre yeux). */
@@ -47,9 +47,9 @@ export function prestatairesDemo(maintenant = new Date()): [Delegation, string][
     demandeurId: 'demo-exploitant', approbateurId, motif, creeLe: iso(Math.min(debut, 0) - HEURE), closeLe: null,
   })
   return [
-    [acces('d-presta-demande', 'u-presta', 24 * HEURE, 28 * HEURE, 'DEMANDEE', ['SBX-TRACE'], 'Montée de version de SBX-TRACE', null), 'Jean Mbarga (Prestataire de maintenance)'],
-    [acces('d-presta-actif', 'u-presta', -HEURE, 3 * HEURE, 'ACCORDEE', ['SBX-DONNEES', 'MIFOS'], 'Correctif du connecteur Mifos', 'demo-rssi'), 'Jean Mbarga (Prestataire de maintenance)'],
-    [acces('d-presta-echu', 'u-presta-2', -76 * HEURE, -72 * HEURE, 'ACCORDEE', ['SBX-ISO20022'], 'Diagnostic de la façade ISO 20022', 'demo-rssi'), 'Clarisse Atangana (Prestataire réseau)'],
+    [acces('d-presta-demande', 'u-presta', 24 * HEURE, 28 * HEURE, 'DEMANDEE', ['SBX-TRACE'], 'Montée de version de SBX-TRACE', null), 'Agent Mission (Prestataire de maintenance)'],
+    [acces('d-presta-actif', 'u-presta', -HEURE, 3 * HEURE, 'ACCORDEE', ['SBX-DONNEES', 'MIFOS'], 'Correctif du connecteur Mifos', 'demo-rssi'), 'Agent Mission (Prestataire de maintenance)'],
+    [acces('d-presta-echu', 'u-presta-2', -76 * HEURE, -72 * HEURE, 'ACCORDEE', ['SBX-ISO20022'], 'Diagnostic de la façade ISO 20022', 'demo-rssi'), 'Agent Recrutement (Prestataire réseau)'],
   ]
 }
 

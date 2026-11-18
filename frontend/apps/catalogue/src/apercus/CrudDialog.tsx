@@ -13,7 +13,7 @@ export default function Apercu() {
         inline
         context="edit"
         title="Modifier la fiche"
-        subject="officiere.console · Officière Console Sécurité"
+        subject="o.console · Officière Console Sécurité"
         description="Données descriptives du compte ; l'identifiant n'est pas modifiable."
         submitLabel="Enregistrer la fiche"
         dirty={nom !== 'Officière Console Sécurité' || langue !== 'fr'}

@@ -56,10 +56,10 @@ describe('verrou 1 : procès-verbal de certification (rangs 17 à 19)', () => {
   })
   it('signature GIMAC puis participant : réauthentification exigée, la seconde signature clôt le rang 19', async () => {
     const s = svc()
-    expect(await s.decision.procesVerbal('LIA-2026-027')).toMatchObject({ etat: 'ETABLI', etabliPar: 'Aïcha Mahamat Nour', couverture: { taux: 100 }, signatureGimac: null, actionsPermises: ['SIGNER_GIMAC'] })
+    expect(await s.decision.procesVerbal('LIA-2026-027')).toMatchObject({ etat: 'ETABLI', etabliPar: 'Équipe Conduite Projet', couverture: { taux: 100 }, signatureGimac: null, actionsPermises: ['SIGNER_GIMAC'] })
     await expect(s.decision.signerProcesVerbalGimac('LIA-2026-027', '')).rejects.toEqual(refus('IAM_REAUTH_REQUIRED'))
     await s.decision.signerProcesVerbalGimac('LIA-2026-027', 'assertion')
-    expect(await s.decision.procesVerbal('LIA-2026-027')).toMatchObject({ etat: 'SIGNE_GIMAC', signatureGimac: { fonction: 'CHEF_DES', signataire: 'Paul Mbarga Atangana', signeLe: '2026-09-29' }, actionsPermises: [] })
+    expect(await s.decision.procesVerbal('LIA-2026-027')).toMatchObject({ etat: 'SIGNE_GIMAC', signatureGimac: { fonction: 'CHEF_DES', signataire: 'Chef Département DES', signeLe: '2026-09-29' }, actionsPermises: [] })
     await expect(s.decision.signerProcesVerbalGimac('LIA-2026-027', 'assertion')).rejects.toEqual(refus('CER_PV_NOT_SIGNABLE'))
     expect(await etat(s, 'LIA-2026-027', '19')).toBe('A_FAIRE')
     // Côté portail : signature attendue, puis refusée une fois donnée.

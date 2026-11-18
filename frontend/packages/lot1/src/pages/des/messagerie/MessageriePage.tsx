@@ -47,7 +47,7 @@ function usePhoto() {
 }
 
 /**
- * « Aminata écrit… » d'une conversation (D-72) : prénoms des membres qui écrivent ; « écrit… » seul dans
+ * « Conductrice écrit… » d'une conversation (D-72) : prénoms des membres qui écrivent ; « écrit… » seul dans
  * la liste pour un échange direct, comme une messagerie grand public.
  */
 function useTexteSaisie() {
@@ -102,7 +102,7 @@ export function CorpsMessage({ contenu, etiquettes, mentions = [], moi }: { cont
     const e = etiquettes.find((x) => x.reference === m[0])
     reperes.push({ debut, fin: debut + m[0].length, rendu: (cle) => <RefLiaison key={cle} href={e ? `/des/parcours/${encodeURIComponent(e.liaisonId)}` : `/des/parcours?q=${encodeURIComponent(m[0])}`}>{m[0]}</RefLiaison> })
   }
-  // Noms les plus longs d'abord : « @Paul Mbarga Atangana » avant un éventuel « @Paul Mbarga ».
+  // Noms les plus longs d'abord : « @Chef Département DES » avant un éventuel « @Chef Département ».
   for (const p of [...mentions].sort((a, b) => b.nom.length - a.nom.length)) {
     const texte = `@${p.nom}`
     for (let i = contenu.indexOf(texte); i >= 0; i = contenu.indexOf(texte, i + texte.length)) {

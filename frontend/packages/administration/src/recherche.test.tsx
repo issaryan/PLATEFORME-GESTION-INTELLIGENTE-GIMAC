@@ -17,8 +17,8 @@ describe('useSourceComptes', () => {
   it('RSSI : comptes trouvés par nom, lien vers la fiche ; sans permission : aucune source', async () => {
     rendrePage(<Sonde permissions={RSSI} />, { chemin: '/console/x', motif: '/console/x' })
     expect(await screen.findByText('comptes')).toBeTruthy()
-    const r = await sources[0].chercher('biyong')
-    expect(r[0]).toMatchObject({ type: 'compte', libelle: expect.stringContaining('Biyong'), href: expect.stringMatching(/^\/console\/comptes\//) })
+    const r = await sources[0].chercher('sna')
+    expect(r[0]).toMatchObject({ type: 'compte', libelle: expect.stringContaining('SNA'), href: expect.stringMatching(/^\/console\/comptes\//) })
     cleanup()
     rendrePage(<Sonde permissions={[]} />, { chemin: '/console/x', motif: '/console/x' })
     await waitFor(() => expect(screen.getByText('aucune')).toBeTruthy())

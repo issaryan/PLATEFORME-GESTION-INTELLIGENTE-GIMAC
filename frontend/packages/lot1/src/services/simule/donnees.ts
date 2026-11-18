@@ -15,13 +15,13 @@ export const INSTITUTIONS = [
   { id: 'INST-0061', code: 'INST-0061', denomination: 'Banque D' },
 ]
 export const COLLABORATEURS = [
-  { id: 'U-101', nom: 'Joël Ekotto Mballa', role: 'INGENIEUR_HOMOLOGATION' },
-  { id: 'U-102', nom: 'Arnaud Mvogo Eyenga', role: 'INGENIEUR_HOMOLOGATION' },
+  { id: 'U-101', nom: 'Agent Exploitation', role: 'INGENIEUR_HOMOLOGATION' },
+  { id: 'U-102', nom: 'Agent Supervision', role: 'INGENIEUR_HOMOLOGATION' },
   { id: 'U-001', nom: 'Chef du DES', role: 'CHEF_DES' },
   // Conducteurs de projet (ROLE_CONDUCTEUR_PROJET) : seuls désignables à la tête d'une liaison (D-58).
-  { id: 'U-201', nom: 'Aïcha Mahamat Nour', role: 'CONDUCTEUR_PROJET' },
-  { id: 'U-202', nom: 'Brice Ondo Mba', role: 'CONDUCTEUR_PROJET' },
-  { id: 'U-203', nom: 'Estelle Ngo Bassong', role: 'CONDUCTEUR_PROJET' },
+  { id: 'U-201', nom: 'Équipe Conduite Projet', role: 'CONDUCTEUR_PROJET' },
+  { id: 'U-202', nom: 'Délégué Conduite', role: 'CONDUCTEUR_PROJET' },
+  { id: 'U-203', nom: 'Opératrice Pôle Système Bis', role: 'CONDUCTEUR_PROJET' },
 ]
 export const CONDUCTEURS = COLLABORATEURS.filter((c) => c.role === 'CONDUCTEUR_PROJET').map(({ id, nom }) => ({ id, nom }))
 /** Conducteur de projet de la session de démonstration : « Mes projets » filtre sur lui. */

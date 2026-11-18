@@ -99,7 +99,7 @@ describe('Onglet Opérations : exécution', () => {
     fireEvent.click(within(conf).getByRole('button', { name: 'Déposer la preuve' }))
     // D-109 : le rang 28 attend deux pièces (script mis à jour, premier fichier facultatif) : le livrable visé est transmis.
     await waitFor(() => expect(depot).toHaveBeenCalledWith('LIA-2026-005:28', expect.any(File), { valeurReference: undefined, codeControle: undefined, ceremonie: undefined, livrable: 'L1' }))
-    expect(await screen.findByText(/Preuve déposée, en attente de la validation de Brice Ondo Mba/)).toBeTruthy()
+    expect(await screen.findByText(/Preuve déposée, en attente de la validation de Délégué Conduite/)).toBeTruthy()
   })
 
   it('opération 29 (secret) : trace seule, avertissement, aucun code de contrôle demandé', async () => {
@@ -222,7 +222,7 @@ describe('Onglet Opérations : exécution', () => {
     expect(await within(d).findByText('Choisissez l\'intervenant.')).toBeTruthy()
     fireEvent.change(within(d).getByLabelText(/^Qualité/), { target: { value: 'V' } })
     fireEvent.change(within(d).getByLabelText(/^Fonction/), { target: { value: 'SNA' } })
-    await waitFor(() => expect(within(d).getByRole('option', { name: 'Rachel Biyong Mengue' })).toBeTruthy())
+    await waitFor(() => expect(within(d).getByRole('option', { name: 'Responsable SNA' })).toBeTruthy())
     fireEvent.change(within(d).getByLabelText(/^Intervenant/), { target: { value: 'U-SNA-1' } })
     fireEvent.click(within(d).getByRole('button', { name: 'Attribuer' }))
     const conf = await screen.findByRole('alertdialog', { name: 'Attribuer' })

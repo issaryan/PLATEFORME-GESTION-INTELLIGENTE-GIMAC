@@ -108,7 +108,7 @@ describe('D-98 : suivi par l’initiateur', () => {
     i = await res.terminer(lancee.id, 'ANALYSE')
     d = (await sna.demandes({})).contenu[0]
     expect(d.etapes.map((e) => e.etat)).toEqual(['TERMINEE', 'ACTIVE', 'EN_ATTENTE', 'EN_ATTENTE'])
-    expect(etapesEnCours(d.etapes)[0].executant?.nomAffiche).toBe('Gaston Ndzana Ebode')
+    expect(etapesEnCours(d.etapes)[0].executant?.nomAffiche).toBe('Responsable Production')
     expect(d.derniereEvolution?.action).toBe('ETAPE_ACTIVEE')
     const chef = qui('u-resp-info')
     await chef.saisirChamps(lancee.id, 'VALIDATION', { DECISION: 'Accordée' })
@@ -124,11 +124,11 @@ describe('D-98 : suivi par l’initiateur', () => {
 
   it('session de démonstration : l’état survit au changement de profil (rechargement), les tâches des étapes renaissent', async () => {
     sessionStorage.setItem('gm.sessionDemo', JSON.stringify({ identifiant: '' }))
-    const avant = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-sna', nom: 'Rachel Biyong Mengue' }, pouvoirs: magasinPouvoirs() })
+    const avant = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-sna', nom: 'Responsable SNA' }, pouvoirs: magasinPouvoirs() })
     const ip = (await avant.processus.lancables({})).groupes[0].processus[0]
     const lancee = await avant.processus.lancer(ip.id, { intitule: 'Imprimante du 2e étage', champs: {}, designations: {}, formulaire: VALEURS_IP })
     // Autre profil, autre magasin (rechargement de l'application) : l'instance et la tâche de l'intervenant sont là.
-    const apres = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-res', nom: 'Idriss Mahamat Saleh' }, pouvoirs: magasinPouvoirs() })
+    const apres = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-res', nom: 'Agent Pôle Réseau' }, pouvoirs: magasinPouvoirs() })
     const i = await apres.processus.instance(lancee.id)
     expect(etape(i, 'ANALYSE').moi.executer).toBe(true)
     const taches = await apres.pilotage.taches({ vue: 'moi', page: 0, taille: 50 })

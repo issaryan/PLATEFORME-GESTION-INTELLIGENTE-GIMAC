@@ -17,8 +17,8 @@ afterEach(() => {
   Object.defineProperty(window, 'innerWidth', { value: 1024, configurable: true })
 })
 
-const COLLAB = { id: 'u-collab', nom: 'Nadège Mvondo Assiga' }
-const RESP = { id: 'u-resp-info', nom: 'Gaston Ndzana Ebode' }
+const COLLAB = { id: 'u-collab', nom: 'Collaboratrice Réseau' }
+const RESP = { id: 'u-resp-info', nom: 'Responsable Production' }
 const services = (u = COLLAB) => servicesSimules({ latenceMs: 0, utilisateur: u })
 const session = (u = COLLAB, role = 'ROLE_COLLABORATEUR') => ({ ...sessionTest(PROFILS[role], [role]), sujet: u.id, nom: u.nom })
 const page = (chemin = '/des/agenda', o: { s?: Services; u?: typeof COLLAB; role?: string } = {}) =>
@@ -62,10 +62,10 @@ describe('Agenda', () => {
     fireEvent.change(within(d).getByLabelText(/Fin \(HH:MM\)/), { target: { value: '16:00' } })
     fireEvent.change(within(d).getByLabelText('Lieu'), { target: { value: 'Salle 4' } })
     fireEvent.change(within(d).getByLabelText('Catégorie'), { target: { value: 'ACTIVITE' } })
-    fireEvent.click(await within(d).findByRole('button', { name: /Idriss Mahamat Saleh/ }))
+    fireEvent.click(await within(d).findByRole('button', { name: /Agent Pôle Réseau/ }))
     // QUO-17 : la personne choisie n'apparaît qu'une fois, dans l'annuaire.
-    expect(within(d).getByText('1 personne choisie').parentElement!.textContent).toContain('Idriss Mahamat Saleh')
-    expect(within(d).getAllByText('Idriss Mahamat Saleh', { selector: '.gm-tag, .gm-tag *' })).toHaveLength(1)
+    expect(within(d).getByText('1 personne choisie').parentElement!.textContent).toContain('Agent Pôle Réseau')
+    expect(within(d).getAllByText('Agent Pôle Réseau', { selector: '.gm-tag, .gm-tag *' })).toHaveLength(1)
     fireEvent.click(within(d).getByRole('button', { name: 'Créer l’événement' }))
     expect(await screen.findByText('Événement créé ; les participants sont invités.')).toBeTruthy()
     fireEvent.click(await screen.findByRole('button', { name: /Point sur la recette/ }))

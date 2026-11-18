@@ -6,8 +6,8 @@ import { notificationsDemo } from '../notifications'
 // une tâche à prendre par les porteurs de PAR_TRANSITION_APPROVE (MS-PILOTAGE simulé), notifiée avec le lien de l'onglet
 // des transitions, close quand la transition est prononcée ou refusée.
 
-const chef = { id: 'U-020', nom: 'Bertrand Nguema Obiang', profils: ['ROLE_CHEF_DDRM'] }
-const charge = { id: 'sim-charge', nom: 'Fatimé Abakar Hissein', profils: ['ROLE_CHARGE_DDRM'] }
+const chef = { id: 'U-020', nom: 'Responsable DDRM', profils: ['ROLE_CHEF_DDRM'] }
+const charge = { id: 'sim-charge', nom: 'Responsable Unité Démo', profils: ['ROLE_CHARGE_DDRM'] }
 
 afterEach(() => ['gm.demoContinue', 'gm.demo.parcours', 'gm.demo.participant', 'gm.demo.pilotage'].forEach((k) => localStorage.removeItem(k)))
 
@@ -31,7 +31,7 @@ describe('D-98 : tâche de l’approbateur d’une transition', () => {
       titre: 'Prononcer l’adhésion : Banque de Libreville', etat: 'A_PRENDRE', aPrendre: true, permissionsRequises: ['PAR_TRANSITION_APPROVE'],
       origine: { type: 'DECISION', reference: `${id}/TRANSITION/${t.id}`, service: 'participant', lien: `/des/institutions/${id}?onglet=transitions` },
     })
-    expect(aPrendre.createur.nomAffiche).toBe('Fatimé Abakar Hissein')
+    expect(aPrendre.createur.nomAffiche).toBe('Responsable Unité Démo')
     const notif = (await n.lister({ etat: 'toutes' })).contenu.find((x) => x.titre.startsWith('Prononcer'))!
     expect(notif).toMatchObject({ type: 'TACHE', lien: `/des/institutions/${id}?onglet=transitions`, sousTitre: 'À prendre' })
 

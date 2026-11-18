@@ -67,7 +67,7 @@ describe('Cadrage : ouverture d’une liaison depuis la fiche de l’institution
     expect(await screen.findByText(/^Liaison LIA-\d{4}-\d{3} ouverte au cadrage\.$/)).toBeTruthy()
     expect(screen.getByRole('heading', { level: 1, name: 'Mobile Money Sanaga' })).toBeTruthy()
     expect(screen.getAllByText('Banque B').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Brice Ondo Mba').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Délégué Conduite').length).toBeGreaterThan(0)
     await waitFor(async () => expect((await services.participant.dossier('INST-0105')).institution.statut).toBe('EN_HOMOLOGATION'))
   })
   it('champs requis signalés avant tout appel au service', async () => {

@@ -57,7 +57,7 @@ describe('MessageriePage', () => {
     fireEvent.click(boutons[0])
     const fil = await screen.findByRole('region', { name: 'Essais de LIA-2026-030' })
     expect(within(fil).getByRole('link', { name: 'Ouvrir la liaison LIA-2026-030' }).getAttribute('href')).toBe('/des/parcours/LIA-2026-030')
-    expect(await within(fil).findByText('Rachel Biyong Mengue', { selector: 'strong' }, { timeout: 3000 }).catch(() => within(fil).getAllByText('Rachel Biyong Mengue')[0])).toBeTruthy()
+    expect(await within(fil).findByText('Responsable SNA', { selector: 'strong' }, { timeout: 3000 }).catch(() => within(fil).getAllByText('Responsable SNA')[0])).toBeTruthy()
   })
   it('fil : étiquettes en liens, pièce téléchargée, lecture marquée ; envoi d’un message avec une liaison citée', async () => {
     const s = services()
@@ -111,10 +111,10 @@ describe('MessageriePage', () => {
     expect(await within(panneau).findByText(/Liaison LIA-2026-012/)).toBeTruthy()
     // Pas de saisie avant le choix du destinataire.
     expect(within(panneau).queryByLabelText('Votre message')).toBeNull()
-    fireEvent.change(within(panneau).getByLabelText('Rechercher une personne'), { target: { value: 'rachel' } })
+    fireEvent.change(within(panneau).getByLabelText('Rechercher une personne'), { target: { value: 'responsable sna' } })
     const annuaire = within(panneau).getByRole('list', { name: 'Annuaire de la plateforme' })
     await waitFor(() => expect(within(annuaire).getAllByRole('button')).toHaveLength(1), { timeout: 3000 })
-    fireEvent.click(within(annuaire).getByRole('button', { name: /Rachel Biyong Mengue/ }))
+    fireEvent.click(within(annuaire).getByRole('button', { name: /Responsable SNA/ }))
     expect(within(panneau).getByText('Destinataire')).toBeTruthy()
     expect(within(panneau).getByText('Normes et Agréments', { exact: false })).toBeTruthy()
     // La liaison rattachée est citée d'emblée.
@@ -128,16 +128,16 @@ describe('MessageriePage', () => {
     expect((within(panneau).getByRole('button', { name: 'Envoyer' }) as HTMLButtonElement).disabled).toBe(true)
     expect(await within(envois).findByText('Prêt', {}, { timeout: 5000 })).toBeTruthy()
     fireEvent.click(within(panneau).getByRole('button', { name: 'Envoyer' }))
-    const fil = await screen.findByRole('region', { name: 'Rachel Biyong Mengue' })
+    const fil = await screen.findByRole('region', { name: 'Responsable SNA' })
     expect(await within(fil).findByText('plan-bascule.pdf', { exact: false })).toBeTruthy()
     // Rattachée à une liaison, l'échange est un fil sans nom propre à cette liaison (le direct reste réservé aux échanges libres).
     const c = (await s.messagerie.conversations({})).contenu.find((x) => x.liaison?.liaisonId === 'LIA-2026-012')
-    expect(c).toMatchObject({ titre: null, membres: [{ nom: 'Agent de test' }, { nom: 'Rachel Biyong Mengue' }] })
+    expect(c).toMatchObject({ titre: null, membres: [{ nom: 'Agent de test' }, { nom: 'Responsable SNA' }] })
   })
   it('destinataire proposé par l’adresse ; retiré, l’annuaire revient ; annuler revient à la liste', async () => {
     page('/des/messagerie?nouveau=1&destinataire=u-sna')
     const panneau = await screen.findByRole('region', { name: 'Nouveau message' })
-    expect(await within(panneau).findByText('Rachel Biyong Mengue')).toBeTruthy()
+    expect(await within(panneau).findByText('Responsable SNA')).toBeTruthy()
     expect(within(panneau).getByLabelText('Votre message')).toBeTruthy()
     fireEvent.click(within(panneau).getAllByRole('button', { name: 'Annuler' })[0])
     expect(await screen.findByText('Choisissez une conversation')).toBeTruthy()
@@ -221,11 +221,11 @@ describe('MessageriePage', () => {
 describe('titreConversation et CorpsMessage', () => {
   const base: Conversation = {
     id: 'c', type: 'DIRECTE', titre: null, liaison: null, nonLus: 0, misAJourLe: '', creeeLe: '', dernierMessage: null,
-    membres: [{ id: 'moi', nom: 'Moi', fonction: null }, { id: 'a', nom: 'Aïcha', fonction: null }],
+    membres: [{ id: 'moi', nom: 'Moi', fonction: null }, { id: 'a', nom: 'Équipe', fonction: null }],
   }
   it('objet, sinon l’autre membre, sinon les membres', () => {
     expect(titreConversation({ ...base, titre: 'Objet' }, 'moi')).toBe('Objet')
-    expect(titreConversation(base, 'moi')).toBe('Aïcha')
+    expect(titreConversation(base, 'moi')).toBe('Équipe')
     expect(titreConversation({ ...base, membres: [base.membres[0]] }, 'moi')).toBe('Moi')
   })
   it('références citées : lien vers le dossier si étiquetées, vers la recherche sinon', () => {
@@ -253,15 +253,15 @@ describe('MessageriePage : photos de profil (docs/lot1/mon-compte.md §4)', () =
     const s = services()
     const { container } = page('/des/messagerie', { s })
     const liste = await screen.findByRole('list', { name: 'Conversations' })
-    // Échange direct avec Hervé Kamga (photo de démonstration) ; groupe : pictogramme.
-    await waitFor(() => expect(within(liste).getByRole('img', { name: 'Hervé Kamga Tchoupo' }).querySelector('img')).toBeTruthy())
+    // Échange direct avec Officier Sécurité (photo de démonstration) ; groupe : pictogramme.
+    await waitFor(() => expect(within(liste).getByRole('img', { name: 'Officier Sécurité Groupe' }).querySelector('img')).toBeTruthy())
     fireEvent.click(within(liste).getAllByRole('button')[0])
     const fil = await screen.findByRole('region', { name: 'Essais de LIA-2026-030' })
     await waitFor(() => expect(fil.querySelectorAll('.gm-msg-meta .gm-avatar img').length).toBeGreaterThan(0))
     cleanup()
     page('/des/messagerie?nouveau=1', { s })
-    fireEvent.change(await screen.findByLabelText('Rechercher une personne'), { target: { value: 'Rachel' } })
-    const personne = await screen.findByRole('button', { name: /Rachel Biyong Mengue/ })
+    fireEvent.change(await screen.findByLabelText('Rechercher une personne'), { target: { value: 'Responsable' } })
+    const personne = await screen.findByRole('button', { name: /Responsable SNA/ })
     await waitFor(() => expect(personne.querySelector('.gm-avatar img')).toBeTruthy())
     fireEvent.click(personne)
     await waitFor(() => expect(document.querySelector('.gm-annuaire-destinataire .gm-avatar img')).toBeTruthy())

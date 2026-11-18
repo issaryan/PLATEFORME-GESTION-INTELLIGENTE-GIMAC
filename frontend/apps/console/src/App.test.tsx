@@ -48,7 +48,7 @@ describe('Console', () => {
 
   it('écrans de l’administration (paquet @gimac/administration) servis sous /console', async () => {
     for (const [chemin, titre] of [
-      ['/console/comptes', 'Comptes'], ['/console/comptes/nouveau', 'Comptes'], ['/console/comptes/u-sna', /Rachel|u-sna|Compte/], ['/console/journal', 'Journal d’administration'],
+      ['/console/comptes', 'Comptes'], ['/console/comptes/nouveau', 'Comptes'], ['/console/comptes/u-sna', /Responsable|u-sna|Compte/], ['/console/journal', 'Journal d’administration'],
       ['/console/profils', 'Profils et permissions'], ['/console/politique-securite', 'Politique de sécurité'], ['/console/plateforme/courriels', 'Courriels de la plateforme'],
       ['/console/plateforme/configuration', 'Configuration de la plateforme'], ['/console/plateforme/journalisation', 'Journalisation des services'],
     ] as const) {
@@ -115,13 +115,13 @@ describe('Console', () => {
     Object.defineProperty(window, 'location', { value: { ...window.location, assign }, configurable: true })
     monter('/console/comptes')
     expect(await screen.findByRole('button', { name: 'Se connecter' }, { timeout: 8000 })).toBeTruthy()
-    fireEvent.change(document.querySelector('input[name="identifiant"]')!, { target: { value: 'h.kamga' } })
+    fireEvent.change(document.querySelector('input[name="identifiant"]')!, { target: { value: 'o.securite' } })
     fireEvent.change(document.querySelector('input[name="motDePasse"]')!, { target: { value: MOT_DE_PASSE_DEMO } })
     fireEvent.click(screen.getByRole('button', { name: 'Se connecter' }))
     fireEvent.change(await screen.findByLabelText(/^Code à six chiffres/, {}, { timeout: 8000 }), { target: { value: '000000' } })
     fireEvent.click(screen.getByRole('button', { name: 'Vérifier le code' }))
     await waitFor(() => expect(assign).toHaveBeenCalledWith('/console/comptes'), { timeout: 8000 })
-    expect(JSON.parse(sessionStorage.getItem('gm.sessionDemo')!)).toMatchObject({ identifiant: 'h.kamga', role: 'ROLE_RSSI' })
+    expect(JSON.parse(sessionStorage.getItem('gm.sessionDemo')!)).toMatchObject({ identifiant: 'o.securite', role: 'ROLE_RSSI' })
   })
 })
 

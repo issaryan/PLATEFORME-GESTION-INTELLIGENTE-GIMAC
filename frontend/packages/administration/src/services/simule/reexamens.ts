@@ -7,8 +7,8 @@ const OUVERTURE = '2026-10-01T02:00:00Z'
 export function reexamensSimules(): ServiceReexamens {
   let campagne: CampagneReexamen = { id: '2026-t4', period: '2026-T4', state: 'OUVERTE', openedAt: OUVERTURE, approverId: null, closedAt: null, digest: null, enAttente: 2 }
   let acces: VueReexamen['acces'] = [
-    { compteId: 'u-sbx-1', identifiant: 'awa.testeuse', nomAffiche: 'Awa Testeuse', institutionId: '99001', profils: ['ROLE_SBX_TESTEUR'], permissions: ['SBX_CER_EXECUTION', 'SBX_CER_CONSULTATION', 'NOT_INBOX_READ'], decision: 'EN_ATTENTE', comment: null, decidedBy: null, decidedAt: null },
-    { compteId: 'u-sbx-2', identifiant: 'paul.partenaire', nomAffiche: 'Paul Partenaire', institutionId: '99001', profils: ['ROLE_SBX_DEVELOPPEUR'], permissions: ['SBX_RAC_ADMINISTRATION', 'SBX_SIM_SIMULATION'], decision: 'EN_ATTENTE', comment: null, decidedBy: null, decidedAt: null },
+    { compteId: 'u-sbx-1', identifiant: 'cheffe.testeuse', nomAffiche: 'Testeuse Démo', institutionId: '99001', profils: ['ROLE_SBX_TESTEUR'], permissions: ['SBX_CER_EXECUTION', 'SBX_CER_CONSULTATION', 'NOT_INBOX_READ'], decision: 'EN_ATTENTE', comment: null, decidedBy: null, decidedAt: null },
+    { compteId: 'u-sbx-2', identifiant: 'pilote.partenaire', nomAffiche: 'Partenaire Démo', institutionId: '99001', profils: ['ROLE_SBX_DEVELOPPEUR'], permissions: ['SBX_RAC_ADMINISTRATION', 'SBX_SIM_SIMULATION'], decision: 'EN_ATTENTE', comment: null, decidedBy: null, decidedAt: null },
   ]
   const vue = (): VueReexamen => ({ campagne: { ...campagne, enAttente: acces.filter((a) => a.decision === 'EN_ATTENTE').length }, acces: acces.map((a) => ({ ...a })) })
   return {

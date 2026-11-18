@@ -7,7 +7,7 @@ import { lecteurApercu, notificationsDemo, notificationsPortailDemo, type DemoNo
 // Notifications de la plateforme (D-80) côté lot 1 : aperçu lu auprès de la messagerie, MS-NOTIFICATION simulé
 // branché sur la messagerie simulée (réception d'un message d'un autre membre).
 
-const moi = { id: 'U-001', nom: 'Paul Mbarga Atangana' }
+const moi = { id: 'U-001', nom: 'Chef Département DES' }
 
 describe('notifications de démonstration', () => {
   it('non-lus de démonstration regroupés par conversation, tâche et rapport ; aperçu du dernier message', async () => {
@@ -18,7 +18,7 @@ describe('notifications de démonstration', () => {
     expect(page.contenu.map((x) => x.type).sort()).toEqual(['HOMOLOGATION', 'MESSAGE', 'MESSAGE', 'PROCESSUS', 'RAPPORT', 'TACHE'])
     expect(page.contenu.find((x) => x.type === 'PROCESSUS')).toMatchObject({ titre: 'Étape à réaliser : Accord du supérieur hiérarchique', lien: expect.stringMatching(/\?etape=VALIDATION$/) })
     const groupe = page.contenu.find((x) => x.sousTitre === 'Essais de LIA-2026-030')!
-    expect(groupe).toMatchObject({ titre: 'Rachel Biyong Mengue', nombre: 2, lien: expect.stringMatching(/^\/des\/messagerie\?conversation=CONV-/) })
+    expect(groupe).toMatchObject({ titre: 'Responsable SNA', nombre: 2, lien: expect.stringMatching(/^\/des\/messagerie\?conversation=CONV-/) })
     expect(await n.compteur()).toEqual({ nonLues: 4 })
     // Homologation (§11) : lien profond vers l'opération dans le dossier de la liaison.
     expect(page.contenu.find((x) => x.type === 'HOMOLOGATION')!.lien).toBe('/des/parcours/LIA-2026-036?onglet=operations&operation=LIA-2026-036%3A11')
@@ -27,20 +27,20 @@ describe('notifications de démonstration', () => {
     expect(await apercu(page.contenu.find((x) => x.type === 'TACHE')!)).toBeNull()
     // Jamais pour l'acteur lui-même : la tâche de démonstration est confiée par un autre (son responsable), et mène à elle (DDR-20).
     const tache = page.contenu.find((x) => x.type === 'TACHE')!
-    expect(tache.titre).toBe('Tâche confiée par Jean-Baptiste Ella Mintsa')
+    expect(tache.titre).toBe('Tâche confiée par Agent Conformité')
     expect(tache.acteur!.id).toBe('u-dg')
     const id = tache.lien.match(/^\/des\/taches\?tache=(.+)$/)![1]
     expect((await s.pilotage.taches({ vue: 'moi' })).contenu.map((x) => x.id)).toContain(decodeURIComponent(id))
   })
 
   it('DDR-20 : notifications de démonstration propres au profil (chargée de la DDRM : ni rapport reçu, ni action d’une autre fonction)', async () => {
-    const charge = { id: 'sim-charge', nom: 'Fatimé Abakar Hissein', profils: ['ROLE_CHARGE_DDRM'] }
+    const charge = { id: 'sim-charge', nom: 'Responsable Unité Démo', profils: ['ROLE_CHARGE_DDRM'] }
     const s = servicesSimules({ latenceMs: 0, utilisateur: charge })
     const page = await notificationsDemo(s, { moi: charge.id, profils: charge.profils }).lister({ etat: 'toutes' })
     expect(page.contenu.some((x) => x.type === 'RAPPORT')).toBe(false)
     expect(page.contenu.some((x) => x.titre === 'Action attendue : Atelier comptabilisation')).toBe(false)
     const tache = page.contenu.find((x) => x.type === 'TACHE')!
-    expect(tache.titre).toBe('Tâche confiée par Bertrand Nguema Obiang')
+    expect(tache.titre).toBe('Tâche confiée par Responsable DDRM')
     const id = decodeURIComponent(tache.lien.split('tache=')[1])
     expect((await s.pilotage.taches({ vue: 'moi' })).contenu.find((x) => x.id === id)?.createur.id).toBe('U-020')
   })
@@ -48,9 +48,9 @@ describe('notifications de démonstration', () => {
   it('DDR-08 : la chargée est avisée du refus et du prononcé de sa proposition, des opérations ouvertes et renvoyées', async () => {
     localStorage.setItem('gm.demoContinue', '1')
     try {
-      const charge = { id: 'sim-charge', nom: 'Fatimé Abakar Hissein', profils: ['ROLE_CHARGE_DDRM'] }
-      const chef = { id: 'U-020', nom: 'Bertrand Nguema Obiang', profils: ['ROLE_CHEF_DDRM'] }
-      const conducteur = { id: 'U-201', nom: 'Aïcha Mahamat Nour', profils: ['ROLE_CONDUCTEUR_PROJET'] }
+      const charge = { id: 'sim-charge', nom: 'Responsable Unité Démo', profils: ['ROLE_CHARGE_DDRM'] }
+      const chef = { id: 'U-020', nom: 'Responsable DDRM', profils: ['ROLE_CHEF_DDRM'] }
+      const conducteur = { id: 'U-201', nom: 'Équipe Conduite Projet', profils: ['ROLE_CONDUCTEUR_PROJET'] }
       const parCharge = servicesSimules({ latenceMs: 0, utilisateur: charge })
       const id = (await parCharge.participant.listerInstitutions({ recherche: 'Libreville', page: 1, taille: 5 })).contenu[0].id
       const t1 = await parCharge.participant.proposerTransition(id, 'ADHERENT', 'Dossier complet')
@@ -91,7 +91,7 @@ describe('notifications de démonstration', () => {
     const id = demo.recevoirMessage({ contenu: 'Premier' })
     demo.recevoirMessage({ conversationId: id, contenu: 'Second' })
     const [notif] = (await n.lister({ etat: 'non-lues' })).contenu
-    expect(notif).toMatchObject({ type: 'MESSAGE', titre: 'Aïcha Mahamat Nour', sousTitre: null, nombre: 2, reference: referenceConversation(id) })
+    expect(notif).toMatchObject({ type: 'MESSAGE', titre: 'Équipe Conduite Projet', sousTitre: null, nombre: 2, reference: referenceConversation(id) })
     expect(invalider).toHaveBeenCalledWith({ queryKey: ['collaboration'] })
     expect(await lecteurApercu(s)(notif)).toBe('Second')
     expect((await s.messagerie.nonLus()).total).toBeGreaterThanOrEqual(2)

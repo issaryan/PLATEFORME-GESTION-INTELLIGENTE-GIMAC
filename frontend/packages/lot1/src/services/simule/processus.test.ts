@@ -8,7 +8,7 @@ import { champsDeLancement, cleDesignation, designationsAttendues, etapeVierge, 
 // lancement et désignations, livrables, champs, signatures dans l'ordre, validation et renvoi, réaffectation,
 // suspension, reprise, annulation, et tâches d'origine PROCESSUS de « Mon activité ».
 const code = (p: Promise<unknown>) => p.then(() => 'ok', (e: { status: number; code: string }) => `${e.status} ${e.code}`)
-const PERSONNES: Record<string, string> = { 'U-001': 'Paul Mbarga Atangana', 'u-resp-info': 'Gaston Ndzana Ebode', 'u-res': 'Idriss Mahamat Saleh', 'u-collab': 'Nadège Mvondo Assiga', 'u-sna': 'Rachel Biyong Mengue' }
+const PERSONNES: Record<string, string> = { 'U-001': 'Chef Département DES', 'u-resp-info': 'Responsable Production', 'u-res': 'Agent Pôle Réseau', 'u-collab': 'Collaboratrice Réseau', 'u-sna': 'Responsable SNA' }
 /** Services de plusieurs personnes sur le même magasin des pouvoirs (organisation partagée). */
 function monde() {
   const magasin = magasinPouvoirs()
@@ -128,7 +128,7 @@ describe('D-87 : définitions', () => {
 describe('D-87 : instances', () => {
   it('lancement : désignations exigées et vérifiées, étape initiale active, tâche du lanceur ; vues', async () => {
     const qui = monde()
-    qui.magasin.organisation.push({ id: 'u-res-bis', nomAffiche: 'Armel Nkoulou Beti', fonction: 'Technicien réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', actif: true })
+    qui.magasin.organisation.push({ id: 'u-res-bis', nomAffiche: 'Agent Banque Partenaire', fonction: 'Technicien réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', actif: true })
     qui.magasin.definirProfils('u-res-bis', ['ROLE_POLE_RESEAU'])
     const membre = qui('u-res')
     const flux = (await membre.processus.lister({ etat: 'PUBLIEE' })).find((p) => p.code === 'OUVERTURE_FLUX_RESEAU')!
@@ -141,7 +141,7 @@ describe('D-87 : instances', () => {
     expect(await code(membre.processus.lancer(flux.id, { ...base, designations: { MISE_EN_OEUVRE: 'u-collab' } }))).toBe('422 PIL_PROCESSUS_DESIGNATION_INVALIDE')
     expect(await code(membre.processus.lancer(flux.id, { ...base, intitule: ' ', designations: { MISE_EN_OEUVRE: 'u-res-bis' } }))).toBe('400 PIL_REQUETE_INVALIDE')
     const i = await membre.processus.lancer(flux.id, { ...base, designations: { MISE_EN_OEUVRE: 'u-res-bis' } })
-    expect(i).toMatchObject({ etat: 'EN_COURS', lanceur: { id: 'u-res' }, designations: { MISE_EN_OEUVRE: { nomAffiche: 'Armel Nkoulou Beti' } } })
+    expect(i).toMatchObject({ etat: 'EN_COURS', lanceur: { id: 'u-res' }, designations: { MISE_EN_OEUVRE: { nomAffiche: 'Agent Banque Partenaire' } } })
     const demande = i.etapes[0]
     expect(demande).toMatchObject({ code: 'DEMANDE', etat: 'ACTIVE', executant: { id: 'u-res' }, moi: { executer: true } })
     expect(demande.champs.find((c) => c.code === 'SOURCE')?.valeur).toBe('10.0.0.1')
@@ -159,7 +159,7 @@ describe('D-87 : instances', () => {
   it('étape : champs contrôlés, fin refusée sans champs ni livrables, tâche à prendre par profil, prise, livrable, validation, renvoi', async () => {
     const qui = monde()
     // Deux porteurs du profil au pôle : l'analyse est à prendre (un seul porteur la recevrait directement).
-    qui.magasin.organisation.push({ id: 'u-res-bis', nomAffiche: 'Armel Nkoulou Beti', fonction: 'Technicien réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', actif: true })
+    qui.magasin.organisation.push({ id: 'u-res-bis', nomAffiche: 'Agent Banque Partenaire', fonction: 'Technicien réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', actif: true })
     qui.magasin.definirProfils('u-res-bis', ['ROLE_POLE_RESEAU'])
     const membre = qui('u-res')
     // D-99 : ce scénario du moteur fait agir le lanceur sur les étapes de sa demande ; la définition l'autorise.
@@ -220,7 +220,7 @@ describe('D-87 : instances', () => {
     expect(await code(membre.processus.reaffecter(i.id, k.MISE_EN_OEUVRE, 'u-res', 'Absence'))).toBe('403 PIL_PROCESSUS_INTERDIT')
     expect(await code(chef.reaffecter(i.id, k.MISE_EN_OEUVRE, 'inconnu', 'Absence'))).toBe('422 PIL_PROCESSUS_PERSONNE_INVALIDE')
     expect(await code(chef.reaffecter(i.id, k.DEMANDE, 'u-res', 'Absence'))).toBe('409 PIL_PROCESSUS_ETAPE_ETAT')
-    i = await chef.reaffecter(i.id, k.MISE_EN_OEUVRE, 'u-res', 'Absence d’Armel')
+    i = await chef.reaffecter(i.id, k.MISE_EN_OEUVRE, 'u-res', 'Absence d’Agent')
     expect(i.etapes[2].executant?.id).toBe('u-res')
     expect((await membre.pilotage.taches({ vue: 'moi' })).contenu.some((t) => t.id === i.etapes[2].tacheId)).toBe(true)
   })

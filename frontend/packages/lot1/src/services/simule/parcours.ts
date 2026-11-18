@@ -48,11 +48,11 @@ const hex = empreinte
  */
 const P = (id: string, nom: string, fonction: Fonction): Personne => ({ id, nom, fonction })
 export const PERSONNES: Personne[] = [
-  P('U-DDRM-1', 'Fatimé Abakar Hissein', 'DDRM'), P('U-DDRM-2', 'Rodrigue Essono Mba', 'DDRM'), P('U-CDDRM', 'Bertrand Nguema Obiang', 'CHEF_DDRM'),
-  P('U-CDES', 'Paul Mbarga Atangana', 'CHEF_DES'), P('U-COND-1', 'Aïcha Mahamat Nour', 'CONDUCTEUR'), P('U-COND-2', 'Brice Ondo Mba', 'CONDUCTEUR'),
-  P('U-SNA-1', 'Rachel Biyong Mengue', 'SNA'), P('U-SNA-2', 'Joël Ekotto Mballa', 'SNA'),
-  P('U-PM-1', 'Serge Ondoua Essomba', 'PRODUCTION_MONETIQUE'), P('U-PM-2', 'Lucien Ateba Owona', 'PRODUCTION_MONETIQUE'),
-  P('U-RES-1', 'Idriss Mahamat Saleh', 'POLE_RESEAU'), P('U-SYS-1', 'Chantal Ngo Bassong', 'POLE_SYSTEME'), P('U-RSSI', 'RSSI', 'RSSI'),
+  P('U-DDRM-1', 'Responsable Unité Démo', 'DDRM'), P('U-DDRM-2', 'Agent Reprise', 'DDRM'), P('U-CDDRM', 'Responsable DDRM', 'CHEF_DDRM'),
+  P('U-CDES', 'Chef Département DES', 'CHEF_DES'), P('U-COND-1', 'Équipe Conduite Projet', 'CONDUCTEUR'), P('U-COND-2', 'Délégué Conduite', 'CONDUCTEUR'),
+  P('U-SNA-1', 'Responsable SNA', 'SNA'), P('U-SNA-2', 'Agent Exploitation', 'SNA'),
+  P('U-PM-1', 'Superviseur Opérations Groupe', 'PRODUCTION_MONETIQUE'), P('U-PM-2', 'Agent Logistique', 'PRODUCTION_MONETIQUE'),
+  P('U-RES-1', 'Agent Pôle Réseau', 'POLE_RESEAU'), P('U-SYS-1', 'Opératrice Pôle Système', 'POLE_SYSTEME'), P('U-RSSI', 'RSSI', 'RSSI'),
   P('U-CONF', 'Responsable conformité', 'CONFORMITE'), P('U-DG', 'Directeur général', 'DG'), P('U-EXP', 'Exploitation et supervision', 'EXPLOITATION'),
 ]
 /** Étape d'un circuit de signature du procès-verbal (EtapeSignature de MS-CERTIFICATION, D-94). */

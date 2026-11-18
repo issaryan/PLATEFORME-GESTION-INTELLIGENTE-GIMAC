@@ -11,7 +11,7 @@ afterEach(cleanup)
 describe('OngletReexamens', () => {
   it('présente les permissions SBX, enregistre les décisions et scelle la campagne', async () => {
     rendrePage(<OngletReexamens />, { chemin: '/console/sandbox?onglet=reexamens', motif: '/console/sandbox' })
-    expect(await screen.findByText('Awa Testeuse')).toBeTruthy()
+    expect(await screen.findByText('Testeuse Démo')).toBeTruthy()
     fireEvent.click(screen.getByText(/3 permissions, dont 2 SBX/))
     expect(screen.getByText('SBX_CER_EXECUTION')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Clôturer et sceller' })).toHaveProperty('disabled', true)
@@ -39,7 +39,7 @@ describe('OngletReexamens', () => {
 
   it('reste en lecture seule sans IAM_ACCOUNT_ROLES', async () => {
     rendrePage(<OngletReexamens />, { chemin: '/console/sandbox?onglet=reexamens', motif: '/console/sandbox', permissions: LECTEUR })
-    expect(await screen.findByText('Awa Testeuse')).toBeTruthy()
+    expect(await screen.findByText('Testeuse Démo')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Décider' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Clôturer et sceller' })).toBeNull()
   })

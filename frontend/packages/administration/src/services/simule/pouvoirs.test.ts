@@ -9,7 +9,7 @@ import { PROFILS_DEMO } from '../../profilsDemo'
 const A = btoa('assertion-simulee')
 const code = (p: Promise<unknown>) => p.then(() => 'ok', (e: ApiError) => `${e.status} ${e.code}`)
 const admin = (permissions = PROFILS_DEMO.ROLE_SUPER_ADMIN.permissions, pouvoirs = magasinPouvoirs()) =>
-  ({ s: servicesConsoleSimules({ latenceMs: 0, acteur: { id: 'u-super-admin', nom: 'Serge Mouelle Kombi', permissions }, pouvoirs }), pouvoirs })
+  ({ s: servicesConsoleSimules({ latenceMs: 0, acteur: { id: 'u-super-admin', nom: 'Super Administrateur Démo', permissions }, pouvoirs }), pouvoirs })
 
 describe('matrice des pouvoirs', () => {
   it('lecture, modification signée, journal ; refus sans permission ni clé', async () => {
@@ -34,7 +34,7 @@ describe('demandes à traiter', () => {
     expect(await code(s.pouvoirs.accepter('DEM-0001', 'ok', 'faux'))).toBe('403 IAM_REAUTH_INVALID')
     const acceptee = await s.pouvoirs.accepter('DEM-0001', 'Création validée', A)
     expect(acceptee).toMatchObject({ etat: 'ACCEPTEE', decision: { par: { id: 'u-super-admin' }, motif: 'Création validée' } })
-    const cree = (await s.comptes.lister({ page: 1, taille: 50, q: 'i.fouda' })).contenu[0]
+    const cree = (await s.comptes.lister({ page: 1, taille: 50, q: 'i.production' })).contenu[0]
     expect(cree).toMatchObject({ unite: 'POLE_RESEAU', responsableId: 'u-resp-info', profils: ['ROLE_POLE_RESEAU'] })
     expect(pouvoirs.organisation.some((m) => m.id === cree.id)).toBe(true)
     expect(await code(s.pouvoirs.accepter('DEM-0001', 'encore', A))).toBe('409 ORG_DEMANDE_TRAITEE')
@@ -75,7 +75,7 @@ describe('profils créés et responsable d’unité', () => {
     expect(await code(admin(['IAM_ACCOUNT_READ']).s.configuration.creerProfil(p, 'x', A))).toBe('403 IAM_PERMISSION_REQUISE')
     expect(await code(s.configuration.supprimerProfil('ROLE_SNA', 'Ménage', A))).toBe('409 IAM_PROFIL_SYSTEME')
     expect(await code(s.configuration.supprimerProfil('ROLE_INCONNU', 'Ménage', A))).toBe('404 IAM_PROFILE_NOT_FOUND')
-    const c = (await s.comptes.lister({ page: 1, taille: 50, q: 'r.biyong' })).contenu[0]
+    const c = (await s.comptes.lister({ page: 1, taille: 50, q: 'r.sna' })).contenu[0]
     await s.comptes.definirProfils(c.id, ['ROLE_SNA', 'ROLE_ASTREINTE'], 'Astreinte', A)
     expect(await code(s.configuration.supprimerProfil('ROLE_ASTREINTE', 'Ménage', A))).toBe('409 IAM_PROFIL_TITULAIRES')
     await s.comptes.definirProfils(c.id, ['ROLE_SNA'], 'Fin d’astreinte', A)

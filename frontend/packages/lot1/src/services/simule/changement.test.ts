@@ -4,8 +4,8 @@ import { magasinPouvoirs } from './pouvoirs'
 
 const formulaire = {
   TYPE_DEMANDEUR: 'SUPPORT_MONETIQUE', ELEMENT_CONFIGURATION: 'AMA', IDENTIFIANT_EC: 'EC-1', PRIORITE: 'URGENT', DECLENCHEUR: 'CLIENT',
-  DEMANDEUR_CONTACT: 'david@gimac.test', RAISON: 'Accès lecture', ELEMENT_IMPACTE: 'AMA, BD', DESCRIPTION_IMPACT: 'Nouvel accès',
-  RESPONSABLE_CONTACT: 'alice@gimac.test', PLAN_TEST: 'Vérifier', PLAN_RETOUR: 'Restaurer',
+  DEMANDEUR_CONTACT: 'demandeur@gimac.test', RAISON: 'Accès lecture', ELEMENT_IMPACTE: 'AMA, BD', DESCRIPTION_IMPACT: 'Nouvel accès',
+  RESPONSABLE_CONTACT: 'opa@gimac.test', PLAN_TEST: 'Vérifier', PLAN_RETOUR: 'Restaurer',
 }
 
 describe('processus DEMANDE_CHANGEMENT simulé', () => {
@@ -17,7 +17,7 @@ describe('processus DEMANDE_CHANGEMENT simulé', () => {
     magasin.definirProfils('u-agent-ssi', ['ROLE_AGENT_SSI'])
     // u-ssi seul RSSI de l'organisation simulée : l'étape SSI lui revient d'office.
     for (const p of magasin.organisation) if (p.id !== 'u-ssi' && magasin.profilsDe(p.id).includes('ROLE_RSSI')) magasin.definirProfils(p.id, magasin.profilsDe(p.id).filter((x) => x !== 'ROLE_RSSI'))
-    const demandeur = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-collab', nom: 'David Demandeur', profils: ['ROLE_COLLABORATEUR'] }, pouvoirs: magasin })
+    const demandeur = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-collab', nom: 'Demandeur Démo', profils: ['ROLE_COLLABORATEUR'] }, pouvoirs: magasin })
     const resume = (await demandeur.processus.lancables({})).groupes.flatMap((g) => g.processus).find((p) => p.code === 'DEMANDE_CHANGEMENT')!
     const modele = await demandeur.processus.lire(resume.id)
     expect(modele.referenceModele).toBe('CHG-{AAAA}-{N}')
@@ -53,7 +53,7 @@ describe('processus DEMANDE_CHANGEMENT simulé', () => {
 
   it('D-142 : la mise en œuvre peut être confiée à toute personne interne active, hors Production monétique', async () => {
     const magasin = magasinPouvoirs()
-    const demandeur = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-collab', nom: 'David Demandeur', profils: ['ROLE_COLLABORATEUR'] }, pouvoirs: magasin })
+    const demandeur = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-collab', nom: 'Demandeur Démo', profils: ['ROLE_COLLABORATEUR'] }, pouvoirs: magasin })
     const resume = (await demandeur.processus.lancables({})).groupes.flatMap((g) => g.processus).find((p) => p.code === 'DEMANDE_CHANGEMENT')!
     const modele = await demandeur.processus.lire(resume.id)
     expect(modele.etapes[3].intervenant).toMatchObject({ mode: 'AU_LANCEMENT', remplacement: null })

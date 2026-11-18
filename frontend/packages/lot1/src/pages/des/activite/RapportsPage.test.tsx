@@ -20,8 +20,8 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-const COLLAB = { id: 'u-collab', nom: 'Nadège Mvondo Assiga' }
-const RESP = { id: 'u-resp-info', nom: 'Gaston Ndzana Ebode' }
+const COLLAB = { id: 'u-collab', nom: 'Collaboratrice Réseau' }
+const RESP = { id: 'u-resp-info', nom: 'Responsable Production' }
 const services = (u = COLLAB) => servicesSimules({ latenceMs: 0, utilisateur: u })
 const session = (u = COLLAB, role = 'ROLE_COLLABORATEUR') => ({ ...sessionTest(PROFILS[role], [role]), sujet: u.id, nom: u.nom })
 const page = (chemin = '/des/rapports', o: { s?: Services; u?: typeof COLLAB; role?: string } = {}) =>
@@ -47,7 +47,7 @@ describe('Rapports', () => {
     fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer le brouillon' }))
     expect(await screen.findByText('Brouillon enregistré.')).toBeTruthy()
     // La consultation s'ouvre sur le brouillon : texte rendu, modification puis soumission.
-    const c = await screen.findByRole('dialog', { name: /Rapport quotidien de Nadège Mvondo Assiga/ })
+    const c = await screen.findByRole('dialog', { name: /Rapport quotidien de Collaboratrice Réseau/ })
     expect(await within(c).findByRole('heading', { name: 'Bilan' })).toBeTruthy()
     expect(within(c).getByText('Liaison').tagName).toBe('STRONG')
     fireEvent.click(within(c).getByRole('button', { name: 'Modifier le brouillon' }))
@@ -61,26 +61,26 @@ describe('Rapports', () => {
     const s = services()
     const r = await s.pilotage.creerRapport({ type: 'QUOTIDIEN', periode: aujourdhui(), mode: 'REDIGE', contenu: 'Supervision des liens' })
     page(`/des/rapports?rapport=${r.id}`, { s })
-    const c = await screen.findByRole('dialog', { name: /Rapport quotidien de Nadège Mvondo Assiga/ })
-    expect(await within(c).findByText('Sera remis à : Gaston Ndzana Ebode (votre n+1)')).toBeTruthy()
+    const c = await screen.findByRole('dialog', { name: /Rapport quotidien de Collaboratrice Réseau/ })
+    expect(await within(c).findByText('Sera remis à : Responsable Production (votre n+1)')).toBeTruthy()
     const choix = within(c).getByLabelText(/^Remettre à/) as HTMLSelectElement
     expect([...choix.options].map((o) => o.value)).toEqual(['u-resp-info', 'U-001', 'u-dg'])
     fireEvent.change(choix, { target: { value: 'U-001' } })
-    expect(within(c).getByText('Sera remis à : Paul Mbarga Atangana (choisi par vous)')).toBeTruthy()
+    expect(within(c).getByText('Sera remis à : Chef Département DES (choisi par vous)')).toBeTruthy()
     // Refus du service : message traduit et détail rendu, jamais un 422 muet.
     vi.spyOn(s.pilotage, 'soumettre').mockRejectedValueOnce(new ApiError(422, 'PIL_DESTINATAIRE_INVALIDE', 'Hors de la chaîne hiérarchique de l’auteur', 'cid-d'))
     fireEvent.click(within(c).getByRole('button', { name: 'Enregistrer et soumettre' }))
     expect(await within(c).findByText(/n’est pas dans votre chaîne hiérarchique/)).toBeTruthy()
     expect(within(c).getByText('Hors de la chaîne hiérarchique de l’auteur')).toBeTruthy()
     fireEvent.click(within(c).getByRole('button', { name: 'Enregistrer et soumettre' }))
-    expect(await screen.findByText('Rapport remis à Paul Mbarga Atangana (choisi par vous).')).toBeTruthy()
+    expect(await screen.findByText('Rapport remis à Chef Département DES (choisi par vous).')).toBeTruthy()
     cleanup()
     // Sommet de l'organisation : le rapport est déposé.
-    const DG = { id: 'u-dg', nom: 'Jean-Baptiste Ella Mintsa' }
+    const DG = { id: 'u-dg', nom: 'Agent Conformité' }
     const sd = services(DG)
     const rd = await sd.pilotage.creerRapport({ type: 'QUOTIDIEN', periode: aujourdhui(), mode: 'REDIGE', contenu: 'Comité de direction' })
     page(`/des/rapports?rapport=${rd.id}`, { s: sd, u: DG, role: 'ROLE_DG' })
-    const cd = await screen.findByRole('dialog', { name: /Rapport quotidien de Jean-Baptiste Ella Mintsa/ })
+    const cd = await screen.findByRole('dialog', { name: /Rapport quotidien de Agent Conformité/ })
     expect(await within(cd).findByText(/Personne n’est au-dessus de vous dans l’organisation/)).toBeTruthy()
     fireEvent.click(within(cd).getByRole('button', { name: 'Enregistrer et soumettre' }))
     expect(await screen.findByText('Rapport déposé : personne n’est au-dessus de vous, il reste consultable.')).toBeTruthy()
@@ -120,19 +120,19 @@ describe('Rapports', () => {
     fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer et soumettre' }))
     expect(await within(d).findByRole('progressbar')).toBeTruthy()
     expect(await screen.findByText(/^Rapport remis à .+ \(votre n\+1\)\.$/, {}, { timeout: 5000 })).toBeTruthy()
-    const c = await screen.findByRole('dialog', { name: /Rapport quotidien de Nadège/ })
+    const c = await screen.findByRole('dialog', { name: /Rapport quotidien de Collaboratrice/ })
     expect(await within(c).findByText('rapport-du-jour.pdf')).toBeTruthy()
   })
 
   it('responsable : rapports reçus, filtre par auteur, aperçu du document, visa commenté', async () => {
     page('/des/rapports?vue=recus&auteur=u-res', { u: RESP, role: 'ROLE_RESPONSABLE_SERVICE' })
-    expect(await screen.findByText('Rapports de Idriss Mahamat Saleh.')).toBeTruthy()
+    expect(await screen.findByText('Rapports de Agent Pôle Réseau.')).toBeTruthy()
     await screen.findByText('Document déposé')
     const lignes = screen.getAllByRole('row')
-    expect(lignes.slice(1).every((l) => l.textContent?.includes('Idriss Mahamat Saleh'))).toBe(true)
+    expect(lignes.slice(1).every((l) => l.textContent?.includes('Agent Pôle Réseau'))).toBe(true)
     const document = screen.getAllByRole('row').find((l) => l.textContent?.includes('Document déposé'))!
     fireEvent.click(within(document).getByRole('button'))
-    const c = await screen.findByRole('dialog', { name: /Rapport quotidien de Idriss Mahamat Saleh/ })
+    const c = await screen.findByRole('dialog', { name: /Rapport quotidien de Agent Pôle Réseau/ })
     fireEvent.click(await within(c).findByRole('button', { name: 'Voir le document' }))
     const apercu = await screen.findByRole('dialog', { name: /rapport-pole-reseau/ })
     fireEvent.click(within(apercu).getAllByRole('button', { name: 'Fermer' }).at(-1)!)
@@ -149,10 +149,10 @@ describe('Mon équipe', () => {
   it('membres : activités, rapport du jour, tâches, absence ; accès à leur journée ; équipe vide', async () => {
     rendrePage(<EquipePage />, { chemin: '/des/equipe', motif: '/des/equipe', services: services(RESP), session: session(RESP, 'ROLE_RESPONSABLE_SERVICE') })
     expect(await screen.findByRole('heading', { level: 1, name: 'Mon équipe' })).toBeTruthy()
-    const chantal = (await screen.findByText('Chantal Ngo Bassong')).closest('tr')!
-    expect(within(chantal).getByText('Absent')).toBeTruthy()
-    expect(within(chantal).getByText('Ingénieure système · Pôle système', { exact: false })).toBeTruthy()
-    expect(within(chantal).getByRole('link', { name: 'Journée' }).getAttribute('href')).toContain('collaborateur=u-sys')
+    const agentsysteme = (await screen.findByText('Opératrice Pôle Système')).closest('tr')!
+    expect(within(agentsysteme).getByText('Absent')).toBeTruthy()
+    expect(within(agentsysteme).getByText('Ingénieure système · Pôle système', { exact: false })).toBeTruthy()
+    expect(within(agentsysteme).getByRole('link', { name: 'Journée' }).getAttribute('href')).toContain('collaborateur=u-sys')
     fireEvent.click(screen.getByRole('button', { name: 'Jour précédent' }))
     expect(await screen.findByRole('button', { name: 'Aujourd’hui' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Aujourd’hui' }))
@@ -161,7 +161,7 @@ describe('Mon équipe', () => {
     expect(await screen.findByText('Aucun collaborateur rattaché')).toBeTruthy()
   })
   it('chef de département : membres de deuxième niveau', async () => {
-    rendrePage(<EquipePage />, { chemin: '/des/equipe', motif: '/des/equipe', services: services({ id: 'U-001', nom: 'Paul Mbarga Atangana' }), session: session({ id: 'U-001', nom: 'Paul Mbarga Atangana' }, 'ROLE_CHEF_DES') })
+    rendrePage(<EquipePage />, { chemin: '/des/equipe', motif: '/des/equipe', services: services({ id: 'U-001', nom: 'Chef Département DES' }), session: session({ id: 'U-001', nom: 'Chef Département DES' }, 'ROLE_CHEF_DES') })
     expect((await screen.findAllByText('Niveau 2')).length).toBe(3)
   })
 })
