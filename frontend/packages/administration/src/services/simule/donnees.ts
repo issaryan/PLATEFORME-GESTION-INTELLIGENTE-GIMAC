@@ -18,10 +18,10 @@ const GRAINES: Graine[] = [
   // Administrateur système (D-78) : même identité que son compte de démonstration (admin.systeme), recette ADM-02.
   ['u-admin-systeme', 'admin.systeme', 'Agent', 'Direction Générale', 'Administrateur système de la plateforme', ['ROLE_ADMIN_SYSTEME']],
   ['u-chef-des', 'd.unite', 'Directeur', 'Unité DES', 'Chef du DES', ['ROLE_CHEF_DES']],
-  ['u-ingenieur', 'p.mbida', 'Agent', 'Désigné', 'Ingénieur d’homologation', ['ROLE_INGENIEUR_HOMOLOGATION', 'ROLE_CONDUCTEUR_PROJET']],
-  ['u-chef-ddrm', 'a.ngombarga', 'Analyste', 'Numérique', 'Cheffe de la DDRM', ['ROLE_CHEF_DDRM']],
+  ['u-ingenieur', 'a.designe', 'Agent', 'Désigné', 'Ingénieur d’homologation', ['ROLE_INGENIEUR_HOMOLOGATION', 'ROLE_CONDUCTEUR_PROJET']],
+  ['u-chef-ddrm', 'a.numerique', 'Analyste', 'Numérique', 'Cheffe de la DDRM', ['ROLE_CHEF_DDRM']],
   ['u-charge-ddrm', 'c.mission', 'Agent', 'Contrôle', 'Chargé d’études DDRM', ['ROLE_CHARGE_DDRM']],
-  ['u-conformite', 'm.messagerie', 'Agent', 'Organigramme', 'Responsable conformité', ['ROLE_CONFORMITE']],
+  ['u-conformite', 'a.organigramme', 'Agent', 'Organigramme', 'Responsable conformité', ['ROLE_CONFORMITE']],
   ['u-dg', 'c.messagerie', 'Correspondant', 'Messagerie', 'Directeur général adjoint', ['ROLE_DG']],
   ['u-correspondant', 'correspondant.epa', 'Agent', 'Délégué', 'Correspondant GIMAC', ['ROLE_CORRESPONDANT'], { institutionId: 'INST-0042' }],
   ['u-sna', 'r.sna', 'Responsable', 'SNA', 'Analyste Normes et Agréments', ['ROLE_SNA']],
@@ -68,7 +68,7 @@ export function journalInitial(): EntreeJournal[] {
     e(5, 'ACTIONS_REQUISES', 'u-sans-2fa', 'sans.unite', 'Second facteur absent depuis la migration du poste', 'SECOND_FACTEUR', ['u-rssi', 'Officier Sécurité Groupe']),
     e(20, 'CONFIGURATION_POLITIQUE_SECURITE', null, 'POLITIQUE_SECURITE', 'Alignement sur la PSSI 2026 : 14 caractères', 'longueurMinimale', ['u-rssi', 'Officier Sécurité Groupe']),
     e(30, 'DESACTIVATION', 'u-inactif', 's.demo', 'Départ du collaborateur le 15 septembre', ''),
-    e(52, 'PROFILS', 'u-ingenieur', 'p.mbida', 'Désignation comme conducteur de projet LIA-2026-017', 'ROLE_CONDUCTEUR_PROJET, ROLE_INGENIEUR_HOMOLOGATION'),
+    e(52, 'PROFILS', 'u-ingenieur', 'a.designe', 'Désignation comme conducteur de projet LIA-2026-017', 'ROLE_CONDUCTEUR_PROJET, ROLE_INGENIEUR_HOMOLOGATION'),
   ]
 }
 

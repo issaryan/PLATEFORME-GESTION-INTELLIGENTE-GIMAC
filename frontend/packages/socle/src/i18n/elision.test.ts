@@ -14,7 +14,7 @@ describe('élision de « de » (recette ADM-07)', () => {
     expect(prepositionDe('Tableau de bord')).toBe('de Tableau de bord')
     expect(prepositionDe('Le Pôle réseau')).toBe('du Pôle réseau')
     expect(prepositionDe('Les institutions')).toBe('des institutions')
-    expect(prepositionDe('Hamadou Ali')).toBe('de Hamadou Ali')
+    expect(prepositionDe('Bureau Test')).toBe('de Bureau Test')
   })
   it('formateur i18next « de » : {{nom, de}}', () => {
     initI18n([{ fr: { 'test.droits': 'Droits {{f, de}}' }, en: { 'test.droits': 'Rights of {{f}}' }, es: { 'test.droits': 'Derechos de {{f}}' } }], 'fr')

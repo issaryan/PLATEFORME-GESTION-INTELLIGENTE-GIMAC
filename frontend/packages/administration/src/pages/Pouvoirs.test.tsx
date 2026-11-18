@@ -20,7 +20,7 @@ describe('Demandes à traiter', () => {
   it('liste en attente, fiche, acceptation signée, refus motivé, filtre', async () => {
     rendrePage(<DemandesPage />, { chemin: '/console/demandes?demande=DEM-0001', motif: '/console/demandes', services: services() })
     const fiche = await screen.findByRole('dialog', { name: 'Création de compte' })
-    expect(await within(fiche).findByText('i.production')).toBeTruthy()
+    expect(await within(fiche).findByText('a.production')).toBeTruthy()
     expect(within(fiche).getByText('Renfort du pôle réseau pour les liaisons ouvertes en 2026.')).toBeTruthy()
     fireEvent.click(within(fiche).getByRole('button', { name: 'Accepter avec ma clé' }))
     await signer('Création validée par la DSI')

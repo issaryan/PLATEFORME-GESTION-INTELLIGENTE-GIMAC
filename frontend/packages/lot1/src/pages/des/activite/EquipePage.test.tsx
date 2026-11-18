@@ -120,7 +120,7 @@ describe('Mon équipe : organisation et demandes', () => {
     fireEvent.click(within(fiche).getAllByRole('button', { name: 'Fermer' }).at(-1)!)
     fireEvent.click(await screen.findByRole('button', { name: 'Création de compte' }))
     const c = await screen.findByRole('dialog', { name: 'Création de compte' })
-    expect(await within(c).findByText('i.production')).toBeTruthy()
+    expect(await within(c).findByText('a.production')).toBeTruthy()
     fireEvent.click(within(c).getByRole('button', { name: 'Annuler la demande' }))
     expect(await screen.findByText('Demande annulée.')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('État'), { target: { value: 'ANNULEE' } })

@@ -209,7 +209,7 @@ Gestes réservés vérifiés dans les écrans permis : Établir le PV (conducteu
 - Captures : 081, 083.
 
 ### CER-14 (mineure) : identité du correspondant incohérente
-- Observé : en-tête « Correspondant A » (initiales CA) mais fiche « Agent Délégué » (BN) ; courriel `a.ngombarga@gimac-afr.org` (domaine du GIMAC) ; fonction « Ingénieure d'exploitation » ; un appareil connecté sur la couche « Application du département », inaccessible à ce profil.
+- Observé : en-tête « Correspondant A » (initiales CA) mais fiche « Agent Délégué » (BN) ; courriel `a.numerique@gimac-afr.org` (domaine du GIMAC) ; fonction « Ingénieure d'exploitation » ; un appareil connecté sur la couche « Application du département », inaccessible à ce profil.
 - Capture : 083.
 - Cause probable : `frontend/apps/portail/src/App.tsx` (`monCompteSimule`) et `connexionDemo.ts` (nom « Correspondant A »), données du compte simulé.
 

@@ -125,10 +125,10 @@ describe('Comptes : création (aucune inscription libre)', () => {
   it('invitation seule : pas de mot de passe affiché ; ouverture de la fiche', async () => {
     const { container } = creation()
     await screen.findByLabelText('Normes et Agréments')
-    remplir(container, { identifiant: 'b.essono', prenom: 'Agent', nom: 'Essono', email: 'b.essono@gimac-afr.org' })
+    remplir(container, { identifiant: 'b.essai', prenom: 'Agent', nom: 'Essai', email: 'b.essai@gimac-afr.org' })
     fireEvent.click(screen.getByLabelText('Pôle réseau'))
     fireEvent.submit(formulaire())
-    expect(await screen.findByText('Compte b.essono créé')).toBeTruthy()
+    expect(await screen.findByText('Compte b.essai créé')).toBeTruthy()
     expect(screen.queryByTestId('secret-valeur')).toBeNull()
     expect(screen.getByText('envoyée')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Ouvrir la fiche du compte' }))

@@ -537,8 +537,8 @@ La prise et l'attribution par la voie des tâches sont contrôlées par un évé
 
 ### 9.4 Démonstration
 
-- Comptes de démonstration du service RH (QUO-01) : Gestionnaire RH Démo (`gestionnaire.rh`, gestionnaire, profil collaborateur)
-  et Cheffe Ressources Humaines (`cheffe.rh`, cheffe du service, profil responsable de service), tirés de l'organisation simulée
+- Comptes de démonstration du service RH (QUO-01) : Gestionnaire RH Démo (`g.rh`, gestionnaire, profil collaborateur)
+  et Cheffe Ressources Humaines (`c.ressources`, cheffe du service, profil responsable de service), tirés de l'organisation simulée
   (aucun nom de profil codé).
 - Notifications (QUO-05) : le moteur simulé produit, comme MS-NOTIFICATION, « Étape à réaliser », « Étape à prendre »,
   « Validation attendue », « Signature attendue », « Étape renvoyée », « Étape réaffectée », « Votre demande avance » et

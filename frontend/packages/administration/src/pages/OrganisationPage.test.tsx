@@ -95,7 +95,7 @@ describe('Fiche d’un compte : rattachement', () => {
     const d = await screen.findByRole('dialog', { name: 'Modifier le rattachement' })
     // Le chef du DES ne peut avoir pour responsable un compte dont il est lui-même le responsable.
     fireEvent.click(await within(d).findByRole('button', { name: /Retirer|Correspondant Messagerie/ }))
-    fireEvent.change(within(d).getByRole('combobox', { name: /responsable/i }), { target: { value: 'mbida' } })
+    fireEvent.change(within(d).getByRole('combobox', { name: /responsable/i }), { target: { value: 'Désigné' } })
     fireEvent.mouseDown(await within(d).findByRole('option', { name: /Agent Désigné/ }))
     fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer le rattachement' }))
     expect(await within(d).findByText(/Boucle hiérarchique/)).toBeTruthy()

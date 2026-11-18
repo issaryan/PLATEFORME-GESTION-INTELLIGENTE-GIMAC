@@ -15,8 +15,8 @@ Profils :
 
 | Profil | Compte de démonstration | Application |
 |---|---|---|
-| Chargé de la DDRM (ROLE_CHARGE_DDRM) | f.abakar, Responsable Unité Démo | interne |
-| Chef de la DDRM (ROLE_CHEF_DDRM) | responsable.ddrm, Responsable DDRM | interne |
+| Chargé de la DDRM (ROLE_CHARGE_DDRM) | r.unite, Responsable Unité Démo | interne |
+| Chef de la DDRM (ROLE_CHEF_DDRM) | r.ddrm, Responsable DDRM | interne |
 | Correspondant du participant (ROLE_CORRESPONDANT) | correspondant-a, Établissement de paiement A (INST-0042) | portail |
 | Conducteur de projet (ROLE_CONDUCTEUR_PROJET) | acteur d'appui seulement (renvoi et validation des opérations du cadrage) | interne |
 
@@ -55,7 +55,7 @@ lui donne que le tableau de bord et les liaisons).
 
 | N° | Écran ou flux | Profil | Geste | Résultat attendu | Résultat observé | Capture | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1 | Connexion interne | Chargé | Identifiant f.abakar, mot de passe, code à six chiffres | Session ouverte sur le tableau de bord | Conforme, nom et profil affichés | 001, 002, 003 | Conforme |
+| 1 | Connexion interne | Chargé | Identifiant r.unite, mot de passe, code à six chiffres | Session ouverte sur le tableau de bord | Conforme, nom et profil affichés | 001, 002, 003 | Conforme |
 | 2 | Tableau de bord | Chargé | Lecture | Ma journée, Relations avec les membres, Mon travail, sans pilotage consolidé | Conforme | 003 | Conforme |
 | 3 | Institutions membres | Chargé | Ouvrir la liste à 1440 px | Toutes les colonnes visibles | Colonne des actions coupée, défilement horizontal | 004 | Anomalie (DDR-12) |
 | 4 | Prise de contact | Chargé | Ouvrir la modale | Neuf champs, aides sous les champs | Conforme | 005 | Conforme |
@@ -127,8 +127,8 @@ lui donne que le tableau de bord et les liaisons).
 | 70 | Filtre Statut | Chargé | Choisir « En homologation » | Liste filtrée | Liste inchangée, retour à « Tous » | 118 | Anomalie (DDR-07) |
 | 71 | Mes dossiers, recherche | Chargé | Onglet et recherche « Atlantique » | Dossiers du chargé, une ligne | Conforme | 123 | Conforme |
 | 72 | Accès refusés | Chargé | Adresses directes (équipe, comptes, journal, matrice, supervision, configuration) | « Accès refusé » sans données | Conforme | 034 | Conforme |
-| 73 | Console | Chargé | Connexion f.abakar sur 6102 | Aiguillage vers l'application interne | Conforme | 035 | Conforme |
-| 74 | Portail | Chargé | Connexion f.abakar sur 6101 | Aiguillage vers l'application interne | Conforme | 036 | Conforme |
+| 73 | Console | Chargé | Connexion r.unite sur 6102 | Aiguillage vers l'application interne | Conforme | 035 | Conforme |
+| 74 | Portail | Chargé | Connexion r.unite sur 6101 | Aiguillage vers l'application interne | Conforme | 036 | Conforme |
 | 75 | Accès refusés | Chef | Adresses directes (comptes, profils, politique, supervision, infrastructure, courriels) | « Accès refusé » | Conforme | 101 | Conforme |
 | 76 | Console | Chef | /console/comptes | Aiguillage, aucune donnée | Conforme | 102 | Conforme |
 | 77 | Portail | Correspondant | Connexion correspondant-a, tableau de bord | Ce que le GIMAC attend, ses liaisons | Conforme | 103 | Conforme |
@@ -306,8 +306,7 @@ Exploitation) ; « Tâche confiée par Chef Département DES » ouvre la liste d
 Captures 085, 086.
 
 **DDR-21 (mineure)** : données de tâches contradictoires : « Mettre à jour la fiche de procédure du service » est à la fois
-dans « Mes tâches » du chef (confiée par Agent Conformité) et dans ses « Confiées » (responsable Responsable Unité
-Hissein). Captures 039, 082.
+dans « Mes tâches » du chef (confiée par Agent Conformité) et dans ses « Confiées » (responsable Responsable Unité Démo). Captures 039, 082.
 
 **DDR-22 (mineure)** : portail : la notification « Action attendue : Paramétrage d'essai » mène à « Ce livrable ne vous est pas
 demandé » ; sous-titre de la page Notifications (« Messages reçus, mentions et réponses, tâches confiées et rapports

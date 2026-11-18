@@ -141,7 +141,7 @@ export function magasinPouvoirs(): MagasinPouvoirs {
   const demandes: Demande[] = [
     {
       id: 'DEM-0001', type: 'CREATION_COMPTE', demandeur: personne('U-001'), cible: null,
-      contenu: { identifiant: 'i.production', prenom: 'Agent', nom: 'Production', email: 'i.production@gimac-afr.org', telephone: '+237 699 12 34 56', fonction: 'Technicienne réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', profils: ['ROLE_POLE_RESEAU'] },
+      contenu: { identifiant: 'a.production', prenom: 'Agent', nom: 'Production', email: 'a.production@gimac-afr.org', telephone: '+237 699 12 34 56', fonction: 'Technicienne réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', profils: ['ROLE_POLE_RESEAU'] },
       motif: 'Renfort du pôle réseau pour les liaisons ouvertes en 2026.', etat: 'EN_ATTENTE', decision: null, creeeLe: il(2),
     },
     {

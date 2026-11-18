@@ -6,7 +6,7 @@
     "statut": "corrigée",
     "avant": "docs/recette/captures/quotidien/141-dg-conge-etape-rh-clair.png",
     "apres": "docs/recette/captures/quotidien/corrections/QUO-01-apres.png",
-    "correctif": "Comptes de démonstration du service RH tirés de l’organisation simulée : gestionnaire.rh (gestionnaire, profil collaborateur) et cheffe.rh (cheffe, profil responsable de service, comme MS-PILOTAGE) ; la session garde le compte et non le premier porteur du profil.",
+    "correctif": "Comptes de démonstration du service RH tirés de l’organisation simulée : g.rh (gestionnaire, profil collaborateur) et c.ressources (cheffe, profil responsable de service, comme MS-PILOTAGE) ; la session garde le compte et non le premier porteur du profil.",
     "fichiers": [
       "frontend/packages/lot1/src/profilsDemo.ts",
       "frontend/packages/lot1/src/services/simule/pilotage.ts",

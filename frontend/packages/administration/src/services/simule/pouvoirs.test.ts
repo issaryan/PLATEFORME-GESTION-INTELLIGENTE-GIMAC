@@ -34,7 +34,7 @@ describe('demandes à traiter', () => {
     expect(await code(s.pouvoirs.accepter('DEM-0001', 'ok', 'faux'))).toBe('403 IAM_REAUTH_INVALID')
     const acceptee = await s.pouvoirs.accepter('DEM-0001', 'Création validée', A)
     expect(acceptee).toMatchObject({ etat: 'ACCEPTEE', decision: { par: { id: 'u-super-admin' }, motif: 'Création validée' } })
-    const cree = (await s.comptes.lister({ page: 1, taille: 50, q: 'i.production' })).contenu[0]
+    const cree = (await s.comptes.lister({ page: 1, taille: 50, q: 'a.production' })).contenu[0]
     expect(cree).toMatchObject({ unite: 'POLE_RESEAU', responsableId: 'u-resp-info', profils: ['ROLE_POLE_RESEAU'] })
     expect(pouvoirs.organisation.some((m) => m.id === cree.id)).toBe(true)
     expect(await code(s.pouvoirs.accepter('DEM-0001', 'encore', A))).toBe('409 ORG_DEMANDE_TRAITEE')
