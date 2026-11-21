@@ -527,6 +527,18 @@ spring:
                   args:
                     maxSize: 1MB
                 - RewritePath=/bff/portail/sbx-iso20022/(?<p>.*), /api/v1/portail/${p}
+            # Route membre de la façade ISO 20022 de la sandbox (décision du 21/11/2026, AUTH_E05) : systèmes des
+            # participants, hors session ; seule la façade externe est jointe, jamais le payee simulé. Authentification
+            # par le jeton OAuth2 de la façade (spec v2.3 §3.2), adresse source posée par AdresseSourceWebFilter.
+            - id: membre-sbx-iso20022
+              uri: ${gimac.services.sbx-iso20022}
+              predicates:
+                - Path=/sbx/iso20022/facade/**
+              filters:
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/sbx/iso20022/facade/(?<p>.*), /facade/v1/external/${p}
             - id: console-sbx-carte
               uri: ${gimac.services.sbx-carte}
               predicates:
@@ -769,6 +781,11 @@ jhipster:
 
 # Adresses des microservices joints par la passerelle (GW-19) ; surchargées en prod.
 gimac:
+  passerelle:
+    adresse-source:
+      # Mandataires de confiance (noms ou adresses) dont le dernier élément de X-Forwarded-For fait foi ; vide : le pair
+      # TCP seul (AdresseSourceWebFilter). Sur le serveur : les nginx des couches de présentation.
+      mandataires: ${GIMAC_PASSERELLE_MANDATAIRES:}
   opa:
     url: http://localhost:8181
   services:
