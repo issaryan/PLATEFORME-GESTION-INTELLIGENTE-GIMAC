@@ -487,6 +487,8 @@ APPELS_SBX = [
     ("sbx-referentiel", "INTERNAL_PARTICIPANT_READ", "MS-PARTICIPANT : code participant et nomenclature des services"),
     ("sbx-mobile", "INTERNAL_SBX_RACCORDEMENT_IDENTIFIANTS", "SBX-RACCORDEMENT : vérification d'un identifiant d'accès de test"),
     ("sbx-iso20022", "INTERNAL_SBX_RACCORDEMENT_IDENTIFIANTS", "SBX-RACCORDEMENT : vérification d'un identifiant d'accès de test"),
+    # Adresses sources déclarées par le participant, seules admises à la façade ISO 20022 (AUTH_E05, décision du 21/11/2026).
+    ("sbx-iso20022", "INTERNAL_SBX_RACCORDEMENT_RATTACHABILITE", "SBX-RACCORDEMENT : adresses sources déclarées (points d'entrée)"),
     ("sbx-simulation", "INTERNAL_SBX_TRACE_REFERENCES", "SBX-TRACE : référence de trace au démarrage de l'essai"),
     ("sbx-simulation", "INTERNAL_SBX_DONNEES_ETATS", "SBX-DONNEES : restauration de l'état initial, relevé des soldes"),
     ("sbx-simulation", "INTERNAL_SBX_RACCORDEMENT_LIAISONS", "SBX-RACCORDEMENT : disponibilité des liaisons de test"),
