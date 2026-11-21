@@ -347,9 +347,14 @@ class RoutesPresentationTest {
     }
 
     @Test
-    @DisplayName("Toute route déclarée est une route /bff des couches, filtrée par OpaAuthorize en premier")
+    @DisplayName("Toute route déclarée est une route /bff des couches, filtrée par OpaAuthorize en premier, hors la route membre de la sandbox")
     void toutesLesRoutesPassentParOpa() {
-        assertThat(routes).allSatisfy(r -> {
+        // Seule exception : la route membre de la façade ISO 20022 de la sandbox (décision du 21/11/2026), systèmes des
+        // participants hors session, authentifiés par le jeton OAuth2 de la façade elle-même.
+        Route membre = routes.stream().filter(r -> r.id().equals("membre-sbx-iso20022")).findFirst().orElseThrow();
+        assertThat(membre.chemins()).singleElement().satisfies(p -> assertThat(p.getPatternString()).isEqualTo("/sbx/iso20022/facade/**"));
+        assertThat(membre.filtres()).doesNotContain("OpaAuthorize").anySatisfy(f -> assertThat(f).contains("/facade/v1/external/"));
+        assertThat(routes.stream().filter(r -> !r.id().equals("membre-sbx-iso20022")).toList()).allSatisfy(r -> {
             assertThat(r.filtres()).as("filtres de %s", r.id()).startsWith("OpaAuthorize");
             assertThat(r.chemins()).as("chemins de %s", r.id()).isNotEmpty().allSatisfy(p -> assertThat(p.getPatternString()).startsWith("/bff/"));
         });

@@ -66,6 +66,25 @@ public class SecurityConfiguration {
         this.jHipsterProperties = jHipsterProperties;
     }
 
+    /**
+     * Route membre de la façade ISO 20022 de la Sandbox GIMAC (décision de l'utilisateur du 21/11/2026) : systèmes des
+     * participants, sans session ni jeton de la plateforme. L'authentification est celle de la façade (jeton OAuth2 de
+     * la spécification ISO 20022 v2.3 §3.2.5, délivré par son /oauth/token) : aucun serveur de ressources ici, qui
+     * refuserait ce jeton comme JWT, ni CSRF (appels de machine à machine). Le filtrage d'adresse est fait par la
+     * façade sur l'en-tête posé par AdresseSourceWebFilter.
+     */
+    @Bean
+    @org.springframework.core.annotation.Order(org.springframework.core.Ordered.HIGHEST_PRECEDENCE)
+    public SecurityWebFilterChain routeMembreSandboxFilterChain(ServerHttpSecurity http) {
+        return http
+            .securityMatcher(org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers.pathMatchers("/sbx/iso20022/facade/**"))
+            .csrf(ServerHttpSecurity.CsrfSpec::disable)
+            .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
+            .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
+            .authorizeExchange(authz -> authz.anyExchange().permitAll())
+            .build();
+    }
+
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         http.cors(withDefaults())

@@ -210,6 +210,8 @@ services:
       # Journal d'audit de la connexion (gateway.login-succeeded.v1, gateway.login-failed.v1) publié sur
       # le sujet gateway.security.events, scellé par MS-AUDIT.
       - GIMAC_PASSERELLE_JOURNAL_DECISIONS_ACTIF=true
+      # Mandataires de confiance de l'adresse source (AdresseSourceWebFilter) : nginx des couches, noms dans le .env du serveur.
+      - GIMAC_PASSERELLE_MANDATAIRES=${GIMAC_PASSERELLE_MANDATAIRES:-}
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       # Jeton interne réduit de la sandbox (D-134) : émetteur, clé et /api/internal/jwks actifs, sans le mode jeton
       # fantôme des routes de la plateforme ; le jeton réduit devient obligatoire. Clé RSA persistante générée hors
